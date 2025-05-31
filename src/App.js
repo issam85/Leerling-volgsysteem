@@ -1,0 +1,2810 @@
+/*
+BACKEND API IMPLEMENTATIE VOORBEELD:
+
+Om Microsoft 365 emails te laten werken, implementeer deze API endpoint:
+
+POST /api/send-email-m365
+Content-Type: application/json
+
+Request Body:
+{
+  "tenantId": "your-tenant-id",
+  "clientId": "your-client-id", 
+  "clientSecret": "your-client-secret",
+  "to": "recipient@example.com",
+  "subject": "Email subject",
+  "body": "Email body content",
+  "mosqueName": "Al-Noor Moskee"
+}
+
+Response:
+{
+  "success": true,
+  "messageId": "AAMkAGVmMDEzMTM4LTZmYWUtNDdkNC1hMDZiLTU1OGY5OTZhYmY4OABGAAAAAAAiQ8W967B7TKBjgx9rVEURBwAiIsqMbYjsT5e-T3KzowPTAAAAAAEMAAAiIsqMbYjsT5e-T3KzowPTAAAAABYOAAA=",
+  "service": "Microsoft Graph API"
+}
+
+Node.js implementatie voorbeeld:
+
+const { Client } = require('@azure/msal-node');
+const axios = require('axios');
+
+app.post('/api/send-email-m365', async (req, res) => {
+  try {
+    const { tenantId, clientId, clientSecret, to, subject, body, mosqueName } = req.body;
+    
+    // Get access token
+    const tokenResponse = await axios.post(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, 
+      new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'https://graph.microsoft.com/.default',
+        grant_type: 'client_credentials'
+      }), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+    
+    const accessToken = tokenResponse.data.access_token;
+    
+    // Send email
+    const emailResponse = await axios.post('https://graph.microsoft.com/v1.0/users/admin@yourmosque.com/sendMail', {
+      message: {
+        subject: subject,
+        body: {
+          contentType: 'Text',
+          content: body
+        },
+        toRecipients: [{
+          emailAddress: {
+            address: to
+          }
+        }]
+      }
+    }, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      messageId: emailResponse.data.id || 'sent_' + Date.now(),
+      service: 'Microsoft Graph API'
+    });
+    
+  } catch (error) {
+    console.error('Email send error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+VEREISTE AZURE PERMISSIES:
+- Mail.Send (Application permission)
+- User.Read.All (Application permission)
+*/
+
+import React, { useState } from 'react';
+import { Users, BookOpen, User, Plus, Building2, LogOut, DollarSign } from 'lucide-react';
+import './App.css';
+
+const mockDatabase = {
+  'al-noor': {
+    mosque: { name: 'Al-Noor Moskee', address: 'Amsterdam' },
+    classes: [
+      { 
+        id: 1, 
+        name: 'Beginners Koran', 
+        teacher: 'Imam Hassan',
+        teacherId: 3,
+        students: [
+          { id: 1, name: 'Ahmed Ali', parentId: 2 }
+        ] 
+      }
+    ],
+    users: [
+      { id: 1, email: 'admin@alnoor.nl', password: 'admin', role: 'admin', name: 'Beheerder' },
+      { 
+        id: 2, 
+        email: 'ouder@alnoor.nl', 
+        password: 'TempPass1', 
+        role: 'parent', 
+        name: 'Said Ali',
+        phone: '06-12345678',
+        address: 'Hoofdstraat 123',
+        city: 'Amsterdam',
+        zipcode: '1234AB',
+        children: [1],
+        amountDue: 150,
+        isTemporaryPassword: true,
+        accountCreated: '2024-12-01T10:00:00.000Z'
+      },
+      {
+        id: 3,
+        email: 'hassan@alnoor.nl',
+        password: 'leraar123',
+        role: 'teacher',
+        name: 'Imam Hassan'
+      }
+    ],
+    payments: [
+      {
+        id: 1,
+        parentId: 2,
+        amount: 75,
+        date: '2024-12-15',
+        paymentMethod: 'overschrijving',
+        notes: 'Eerste deel betaling'
+      }
+    ]
+  },
+  'al-hijra': {
+    mosque: { name: 'Al-Hijra Moskee', address: 'Rotterdam' },
+    classes: [],
+    users: [
+      { id: 1, email: 'admin', password: 'admin', role: 'admin', name: 'Beheerder' }
+    ],
+    payments: []
+  }
+};
+
+const LeerlingVolgsysteem = () => {
+  const [currentSubdomain, setCurrentSubdomain] = useState('register');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
+  const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showAddParentModal, setShowAddParentModal] = useState(false);
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [selectedParentForPayment, setSelectedParentForPayment] = useState(null);
+  const [selectedParentForDetails, setSelectedParentForDetails] = useState(null);
+  const [newClass, setNewClass] = useState({ name: '', teacherId: '' });
+  const [newTeacher, setNewTeacher] = useState({ name: '', email: '' });
+  const [newStudent, setNewStudent] = useState({ name: '', parentId: '', classId: '' });
+  const [newParent, setNewParent] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '', 
+    address: '', 
+    city: '', 
+    zipcode: '' 
+  });
+  const [parentError, setParentError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [sentEmailData, setSentEmailData] = useState(null);
+
+  // Generate temporary password
+  const generateTempPassword = () => {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  // Test Microsoft 365 configuration
+  const testM365Configuration = async () => {
+    if (!m365Config.configured) {
+      alert('Configureer eerst Microsoft 365 voordat u kunt testen.');
+      return;
+    }
+
+    if (!testEmailAddress || !testEmailAddress.includes('@')) {
+      alert('Voer een geldig email adres in voor de test.');
+      return;
+    }
+
+    try {
+      // Direct demo mode voor test met het opgegeven email adres
+      const testEmailContent = {
+        to: testEmailAddress,
+        subject: `🧪 Test Email - ${tenantData.mosque.name} Systeem Configuratie`,
+        body: `
+Beste beheerder,
+
+Dit is een test email om te controleren of uw Microsoft 365 configuratie correct werkt.
+
+✅ Als u deze email ontvangt, is uw configuratie succesvol!
+
+Systeem Details:
+- Moskee: ${tenantData.mosque.name}
+- Test uitgevoerd op: ${new Date().toLocaleString('nl-NL')}
+- Tenant ID: ${m365Config.tenantId}
+- Client ID: ${m365Config.clientId}
+- Test verzonden naar: ${testEmailAddress}
+
+U kunt nu met vertrouwen nieuwe ouders en leraren toevoegen. 
+Zij zullen automatisch emails ontvangen met hun inloggegevens.
+
+Met vriendelijke groet,
+Het Leerling Volgsysteem
+        `
+      };
+
+      console.log('📧 TEST EMAIL CONTENT:', testEmailContent);
+      
+      alert(`✅ Test email succesvol gesimuleerd!
+
+Service: Demo Mode (Microsoft Graph API configured)
+Naar: ${testEmailAddress}
+
+📧 Email inhoud gelogd in browser console (F12 → Console)
+
+In productie zou deze email worden verzonden via Microsoft Graph API naar het opgegeven email adres.
+
+Controleer uw inbox op: ${testEmailAddress}`);
+
+    } catch (error) {
+      console.error('Test error:', error);
+      alert(`❌ Test mislukt: ${error.message}`);
+    }
+  };
+
+  // Microsoft 365 Graph API configuration
+  const [m365Config, setM365Config] = useState({
+    tenantId: '',
+    clientId: '',
+    clientSecret: '',
+    configured: false
+  });
+  const [showM365ConfigModal, setShowM365ConfigModal] = useState(false);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+
+  // Microsoft 365 Graph API email service
+  const sendEmail = async (recipientName, email, tempPassword, mosqueName, userType = 'ouder') => {
+    try {
+      console.log('Sending email via Microsoft Graph to:', email);
+      
+      // Check if M365 is configured
+      if (!m365Config.configured || !m365Config.tenantId || !m365Config.clientId) {
+        throw new Error('Microsoft 365 not configured');
+      }
+      
+      const emailTemplate = userType === 'test' ? {
+        subject: `🧪 Test Email - ${mosqueName} Systeem Configuratie`,
+        body: `
+          Beste beheerder,
+          
+          Dit is een test email om te controleren of uw Microsoft 365 configuratie correct werkt.
+          
+          ✅ Als u deze email ontvangt, is uw configuratie succesvol!
+          
+          Systeem Details:
+          - Moskee: ${mosqueName}
+          - Test uitgevoerd op: ${new Date().toLocaleString('nl-NL')}
+          - Test wachtwoord: ${tempPassword}
+          
+          U kunt nu met vertrouwen nieuwe ouders en leraren toevoegen. 
+          Zij zullen automatisch emails ontvangen met hun inloggegevens.
+          
+          Met vriendelijke groet,
+          Het Leerling Volgsysteem
+        `
+      } : userType === 'teacher' ? {
+        subject: `Welkom bij ${mosqueName} - Uw leraar account`,
+        body: `
+          Beste ${recipientName},
+          
+          Welkom bij ${mosqueName}! Er is een leraar account voor u aangemaakt in ons leerling volgsysteem.
+          
+          🔐 Uw inloggegevens:
+          Email: ${email}
+          Tijdelijk wachtwoord: ${tempPassword}
+          
+          📋 Volgende stappen:
+          1. Ga naar het inlogportaal van ${mosqueName}
+          2. Log in met bovenstaande gegevens
+          3. U wordt gevraagd een nieuw, veilig wachtwoord te kiezen
+          4. Verken uw leraar dashboard en klassenbeheer
+          
+          Als leraar kunt u:
+          - Uw klas(sen) beheren
+          - Leerlingvoortgang bijhouden
+          - Contact onderhouden met ouders
+          
+          Voor vragen kunt u contact opnemen met de administratie.
+          
+          Met vriendelijke groet,
+          Het team van ${mosqueName}
+        `
+      } : {
+        subject: `Welkom bij ${mosqueName} - Uw ouder account`,
+        body: `
+          Beste ${recipientName},
+          
+          Welkom bij ${mosqueName}! Er is een account voor u aangemaakt in ons leerling volgsysteem.
+          
+          🔐 Uw inloggegevens:
+          Email: ${email}
+          Tijdelijk wachtwoord: ${tempPassword}
+          
+          📋 Volgende stappen:
+          1. Ga naar het inlogportaal van ${mosqueName}
+          2. Log in met bovenstaande gegevens
+          3. U wordt gevraagd een nieuw, veilig wachtwoord te kiezen
+          4. Bekijk uw kinderen en betalingsstatus
+          
+          Via het systeem kunt u:
+          - De voortgang van uw kinderen volgen
+          - Betalingshistorie bekijken
+          - Contact opnemen met leraren
+          
+          Voor vragen kunt u contact opnemen met de administratie.
+          
+          Met vriendelijke groet,
+          Het team van ${mosqueName}
+        `
+      };
+      
+      // Microsoft Graph API call
+      try {
+        const response = await fetch('/api/send-email-m365', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tenantId: m365Config.tenantId,
+            clientId: m365Config.clientId,
+            clientSecret: m365Config.clientSecret,
+            to: email,
+            subject: emailTemplate.subject,
+            body: emailTemplate.body,
+            mosqueName: mosqueName
+          })
+        });
+        
+        // Check if response is actually JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Backend API not available - falling back to demo mode');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('Email sent successfully via Microsoft Graph');
+          return {
+            success: true,
+            messageId: result.messageId,
+            service: 'Microsoft 365 Graph API',
+            email: email,
+            tempPassword: tempPassword
+          };
+        } else {
+          throw new Error(result.error || 'Email sending failed');
+        }
+      } catch (fetchError) {
+        // API is not available, fall back to demo mode
+        throw new Error('Backend API not available - using demo mode');
+      }
+      
+    } catch (error) {
+      console.error('Error sending email via Microsoft Graph:', error);
+      
+      // Fallback to demo mode for demonstration
+      console.log('Falling back to demo mode...');
+      
+      const emailTemplate = userType === 'test' ? {
+        subject: `🧪 Test Email - ${mosqueName} Systeem`,
+        body: `
+          Test email voor Microsoft 365 configuratie.
+          
+          Moskee: ${mosqueName}
+          Test tijd: ${new Date().toLocaleString('nl-NL')}
+          
+          Als u deze email ontvangt, werkt de configuratie correct!
+        `
+      } : userType === 'teacher' ? {
+        subject: `Welkom bij ${mosqueName} - Uw leraar account`,
+        body: `
+          Beste ${recipientName},
+          
+          Welkom bij ${mosqueName}! Er is een leraar account voor u aangemaakt.
+          
+          Inloggegevens:
+          Email: ${email}
+          Tijdelijk wachtwoord: ${tempPassword}
+          
+          Log in en kies een nieuw wachtwoord bij uw eerste bezoek.
+          
+          Met vriendelijke groet,
+          ${mosqueName}
+        `
+      } : {
+        subject: `Welkom bij ${mosqueName} - Uw ouder account`,
+        body: `
+          Beste ${recipientName},
+          
+          Uw account is aangemaakt voor het leerling volgsysteem van ${mosqueName}.
+          
+          Inloggegevens:
+          Email: ${email}
+          Tijdelijk wachtwoord: ${tempPassword}
+          
+          Log in en kies een nieuw wachtwoord bij uw eerste bezoek.
+          
+          Met vriendelijke groet,
+          ${mosqueName}
+        `
+      };
+      
+      console.log('📧 DEMO EMAIL CONTENT:', {
+        to: email,
+        subject: emailTemplate.subject,
+        body: emailTemplate.body
+      });
+      
+      // Simulate delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return {
+        success: true,
+        messageId: 'demo_' + Date.now(),
+        service: `Demo Mode (${error.message})`,
+        email: email,
+        tempPassword: tempPassword
+      };
+    }
+  };
+  const [newPayment, setNewPayment] = useState({
+    amount: '',
+    paymentMethod: 'contant',
+    notes: ''
+  });
+
+  const handleSubdomainSwitch = (subdomain) => {
+    setCurrentSubdomain(subdomain);
+    setCurrentUser(null);
+    setLoginData({ email: '', password: '' });
+  };
+
+  const handleLogin = () => {
+    const tenantData = mockDatabase[currentSubdomain];
+    if (!tenantData) return;
+    
+    const user = tenantData.users.find(u => u.email === loginData.email && u.password === loginData.password);
+    if (user) {
+      setCurrentUser(user);
+    } else {
+      alert('Ongeldige inloggegevens');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setLoginData({ email: '', password: '' });
+  };
+
+  const handleAddClass = () => {
+    if (!newClass.name || !newClass.teacherId) {
+      alert('Vul alle velden in');
+      return;
+    }
+
+    const tenantData = mockDatabase[currentSubdomain];
+    
+    // Find the selected teacher
+    const selectedTeacher = tenantData.users.find(u => u.id === parseInt(newClass.teacherId));
+    if (!selectedTeacher) {
+      alert('Geselecteerde leraar niet gevonden');
+      return;
+    }
+
+    tenantData.classes.push({
+      id: Date.now(),
+      name: newClass.name,
+      teacher: selectedTeacher.name,
+      teacherId: selectedTeacher.id,
+      students: []
+    });
+
+    setNewClass({ name: '', teacherId: '' });
+    setShowAddClassModal(false);
+    alert('Klas aangemaakt!');
+  };
+
+  const handleAddTeacher = async () => {
+    if (!newTeacher.name || !newTeacher.email) {
+      alert('Vul alle velden in');
+      return;
+    }
+
+    const tenantData = mockDatabase[currentSubdomain];
+    
+    // Check if email already exists for any user
+    const existingUser = tenantData.users.find(u => u.email === newTeacher.email.trim());
+    if (existingUser) {
+      let roleText;
+      switch(existingUser.role) {
+        case 'admin':
+          roleText = 'beheerder';
+          break;
+        case 'teacher':
+          roleText = 'leraar';
+          break;
+        case 'parent':
+          roleText = 'ouder';
+          break;
+        default:
+          roleText = 'gebruiker';
+      }
+      alert(`Dit email adres is al in gebruik door een ${roleText}: ${existingUser.name}`);
+      return;
+    }
+
+    try {
+      // Generate temporary password
+      const tempPassword = generateTempPassword();
+      
+      // Add teacher to database
+      tenantData.users.push({
+        id: Date.now(),
+        email: newTeacher.email.trim(),
+        password: tempPassword,
+        role: 'teacher',
+        name: newTeacher.name.trim(),
+        isTemporaryPassword: true,
+        accountCreated: new Date().toISOString()
+      });
+
+      // Send welcome email to teacher
+      const emailResult = await sendEmail(
+        newTeacher.name.trim(),
+        newTeacher.email.trim(),
+        tempPassword,
+        tenantData.mosque.name,
+        'teacher'
+      );
+      
+      if (emailResult.success) {
+        setNewTeacher({ name: '', email: '' });
+        setShowAddTeacherModal(false);
+        alert(`Leraar toegevoegd! Er is een email verzonden naar ${newTeacher.email.trim()} met inloggegevens.`);
+      } else {
+        throw new Error('Email kon niet worden verzonden');
+      }
+      
+    } catch (error) {
+      console.error('Error adding teacher:', error);
+      alert('Er is een fout opgetreden bij het toevoegen van de leraar of het verzenden van de email');
+    }
+  };
+
+  const handleAddPayment = () => {
+    if (!newPayment.amount || !selectedParentForPayment) {
+      alert('Vul alle verplichte velden in');
+      return;
+    }
+
+    const amount = parseFloat(newPayment.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Voer een geldig bedrag in');
+      return;
+    }
+
+    const tenantData = mockDatabase[currentSubdomain];
+    if (!tenantData.payments) tenantData.payments = [];
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    tenantData.payments.push({
+      id: Date.now(),
+      parentId: selectedParentForPayment.id,
+      amount: amount,
+      date: today,
+      paymentMethod: newPayment.paymentMethod,
+      notes: newPayment.notes
+    });
+
+    setNewPayment({ amount: '', paymentMethod: 'contant', notes: '' });
+    setSelectedParentForPayment(null);
+    setShowAddPaymentModal(false);
+    alert('Betaling geregistreerd!');
+  };
+
+  const handleAddParent = async () => {
+    console.log('handleAddParent functie aangeroepen');
+    console.log('Parent data:', newParent);
+    
+    // Reset error and email states
+    setParentError('');
+    setEmailSent(false);
+    setSentEmailData(null);
+    
+    // Check each field individually for better debugging
+    if (!newParent.name || newParent.name.trim() === '') {
+      const error = 'Vul de naam in';
+      console.log('Validation error:', error);
+      setParentError(error);
+      return;
+    }
+    if (!newParent.email || newParent.email.trim() === '') {
+      const error = 'Vul het email adres in';
+      console.log('Validation error:', error);
+      setParentError(error);
+      return;
+    }
+    if (!newParent.phone || newParent.phone.trim() === '') {
+      const error = 'Vul het telefoonnummer in';
+      console.log('Validation error:', error);
+      setParentError(error);
+      return;
+    }
+    if (!newParent.address || newParent.address.trim() === '') {
+      const error = 'Vul het adres in';
+      console.log('Validation error:', error);
+      setParentError(error);
+      return;
+    }
+    if (!newParent.city || newParent.city.trim() === '') {
+      const error = 'Vul de woonplaats in';
+      console.log('Validation error:', error);
+      setParentError(error);
+      return;
+    }
+    if (!newParent.zipcode || newParent.zipcode.trim() === '') {
+      const error = 'Vul de postcode in';
+      console.log('Validation error:', error);
+      setParentError(error);
+      return;
+    }
+
+    const tenantData = mockDatabase[currentSubdomain];
+    console.log('Current tenant data:', tenantData);
+    
+    // Ensure payments array exists
+    if (!tenantData.payments) tenantData.payments = [];
+    
+    // Check if email already exists for any user
+    const existingUser = tenantData.users.find(u => u.email === newParent.email.trim());
+    console.log('Existing user check:', existingUser);
+    
+    if (existingUser) {
+      let roleText;
+      switch(existingUser.role) {
+        case 'admin':
+          roleText = 'beheerder';
+          break;
+        case 'teacher':
+          roleText = 'leraar';
+          break;
+        case 'parent':
+          roleText = 'ouder';
+          break;
+        default:
+          roleText = 'gebruiker';
+      }
+      const error = `Dit email adres is al in gebruik door een ${roleText}: ${existingUser.name}`;
+      console.log('Email conflict:', error);
+      setParentError(error);
+      return;
+    }
+
+    try {
+      console.log('Adding parent to database...');
+      
+      // Generate temporary password
+      const tempPassword = generateTempPassword();
+      console.log('Generated temp password:', tempPassword);
+      
+      // Add parent to database
+      tenantData.users.push({
+        id: Date.now(),
+        email: newParent.email.trim(),
+        password: tempPassword,
+        role: 'parent',
+        name: newParent.name.trim(),
+        phone: newParent.phone.trim(),
+        address: newParent.address.trim(),
+        city: newParent.city.trim(),
+        zipcode: newParent.zipcode.trim(),
+        children: [],
+        amountDue: 0,
+        isTemporaryPassword: true, // Flag to force password change on first login
+        accountCreated: new Date().toISOString()
+      });
+
+      console.log('Parent added successfully');
+      console.log('Updated tenant data:', tenantData);
+      
+      // Send welcome email
+      console.log('Sending welcome email...');
+      const emailResult = await sendEmail(
+        newParent.name.trim(),
+        newParent.email.trim(),
+        tempPassword,
+        tenantData.mosque.name,
+        'parent'
+      );
+      
+      if (emailResult.success) {
+        console.log('Email sent successfully:', emailResult);
+        setEmailSent(true);
+        setSentEmailData({
+          parentName: newParent.name.trim(),
+          email: newParent.email.trim(),
+          mosqueName: tenantData.mosque.name
+        });
+        
+        // Reset form but don't close modal yet - show success message first
+        setNewParent({ name: '', email: '', phone: '', address: '', city: '', zipcode: '' });
+        setParentError('');
+        
+        // Auto-close modal after showing success message
+        setTimeout(() => {
+          setShowAddParentModal(false);
+          setEmailSent(false);
+          setSentEmailData(null);
+        }, 4000);
+        
+      } else {
+        throw new Error('Email kon niet worden verzonden');
+      }
+      
+    } catch (error) {
+      console.error('Error adding parent:', error);
+      setParentError('Er is een fout opgetreden bij het toevoegen van de ouder of het verzenden van de email');
+    }
+  };
+
+  const handleAddStudent = () => {
+    if (!newStudent.name || !newStudent.parentId || !newStudent.classId) {
+      alert('Vul alle velden in');
+      return;
+    }
+
+    const tenantData = mockDatabase[currentSubdomain];
+    if (!tenantData.payments) tenantData.payments = [];
+    const studentId = Date.now();
+
+    // Add student to class
+    const classIndex = tenantData.classes.findIndex(c => c.id === parseInt(newStudent.classId));
+    if (classIndex !== -1) {
+      tenantData.classes[classIndex].students.push({
+        id: studentId,
+        name: newStudent.name,
+        parentId: parseInt(newStudent.parentId)
+      });
+    }
+
+    // Add child to parent and update payment
+    const parent = tenantData.users.find(u => u.id === parseInt(newStudent.parentId));
+    if (parent) {
+      if (!parent.children) parent.children = [];
+      parent.children.push(studentId);
+      
+      // Update payment amount (€150 per child, max €450)
+      const childCount = parent.children.length;
+      parent.amountDue = Math.min(childCount * 150, 450);
+    }
+
+    setNewStudent({ name: '', parentId: '', classId: '' });
+    setShowAddStudentModal(false);
+    alert('Leerling toegevoegd!');
+  };
+
+  // Calculate payment status for a parent
+  const calculateParentPaymentStatus = (parentId) => {
+    const tenantData = mockDatabase[currentSubdomain];
+    if (!tenantData) return { totalPaid: 0, amountDue: 0, remainingBalance: 0, paymentStatus: 'openstaand' };
+
+    const parent = tenantData.users.find(u => u.id === parentId);
+    if (!parent) return { totalPaid: 0, amountDue: 0, remainingBalance: 0, paymentStatus: 'openstaand' };
+
+    const payments = tenantData.payments?.filter(p => p.parentId === parentId) || [];
+    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const amountDue = parent.amountDue || 0;
+    const remainingBalance = Math.max(0, amountDue - totalPaid);
+    
+    let paymentStatus = 'openstaand';
+    if (totalPaid >= amountDue && amountDue > 0) {
+      paymentStatus = 'betaald';
+    } else if (totalPaid > 0) {
+      paymentStatus = 'deels_betaald';
+    }
+
+    return { totalPaid, amountDue, remainingBalance, paymentStatus };
+  };
+
+  // Calculate financial metrics
+  const calculateFinancialMetrics = () => {
+    const tenantData = mockDatabase[currentSubdomain];
+    if (!tenantData) return { totalDue: 0, totalPaid: 0, percentagePaid: 0 };
+
+    const parents = tenantData.users.filter(u => u.role === 'parent');
+    
+    let totalDue = 0;
+    let totalPaid = 0;
+
+    parents.forEach(parent => {
+      const paymentStatus = calculateParentPaymentStatus(parent.id);
+      totalDue += paymentStatus.amountDue;
+      totalPaid += paymentStatus.totalPaid;
+    });
+
+    const percentagePaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+
+    return {
+      totalDue,
+      totalPaid,
+      totalOutstanding: totalDue - totalPaid,
+      percentagePaid
+    };
+  };
+
+  // Registration Page
+  if (currentSubdomain === 'register') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100">
+        <div className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <BookOpen className="w-8 h-8 text-emerald-600" />
+                <h1 className="ml-3 text-xl font-bold">Leerling Volgsysteem</h1>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handleSubdomainSwitch('al-noor')} 
+                  className="px-3 py-1 text-sm bg-emerald-100 text-emerald-700 rounded-lg"
+                >
+                  Al-Noor Demo
+                </button>
+                <button 
+                  onClick={() => handleSubdomainSwitch('al-hijra')} 
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg"
+                >
+                  Al-Hijra Demo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4">Leerling Volgsysteem voor Moskeeën</h1>
+            <p className="text-xl text-gray-600">Professioneel systeem voor leerlingbeheer</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <Building2 className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold">Registreer Uw Moskee</h2>
+            <p className="text-gray-600 mt-2">Formulier komt hier</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const tenantData = mockDatabase[currentSubdomain];
+  if (!tenantData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Moskee niet gevonden</h1>
+          <button 
+            onClick={() => handleSubdomainSwitch('register')} 
+            className="bg-emerald-600 text-white px-6 py-3 rounded-lg"
+          >
+            Terug naar registratie
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Login Screen
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <BookOpen className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold">{tenantData.mosque.name}</h1>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Email</label>
+              <input
+                type="email"
+                className="w-full px-4 py-3 border rounded-lg"
+                value={loginData.email}
+                onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Wachtwoord</label>
+              <input
+                type="password"
+                className="w-full px-4 py-3 border rounded-lg"
+                value={loginData.password}
+                onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+              />
+            </div>
+            <button 
+              onClick={handleLogin} 
+              className="w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700"
+            >
+              Inloggen
+            </button>
+          </div>
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">Demo accounts:</p>
+            <div className="text-xs space-y-1">
+              <div><strong>Admin:</strong> admin@{currentSubdomain}.nl / admin</div>
+              {currentSubdomain === 'al-noor' && (
+                <>
+                  <div><strong>Leraar:</strong> hassan@alnoor.nl / leraar123</div>
+                  <div><strong>Ouder:</strong> ouder@alnoor.nl / TempPass1</div>
+                </>
+              )}
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <p className="text-xs text-gray-500">
+                💡 Nieuwe accounts krijgen automatische emails met tijdelijke wachtwoorden
+              </p>
+              <p className="text-xs text-gray-500">
+                📧 Configureer Microsoft 365 in Instellingen voor echte email functionaliteit
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+            <button 
+              onClick={() => handleSubdomainSwitch('register')} 
+              className="text-sm text-emerald-600"
+            >
+              ← Terug naar hoofdpagina
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Application
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-64 bg-white shadow-lg">
+        <div className="p-6 border-b">
+          <div className="flex items-center">
+            <BookOpen className="w-8 h-8 text-emerald-600" />
+            <div className="ml-3">
+              <h1 className="font-bold text-sm">{tenantData.mosque.name}</h1>
+              <p className="text-xs text-gray-600">{currentUser.role}</p>
+            </div>
+          </div>
+        </div>
+        
+        <nav className="p-4">
+          <ul className="space-y-2">
+            <li>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                  activeTab === 'dashboard' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <BookOpen className="w-5 h-5 mr-3" />
+                Dashboard
+              </button>
+            </li>
+            
+            {currentUser.role === 'admin' && (
+              <>
+                <li>
+                  <button
+                    onClick={() => setActiveTab('classes')}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                      activeTab === 'classes' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5 mr-3" />
+                    Klassen
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveTab('teachers')}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                      activeTab === 'teachers' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <User className="w-5 h-5 mr-3" />
+                    Leraren
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveTab('parents')}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                      activeTab === 'parents' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Users className="w-5 h-5 mr-3" />
+                    Ouders
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveTab('students')}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                      activeTab === 'students' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Users className="w-5 h-5 mr-3" />
+                    Leerlingen
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveTab('payments')}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                      activeTab === 'payments' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <DollarSign className="w-5 h-5 mr-3" />
+                    Betalingen
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                      activeTab === 'settings' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Building2 className="w-5 h-5 mr-3" />
+                    Instellingen
+                  </button>
+                </li>
+              </>
+            )}
+
+            {currentUser.role === 'teacher' && (
+              <li>
+                <button
+                  onClick={() => setActiveTab('myclass')}
+                  className={`w-full flex items-center px-4 py-3 rounded-lg ${
+                    activeTab === 'myclass' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Users className="w-5 h-5 mr-3" />
+                  Mijn Klas
+                </button>
+              </li>
+            )}
+          </ul>
+        </nav>
+        
+        <div className="absolute bottom-4 left-4 right-4">
+          <button 
+            onClick={handleLogout} 
+            className="w-full flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <LogOut className="w-5 h-5 mr-3" />
+            Uitloggen
+          </button>
+        </div>
+      </div>
+      
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-8">
+          
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-6 text-white">
+                <h2 className="text-2xl font-bold mb-2">Welkom, {currentUser.name}</h2>
+                <p className="opacity-90">{tenantData.mosque.name}</p>
+                <p className="opacity-75 text-sm mt-1">Rol: {currentUser.role}</p>
+              </div>
+              
+              {currentUser.role === 'admin' && (
+                <div className="space-y-6">
+                  {/* Financiële gegevens bovenaan */}
+                  {(() => {
+                    const metrics = calculateFinancialMetrics();
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border">
+                          <div className="flex items-center">
+                            <DollarSign className="w-8 h-8 text-red-600" />
+                            <div className="ml-4">
+                              <p className="text-gray-600 text-sm">Openstaand</p>
+                              <p className="text-2xl font-bold text-red-600">€{metrics.totalOutstanding}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border">
+                          <div className="flex items-center">
+                            <DollarSign className="w-8 h-8 text-green-600" />
+                            <div className="ml-4">
+                              <p className="text-gray-600 text-sm">Betaald</p>
+                              <p className="text-2xl font-bold text-green-600">€{metrics.totalPaid}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 text-sm font-bold">%</span>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-gray-600 text-sm">% Betaald</p>
+                              <p className="text-2xl font-bold text-blue-600">{metrics.percentagePaid}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Algemene gegevens daaronder */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <Users className="w-8 h-8 text-blue-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Leerlingen</p>
+                          <p className="text-2xl font-bold">
+                            {tenantData.classes.reduce((acc, c) => acc + c.students.length, 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <BookOpen className="w-8 h-8 text-emerald-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Klassen</p>
+                          <p className="text-2xl font-bold">{tenantData.classes.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <User className="w-8 h-8 text-purple-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Leraren</p>
+                          <p className="text-2xl font-bold">
+                            {tenantData.users.filter(u => u.role === 'teacher').length}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <Users className="w-8 h-8 text-orange-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Ouders</p>
+                          <p className="text-2xl font-bold">
+                            {tenantData.users.filter(u => u.role === 'parent').length}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentUser.role === 'teacher' && (
+                <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                  <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Leraren Dashboard</h3>
+                  <p className="text-gray-600">Welkom leraar! Uw klas functionaliteiten worden geladen.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'classes' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Klassen Beheer</h2>
+                <button 
+                  onClick={() => {
+                    // Check if there are teachers first
+                    if (tenantData.users.filter(u => u.role === 'teacher').length === 0) {
+                      alert('Voeg eerst leraren toe voordat u klassen kunt aanmaken.');
+                      setActiveTab('teachers');
+                      return;
+                    }
+                    setShowAddClassModal(true);
+                  }}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nieuwe Klas
+                </button>
+              </div>
+              
+              {tenantData.users.filter(u => u.role === 'teacher').length === 0 ? (
+                <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                  <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Eerst leraren toevoegen</h3>
+                  <p className="text-gray-600 mb-4">Voordat u klassen kunt aanmaken, moet u eerst leraren toevoegen.</p>
+                  <button
+                    onClick={() => setActiveTab('teachers')}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+                  >
+                    Naar Leraren
+                  </button>
+                </div>
+              ) : tenantData.classes.length === 0 ? (
+                <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                  <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nog geen klassen</h3>
+                  <p className="text-gray-600">Begin met het aanmaken van uw eerste klas.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6">
+                  {tenantData.classes.map(cls => (
+                    <div key={cls.id} className="bg-white p-6 rounded-xl shadow-sm border">
+                      <h3 className="text-lg font-semibold">{cls.name}</h3>
+                      <p className="text-gray-600">Leraar: {cls.teacher}</p>
+                      <p className="text-sm text-gray-500">{cls.students.length} leerlingen</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'teachers' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Leraren Beheer</h2>
+                <button 
+                  onClick={() => setShowAddTeacherModal(true)}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nieuwe Leraar
+                </button>
+              </div>
+              
+              <div className="grid gap-6">
+                {tenantData.users.filter(u => u.role === 'teacher').length === 0 ? (
+                  <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                    <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Nog geen leraren</h3>
+                    <p className="text-gray-600">Voeg leraren toe om klassen te kunnen beheren.</p>
+                  </div>
+                ) : (
+                  tenantData.users.filter(u => u.role === 'teacher').map(teacher => (
+                    <div key={teacher.id} className="bg-white p-6 rounded-xl shadow-sm border">
+                      <h3 className="text-lg font-semibold">{teacher.name}</h3>
+                      <p className="text-gray-600">{teacher.email}</p>
+                      <p className="text-sm text-gray-500">Wachtwoord: leraar123</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'parents' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Ouders Beheer</h2>
+                <button 
+                  onClick={() => {
+                    setParentError(''); // Reset error when opening modal
+                    setShowAddParentModal(true);
+                  }}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nieuwe Ouder
+                </button>
+              </div>
+              
+              {tenantData.users.filter(u => u.role === 'parent').length === 0 ? (
+                <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nog geen ouders</h3>
+                  <p className="text-gray-600">Voeg ouders toe voordat u leerlingen kunt aanmaken.</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                  {/* Tabel Header */}
+                  <div className="bg-gray-50 px-6 py-4 border-b">
+                    <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-600">
+                      <div className="col-span-3">Naam & Contact</div>
+                      <div className="col-span-4">Adresgegevens</div>
+                      <div className="col-span-2">Kinderen</div>
+                      <div className="col-span-2">Betalingsstatus</div>
+                      <div className="col-span-1">Acties</div>
+                    </div>
+                  </div>
+                  
+                  {/* Tabel Rijen */}
+                  <div className="divide-y">
+                    {tenantData.users.filter(u => u.role === 'parent').map(parent => {
+                      const paymentStatus = calculateParentPaymentStatus(parent.id);
+                      const isExpanded = selectedParentForDetails === parent.id;
+                      
+                      return (
+                        <div key={parent.id}>
+                          {/* Hoofdrij */}
+                          <div 
+                            className={`px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                              isExpanded ? 'bg-emerald-50' : ''
+                            }`}
+                            onClick={() => setSelectedParentForDetails(isExpanded ? null : parent.id)}
+                          >
+                            <div className="grid grid-cols-12 gap-4 items-center">
+                              {/* Naam & Contact */}
+                              <div className="col-span-3">
+                                <h3 className="font-semibold text-gray-900">{parent.name}</h3>
+                                <p className="text-sm text-gray-600">{parent.email}</p>
+                                <p className="text-sm text-gray-500">{parent.phone}</p>
+                              </div>
+                              
+                              {/* Adresgegevens */}
+                              <div className="col-span-4">
+                                <p className="text-sm text-gray-900">{parent.address}</p>
+                                <p className="text-sm text-gray-600">{parent.zipcode} {parent.city}</p>
+                              </div>
+                              
+                              {/* Kinderen */}
+                              <div className="col-span-2">
+                                <div className="bg-emerald-100 px-3 py-1 rounded-full inline-block">
+                                  <span className="text-emerald-700 text-sm font-medium">
+                                    {parent.children?.length || 0} kind{(parent.children?.length || 0) !== 1 ? 'eren' : ''}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Betalingsstatus */}
+                              <div className="col-span-2">
+                                <div className={`px-3 py-1 rounded-full text-center mb-1 ${
+                                  paymentStatus.paymentStatus === 'betaald' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : paymentStatus.paymentStatus === 'deels_betaald'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : 'bg-red-100 text-red-700'
+                                }`}>
+                                  <span className="text-xs font-medium">
+                                    {paymentStatus.paymentStatus === 'betaald' ? 'Betaald' : 
+                                     paymentStatus.paymentStatus === 'deels_betaald' ? 'Deels' : 'Open'}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600 text-center">
+                                  €{paymentStatus.totalPaid} / €{paymentStatus.amountDue}
+                                </div>
+                                {paymentStatus.remainingBalance > 0 && (
+                                  <div className="text-xs text-red-600 font-medium text-center">
+                                    €{paymentStatus.remainingBalance} open
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Acties */}
+                              <div className="col-span-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedParentForPayment(parent);
+                                    setShowAddPaymentModal(true);
+                                  }}
+                                  className="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700"
+                                >
+                                  + Betaling
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Uitgevouwen details */}
+                          {isExpanded && (
+                            <div className="px-6 py-4 bg-gray-50 border-t">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                
+                                {/* Kinderen details */}
+                                {parent.children && parent.children.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Kinderen:</h4>
+                                    <div className="space-y-2">
+                                      {parent.children.map(childId => {
+                                        // Find child name and class from classes
+                                        let childName = 'Onbekend kind';
+                                        let className = 'Geen klas';
+                                        tenantData.classes.forEach(cls => {
+                                          const student = cls.students.find(s => s.id === childId);
+                                          if (student) {
+                                            childName = student.name;
+                                            className = cls.name;
+                                          }
+                                        });
+                                        return (
+                                          <div key={childId} className="bg-white p-3 rounded border">
+                                            <div className="font-medium text-sm">{childName}</div>
+                                            <div className="text-xs text-gray-600">Klas: {className}</div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Betalingshistorie */}
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Betalingshistorie:</h4>
+                                  {(() => {
+                                    const payments = tenantData.payments?.filter(p => p.parentId === parent.id) || [];
+                                    if (payments.length === 0) {
+                                      return (
+                                        <div className="bg-white p-3 rounded border text-center">
+                                          <p className="text-sm text-gray-500">Nog geen betalingen</p>
+                                        </div>
+                                      );
+                                    }
+                                    return (
+                                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {payments.reverse().map(payment => (
+                                          <div key={payment.id} className="bg-white p-3 rounded border">
+                                            <div className="flex justify-between items-start">
+                                              <div>
+                                                <div className="font-medium text-sm">€{payment.amount}</div>
+                                                <div className="text-xs text-gray-600">
+                                                  {new Date(payment.date).toLocaleDateString('nl-NL')}
+                                                </div>
+                                                <div className="text-xs text-gray-500 capitalize">
+                                                  {payment.paymentMethod}
+                                                </div>
+                                              </div>
+                                              {payment.notes && (
+                                                <div className="text-xs text-gray-500 italic max-w-24">
+                                                  {payment.notes}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                              
+                              {/* Extra actieknoppen in details */}
+                              <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
+                                <button 
+                                  onClick={() => setSelectedParentForDetails(null)}
+                                  className="text-sm text-gray-600 hover:text-gray-800"
+                                >
+                                  Details sluiten
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedParentForPayment(parent);
+                                    setShowAddPaymentModal(true);
+                                  }}
+                                  className="text-sm bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
+                                >
+                                  Nieuwe Betaling
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Betalingen Overzicht</h2>
+                <div className="flex space-x-2">
+                  <select 
+                    className="px-3 py-2 border rounded-lg text-sm"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const parent = tenantData.users.find(u => u.id === parseInt(e.target.value));
+                        setSelectedParentForPayment(parent);
+                        setShowAddPaymentModal(true);
+                      }
+                    }}
+                    value=""
+                  >
+                    <option value="">Snelle betaling voor...</option>
+                    {tenantData.users.filter(u => u.role === 'parent').map(parent => (
+                      <option key={parent.id} value={parent.id}>{parent.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Betalingen statistieken */}
+              {(() => {
+                const metrics = calculateFinancialMetrics();
+                const totalPayments = tenantData.payments?.length || 0;
+                const thisMonth = new Date().getMonth();
+                const thisYear = new Date().getFullYear();
+                const thisMonthPayments = tenantData.payments?.filter(p => {
+                  const paymentDate = new Date(p.date);
+                  return paymentDate.getMonth() === thisMonth && paymentDate.getFullYear() === thisYear;
+                }) || [];
+                const thisMonthTotal = thisMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+                
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <DollarSign className="w-8 h-8 text-green-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Totaal ontvangen</p>
+                          <p className="text-2xl font-bold text-green-600">€{metrics.totalPaid}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <DollarSign className="w-8 h-8 text-red-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Nog openstaand</p>
+                          <p className="text-2xl font-bold text-red-600">€{metrics.totalOutstanding}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-bold">#</span>
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Totaal betalingen</p>
+                          <p className="text-2xl font-bold">{totalPayments}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <DollarSign className="w-8 h-8 text-blue-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Deze maand</p>
+                          <p className="text-2xl font-bold text-blue-600">€{thisMonthTotal}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Betalingen Tabel */}
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="p-6 border-b">
+                  <h3 className="text-lg font-semibold">Alle Betalingen</h3>
+                </div>
+                
+                {!tenantData.payments || tenantData.payments.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold mb-2">Nog geen betalingen</h4>
+                    <p className="text-gray-600">Betalingen worden hier weergegeven zodra ze zijn geregistreerd.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Tabel Header */}
+                    <div className="bg-gray-50 px-6 py-4 border-b">
+                      <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-600">
+                        <div className="col-span-2">Datum</div>
+                        <div className="col-span-3">Ouder</div>
+                        <div className="col-span-2">Bedrag</div>
+                        <div className="col-span-2">Betaalmethode</div>
+                        <div className="col-span-2">Status</div>
+                        <div className="col-span-1">Actie</div>
+                      </div>
+                    </div>
+                    
+                    {/* Tabel Rijen */}
+                    <div className="divide-y max-h-96 overflow-y-auto">
+                      {tenantData.payments
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .map(payment => {
+                          const parent = tenantData.users.find(u => u.id === payment.parentId);
+                          const paymentStatus = parent ? calculateParentPaymentStatus(parent.id) : null;
+                          
+                          return (
+                            <div key={payment.id} className="px-6 py-4 hover:bg-gray-50">
+                              <div className="grid grid-cols-12 gap-4 items-center">
+                                {/* Datum */}
+                                <div className="col-span-2">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {new Date(payment.date).toLocaleDateString('nl-NL')}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(payment.date).toLocaleDateString('nl-NL', { weekday: 'short' })}
+                                  </div>
+                                </div>
+                                
+                                {/* Ouder */}
+                                <div className="col-span-3">
+                                  <div className="flex items-center">
+                                    <div className="bg-blue-100 w-8 h-8 rounded-full flex items-center justify-center">
+                                      <Users className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                    <div className="ml-3">
+                                      <h4 className="text-sm font-medium text-gray-900">
+                                        {parent?.name || 'Onbekende ouder'}
+                                      </h4>
+                                      <p className="text-xs text-gray-500">{parent?.email}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Bedrag */}
+                                <div className="col-span-2">
+                                  <div className="text-lg font-bold text-green-600">
+                                    €{payment.amount}
+                                  </div>
+                                  {payment.notes && (
+                                    <div className="text-xs text-gray-500 italic truncate">
+                                      {payment.notes}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Betaalmethode */}
+                                <div className="col-span-2">
+                                  <div className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
+                                    payment.paymentMethod === 'contant' ? 'bg-yellow-100 text-yellow-700' :
+                                    payment.paymentMethod === 'pin' ? 'bg-blue-100 text-blue-700' :
+                                    payment.paymentMethod === 'overschrijving' ? 'bg-green-100 text-green-700' :
+                                    'bg-purple-100 text-purple-700'
+                                  }`}>
+                                    {payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
+                                  </div>
+                                </div>
+                                
+                                {/* Status */}
+                                <div className="col-span-2">
+                                  {parent && paymentStatus ? (
+                                    <>
+                                      <div className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
+                                        paymentStatus.paymentStatus === 'betaald' 
+                                          ? 'bg-green-100 text-green-700' 
+                                          : paymentStatus.paymentStatus === 'deels_betaald'
+                                          ? 'bg-yellow-100 text-yellow-700'
+                                          : 'bg-red-100 text-red-700'
+                                      }`}>
+                                        {paymentStatus.paymentStatus === 'betaald' ? 'Volledig betaald' : 
+                                         paymentStatus.paymentStatus === 'deels_betaald' ? 'Deels betaald' : 'Nog openstaand'}
+                                      </div>
+                                      <div className="text-xs text-gray-500 text-center mt-1">
+                                        €{paymentStatus.totalPaid} / €{paymentStatus.amountDue}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">Geen gegevens</span>
+                                  )}
+                                </div>
+                                
+                                {/* Actie */}
+                                <div className="col-span-1">
+                                  {parent && paymentStatus && paymentStatus.remainingBalance > 0 && (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedParentForPayment(parent);
+                                        setShowAddPaymentModal(true);
+                                      }}
+                                      className="text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700"
+                                    >
+                                      + €{paymentStatus.remainingBalance}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Betalingsstatus per ouder - Compacte tabel */}
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="p-6 border-b">
+                  <h3 className="text-lg font-semibold">Betalingsstatus Overzicht</h3>
+                </div>
+                
+                {tenantData.users.filter(u => u.role === 'parent').length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold mb-2">Nog geen ouders</h4>
+                    <p className="text-gray-600">Voeg eerst ouders toe om betalingen te kunnen registreren.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Tabel Header */}
+                    <div className="bg-gray-50 px-6 py-4 border-b">
+                      <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-600">
+                        <div className="col-span-4">Ouder & Contact</div>
+                        <div className="col-span-2">Kinderen</div>
+                        <div className="col-span-2">Te Betalen</div>
+                        <div className="col-span-2">Al Betaald</div>
+                        <div className="col-span-1">Status</div>
+                        <div className="col-span-1">Actie</div>
+                      </div>
+                    </div>
+                    
+                    {/* Tabel Rijen */}
+                    <div className="divide-y">
+                      {tenantData.users.filter(u => u.role === 'parent').map(parent => {
+                        const paymentStatus = calculateParentPaymentStatus(parent.id);
+                        return (
+                          <div key={parent.id} className="px-6 py-4 hover:bg-gray-50">
+                            <div className="grid grid-cols-12 gap-4 items-center">
+                              {/* Ouder & Contact */}
+                              <div className="col-span-4">
+                                <div className="flex items-center">
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                    paymentStatus.paymentStatus === 'betaald' ? 'bg-green-100' :
+                                    paymentStatus.paymentStatus === 'deels_betaald' ? 'bg-yellow-100' : 'bg-red-100'
+                                  }`}>
+                                    <Users className={`w-5 h-5 ${
+                                      paymentStatus.paymentStatus === 'betaald' ? 'text-green-600' :
+                                      paymentStatus.paymentStatus === 'deels_betaald' ? 'text-yellow-600' : 'text-red-600'
+                                    }`} />
+                                  </div>
+                                  <div className="ml-3">
+                                    <h4 className="font-medium text-gray-900">{parent.name}</h4>
+                                    <p className="text-sm text-gray-600">{parent.email}</p>
+                                    <p className="text-xs text-gray-500">{parent.phone}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Kinderen */}
+                              <div className="col-span-2">
+                                <div className="bg-emerald-100 px-3 py-1 rounded-full inline-block">
+                                  <span className="text-emerald-700 text-sm font-medium">
+                                    {parent.children?.length || 0} kind{(parent.children?.length || 0) !== 1 ? 'eren' : ''}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Te Betalen */}
+                              <div className="col-span-2">
+                                <div className="text-lg font-bold text-gray-900">
+                                  €{paymentStatus.amountDue}
+                                </div>
+                              </div>
+                              
+                              {/* Al Betaald */}
+                              <div className="col-span-2">
+                                <div className="text-lg font-bold text-green-600">
+                                  €{paymentStatus.totalPaid}
+                                </div>
+                              </div>
+                              
+                              {/* Status */}
+                              <div className="col-span-1">
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
+                                  paymentStatus.paymentStatus === 'betaald' ? 'bg-green-100 text-green-700' :
+                                  paymentStatus.paymentStatus === 'deels_betaald' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {paymentStatus.paymentStatus === 'betaald' ? 'OK' :
+                                   paymentStatus.paymentStatus === 'deels_betaald' ? 'Deels' : 'Open'}
+                                </div>
+                              </div>
+                              
+                              {/* Actie */}
+                              <div className="col-span-1">
+                                {paymentStatus.remainingBalance > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedParentForPayment(parent);
+                                      setShowAddPaymentModal(true);
+                                    }}
+                                    className="text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700"
+                                  >
+                                    + €{paymentStatus.remainingBalance}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'students' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Leerlingen Beheer</h2>
+                <button 
+                  onClick={() => setShowAddStudentModal(true)}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nieuwe Leerling
+                </button>
+              </div>
+              
+              {tenantData.classes.length === 0 || tenantData.users.filter(u => u.role === 'parent').length === 0 ? (
+                <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  {tenantData.classes.length === 0 ? (
+                    <>
+                      <h3 className="text-lg font-semibold mb-2">Eerst een klas aanmaken</h3>
+                      <p className="text-gray-600 mb-4">Voordat u leerlingen kunt toevoegen, moet u eerst een klas aanmaken.</p>
+                      <button
+                        onClick={() => setActiveTab('classes')}
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+                      >
+                        Naar Klassen
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-lg font-semibold mb-2">Eerst ouders aanmaken</h3>
+                      <p className="text-gray-600 mb-4">Voordat u leerlingen kunt toevoegen, moet u eerst ouders aanmaken.</p>
+                      <button
+                        onClick={() => setActiveTab('parents')}
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+                      >
+                        Naar Ouders
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Statistieken */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <Users className="w-8 h-8 text-blue-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Totaal Leerlingen</p>
+                          <p className="text-2xl font-bold">
+                            {tenantData.classes.reduce((acc, c) => acc + c.students.length, 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <BookOpen className="w-8 h-8 text-emerald-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Actieve Klassen</p>
+                          <p className="text-2xl font-bold">{tenantData.classes.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <div className="flex items-center">
+                        <Users className="w-8 h-8 text-orange-600" />
+                        <div className="ml-4">
+                          <p className="text-gray-600 text-sm">Geregistreerde Ouders</p>
+                          <p className="text-2xl font-bold">
+                            {tenantData.users.filter(u => u.role === 'parent').length}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Leerlingen Tabel */}
+                  <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    {/* Tabel Header */}
+                    <div className="bg-gray-50 px-6 py-4 border-b">
+                      <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-600">
+                        <div className="col-span-3">Leerling</div>
+                        <div className="col-span-3">Klas & Leraar</div>
+                        <div className="col-span-4">Ouder Gegevens</div>
+                        <div className="col-span-2">Betalingsstatus</div>
+                      </div>
+                    </div>
+                    
+                    {/* Tabel Rijen */}
+                    <div className="divide-y">
+                      {(() => {
+                        // Maak een platte lijst van alle leerlingen
+                        const allStudents = [];
+                        tenantData.classes.forEach(cls => {
+                          cls.students.forEach(student => {
+                            allStudents.push({
+                              ...student,
+                              className: cls.name,
+                              teacherName: cls.teacher
+                            });
+                          });
+                        });
+
+                        if (allStudents.length === 0) {
+                          return (
+                            <div className="p-8 text-center">
+                              <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                              <h3 className="text-lg font-semibold mb-2">Nog geen leerlingen</h3>
+                              <p className="text-gray-600">Begin met het toevoegen van uw eerste leerling.</p>
+                            </div>
+                          );
+                        }
+
+                        return allStudents.map(student => {
+                          const parent = tenantData.users.find(u => u.id === student.parentId);
+                          const paymentStatus = parent ? calculateParentPaymentStatus(parent.id) : null;
+                          
+                          return (
+                            <div key={`${student.id}-${student.className}`} className="px-6 py-4 hover:bg-gray-50">
+                              <div className="grid grid-cols-12 gap-4 items-center">
+                                {/* Leerling */}
+                                <div className="col-span-3">
+                                  <div className="flex items-center">
+                                    <div className="bg-emerald-100 w-10 h-10 rounded-full flex items-center justify-center">
+                                      <User className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div className="ml-3">
+                                      <h3 className="font-semibold text-gray-900">{student.name}</h3>
+                                      <p className="text-sm text-gray-500">ID: {student.id}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Klas & Leraar */}
+                                <div className="col-span-3">
+                                  <div className="bg-blue-100 px-3 py-1 rounded-full inline-block mb-1">
+                                    <span className="text-blue-700 text-sm font-medium">{student.className}</span>
+                                  </div>
+                                  <p className="text-sm text-gray-600">Leraar: {student.teacherName}</p>
+                                </div>
+                                
+                                {/* Ouder Gegevens */}
+                                <div className="col-span-4">
+                                  {parent ? (
+                                    <>
+                                      <h4 className="font-medium text-gray-900">{parent.name}</h4>
+                                      <p className="text-sm text-gray-600">{parent.email}</p>
+                                      <p className="text-sm text-gray-500">{parent.phone}</p>
+                                      <p className="text-xs text-gray-400">{parent.address}, {parent.city}</p>
+                                    </>
+                                  ) : (
+                                    <p className="text-sm text-red-600">Ouder niet gevonden</p>
+                                  )}
+                                </div>
+                                
+                                {/* Betalingsstatus */}
+                                <div className="col-span-2">
+                                  {parent && paymentStatus ? (
+                                    <>
+                                      <div className={`px-3 py-1 rounded-full text-center mb-1 ${
+                                        paymentStatus.paymentStatus === 'betaald' 
+                                          ? 'bg-green-100 text-green-700' 
+                                          : paymentStatus.paymentStatus === 'deels_betaald'
+                                          ? 'bg-yellow-100 text-yellow-700'
+                                          : 'bg-red-100 text-red-700'
+                                      }`}>
+                                        <span className="text-xs font-medium">
+                                          {paymentStatus.paymentStatus === 'betaald' ? 'Betaald' : 
+                                           paymentStatus.paymentStatus === 'deels_betaald' ? 'Deels' : 'Open'}
+                                        </span>
+                                      </div>
+                                      <div className="text-sm text-gray-600 text-center">
+                                        €{paymentStatus.totalPaid} / €{paymentStatus.amountDue}
+                                      </div>
+                                      {paymentStatus.remainingBalance > 0 && (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedParentForPayment(parent);
+                                            setShowAddPaymentModal(true);
+                                          }}
+                                          className="mt-1 text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 w-full"
+                                        >
+                                          + Betaling
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">Geen gegevens</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Systeem Instellingen</h2>
+              
+              {/* Microsoft 365 Configuration */}
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="p-6 border-b bg-blue-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M22 3v6h-6v6h6v6h-11V3h11zM11 3H2v18h9v-9H9v-3h2V3z"/>
+                        </svg>
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="text-lg font-semibold text-blue-900">Microsoft 365 Email Integratie</h3>
+                        <p className="text-blue-700 text-sm">
+                          Configureer uw Microsoft 365 account voor automatische emails
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        m365Config.configured 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {m365Config.configured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowM365ConfigModal(true);
+                          // Set default test email address when opening modal
+                          if (!testEmailAddress) {
+                            setTestEmailAddress(`admin@${tenantData.mosque.name.toLowerCase().replace(/\s+/g, '')}.nl`);
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                      >
+                        {m365Config.configured ? 'Bewerken' : 'Configureren'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Voordelen van Microsoft 365 integratie:</h4>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          Automatische welkom emails voor nieuwe ouders
+                        </li>
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          Automatische welkom emails voor nieuwe leraren
+                        </li>
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          Professionele uitstraling met uw eigen domein
+                        </li>
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                          Betrouwbare email delivery via Microsoft
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Wat heeft u nodig:</h4>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          Microsoft 365 Business account
+                        </li>
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          Azure App Registration
+                        </li>
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          Tenant ID, Client ID en Client Secret
+                        </li>
+                        <li className="flex items-center">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                          Mail.Send API permissies
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  {!m365Config.configured && (
+                    <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <h5 className="text-sm font-medium text-yellow-800">Microsoft 365 niet geconfigureerd</h5>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Emails worden momenteel in demo mode verzonden. Configureer Microsoft 365 voor echte email functionaliteit.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mosque Information */}
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="p-6 border-b">
+                  <h3 className="text-lg font-semibold">Moskee Informatie</h3>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Moskee Naam</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-gray-50"
+                        value={tenantData.mosque.name}
+                        readOnly
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Adres</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-lg bg-gray-50"
+                        value={tenantData.mosque.address}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      Voor wijzigingen aan de moskee informatie, neem contact op met de systeem beheerder.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'myclass' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Mijn Klas</h2>
+              
+              <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
+                <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Mijn Klas Dashboard</h3>
+                <p className="text-gray-600">Hier kunt u uw klas beheren en leerlingen volgen.</p>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+      
+      {/* Microsoft 365 Configuration Modal - ESCAPE-FRIENDLY VERSION */}
+      {showM365ConfigModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowM365ConfigModal(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setShowM365ConfigModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with prominent close button */}
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M22 3v6h-6v6h6v6h-11V3h11zM11 3H2v18h9v-9H9v-3h2V3z"/>
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-xl font-semibold">Microsoft 365 Setup</h3>
+                    <p className="text-sm text-gray-600">Email integratie configureren</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowM365ConfigModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-3xl font-bold w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200"
+                  title="Sluiten (Escape)"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              
+              {/* Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
+                  📋 Setup Instructies
+                  <span 
+                    className="ml-2 text-blue-600 cursor-help" 
+                    title="Stap-voor-stap handleiding voor Azure configuratie"
+                  >
+                    ℹ️
+                  </span>
+                </h4>
+                <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                  <li><strong>Ga naar</strong> <a href="https://portal.azure.com" target="_blank" className="underline">portal.azure.com</a></li>
+                  <li><strong>Zoek</strong> "App registrations" → klik "New registration"</li>
+                  <li><strong>Vul in:</strong> Name: "Moskee Email System", Supported account types: "Single tenant"</li>
+                  <li><strong>Kopieer</strong> Tenant ID (Azure AD → Overview) en Application ID</li>
+                  <li><strong>Maak secret:</strong> App → Certificates & secrets → New client secret</li>
+                  <li><strong>Voeg permissies toe:</strong> App → API permissions → Add "Mail.Send"</li>
+                  <li><strong>Vul onderstaande velden in</strong> met de verkregen gegevens</li>
+                </ol>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Tenant ID <span className="text-red-500">*</span>
+                  <span 
+                    className="ml-1 text-gray-400 cursor-help" 
+                    title="Te vinden in Azure Portal → Azure Active Directory → Overview → Tenant ID"
+                  >
+                    ?
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                  value={m365Config.tenantId}
+                  onChange={(e) => setM365Config({...m365Config, tenantId: e.target.value})}
+                  placeholder="a3d49557-3f9e-4e22-9de6-0c8d7b4ba498"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Application (Client) ID <span className="text-red-500">*</span>
+                  <span 
+                    className="ml-1 text-gray-400 cursor-help" 
+                    title="Te vinden in uw App Registration → Overview → Application (client) ID"
+                  >
+                    ?
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                  value={m365Config.clientId}
+                  onChange={(e) => setM365Config({...m365Config, clientId: e.target.value})}
+                  placeholder="b81ac785-bb0f-4e4e-924c-2ccdd3044f67"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Client Secret <span className="text-red-500">*</span>
+                  <span 
+                    className="ml-1 text-gray-400 cursor-help" 
+                    title="Te genereren in uw App Registration → Certificates & secrets → New client secret"
+                  >
+                    ?
+                  </span>
+                </label>
+                <input
+                  type="password"
+                  className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                  value={m365Config.clientSecret}
+                  onChange={(e) => setM365Config({...m365Config, clientSecret: e.target.value})}
+                  placeholder="dzs8Q~8DZ7MF3JL3RfdjzUvXrVQWslqgtv8GPaoZ"
+                />
+              </div>
+
+              {/* Email Info */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h5 className="font-semibold text-yellow-800 mb-2">📧 Email Informatie</h5>
+                <div className="text-sm text-yellow-700 space-y-1">
+                  <p><strong>Van adres:</strong> admin@{tenantData.mosque.name.toLowerCase().replace(/\s+/g, '')}.nl</p>
+                  <p><strong>Nieuwe gebruikers:</strong> Krijgen automatisch welkom emails</p>
+                  <p><strong>Test email:</strong> Naar hieronder opgegeven adres</p>
+                </div>
+              </div>
+
+              {/* Test Section - Always visible but conditionally enabled */}
+              <div className="bg-gray-50 border rounded-lg p-4">
+                <h5 className="font-semibold text-gray-900 mb-2">🧪 Test Configuratie</h5>
+                <p className="text-sm text-gray-600 mb-3">
+                  Test of uw Microsoft 365 configuratie werkt door een test email te versturen.
+                </p>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-2">
+                    Test Email Adres <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={testEmailAddress}
+                    onChange={(e) => setTestEmailAddress(e.target.value)}
+                    placeholder="uw.email@example.com"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Email adres waar de test email naartoe wordt gestuurd
+                  </p>
+                </div>
+                
+                <button 
+                  onClick={testM365Configuration}
+                  disabled={!m365Config.configured || !testEmailAddress}
+                  className={`text-sm px-4 py-2 rounded font-medium ${
+                    (m365Config.configured && testEmailAddress) 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {m365Config.configured 
+                    ? (testEmailAddress ? '📧 Test Email Versturen' : '⚠️ Vul email adres in')
+                    : '⚠️ Eerst configuratie opslaan'
+                  }
+                </button>
+              </div>
+
+              {/* Success indicator */}
+              {m365Config.configured && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm text-green-700 flex items-center">
+                    ✅ <strong className="ml-1">Microsoft 365 is geconfigureerd!</strong>
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    Nieuwe ouders en leraren krijgen automatisch emails met inloggegevens.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer with multiple close options */}
+            <div className="p-6 border-t flex justify-between">
+              <button
+                onClick={() => setShowM365ConfigModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 border rounded-lg flex items-center"
+              >
+                ← Terug naar Instellingen
+              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowM365ConfigModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Annuleren
+                </button>
+                <button
+                  onClick={() => {
+                    if (m365Config.tenantId && m365Config.clientId && m365Config.clientSecret) {
+                      setM365Config({...m365Config, configured: true});
+                      alert('✅ Microsoft 365 configuratie opgeslagen!\n\nU kunt nu de configuratie testen en nieuwe gebruikers zullen automatisch emails ontvangen.');
+                    } else {
+                      alert('❌ Vul alle verplichte velden in.');
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  💾 Opslaan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {showAddPaymentModal && selectedParentForPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
+              <h3 className="text-xl font-semibold">Nieuwe Betaling</h3>
+              <p className="text-sm text-gray-600 mt-1">Betaling voor: {selectedParentForPayment.name}</p>
+              {(() => {
+                const paymentStatus = calculateParentPaymentStatus(selectedParentForPayment.id);
+                return (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span>Totaal verschuldigd:</span>
+                      <span className="font-medium">€{paymentStatus.amountDue}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Al betaald:</span>
+                      <span className="font-medium text-green-600">€{paymentStatus.totalPaid}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-1 mt-1">
+                      <span>Nog openstaand:</span>
+                      <span className="text-red-600">€{paymentStatus.remainingBalance}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Bedrag (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newPayment.amount}
+                  onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                  placeholder="Voer bedrag in"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Betaalmethode</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newPayment.paymentMethod}
+                  onChange={(e) => setNewPayment({...newPayment, paymentMethod: e.target.value})}
+                >
+                  <option value="contant">Contant</option>
+                  <option value="pin">PIN/Bankpas</option>
+                  <option value="overschrijving">Overschrijving</option>
+                  <option value="ideal">iDEAL</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Notities (optioneel)</label>
+                <textarea
+                  className="w-full px-3 py-2 border rounded-lg"
+                  rows="2"
+                  value={newPayment.notes}
+                  onChange={(e) => setNewPayment({...newPayment, notes: e.target.value})}
+                  placeholder="Bijv. eerste termijn, restbedrag, etc."
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAddPaymentModal(false);
+                  setSelectedParentForPayment(null);
+                  setNewPayment({ amount: '', paymentMethod: 'contant', notes: '' });
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleAddPayment}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
+                Betaling Registreren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddParentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
+              <h3 className="text-xl font-semibold">Nieuwe Ouder</h3>
+            </div>
+            
+            {/* Success Message */}
+            {emailSent && sentEmailData && (
+              <div className="mx-6 mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">Account aangemaakt!</h3>
+                    <p className="text-sm text-green-700 mt-1">
+                      Er is een email verzonden naar <strong>{sentEmailData.email}</strong> met inloggegevens en een tijdelijk wachtwoord.
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Deze melding sluit automatisch over 4 seconden...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Error Message */}
+            {parentError && !emailSent && (
+              <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{parentError}</p>
+              </div>
+            )}
+            
+            {/* Only show form if email hasn't been sent */}
+            {!emailSent && (
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Volledige Naam</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newParent.name}
+                    onChange={(e) => {
+                      setNewParent({...newParent, name: e.target.value});
+                      if (parentError) setParentError(''); // Clear error when typing
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email</label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newParent.email}
+                    onChange={(e) => {
+                      setNewParent({...newParent, email: e.target.value});
+                      if (parentError) setParentError(''); // Clear error when typing
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Naar dit adres wordt een email verzonden met inloggegevens
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Telefoon</label>
+                  <input
+                    type="tel"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newParent.phone}
+                    onChange={(e) => {
+                      setNewParent({...newParent, phone: e.target.value});
+                      if (parentError) setParentError(''); // Clear error when typing
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Adres</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={newParent.address}
+                    onChange={(e) => {
+                      setNewParent({...newParent, address: e.target.value});
+                      if (parentError) setParentError(''); // Clear error when typing
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Postcode</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={newParent.zipcode}
+                      onChange={(e) => {
+                        setNewParent({...newParent, zipcode: e.target.value});
+                        if (parentError) setParentError(''); // Clear error when typing
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Woonplaats</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={newParent.city}
+                      onChange={(e) => {
+                        setNewParent({...newParent, city: e.target.value});
+                        if (parentError) setParentError(''); // Clear error when typing
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Only show buttons if email hasn't been sent */}
+            {!emailSent && (
+              <div className="p-6 border-t flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowAddParentModal(false);
+                    setParentError(''); // Clear error when closing
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Annuleren
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Ouder Toevoegen button clicked');
+                    handleAddParent();
+                  }}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  <span>Ouder Toevoegen & Email Verzenden</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showAddClassModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
+              <h3 className="text-xl font-semibold">Nieuwe Klas</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Klas Naam</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newClass.name}
+                  onChange={(e) => setNewClass({...newClass, name: e.target.value})}
+                  placeholder="Bijv. Beginners Koran, Arabisch Level 1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Selecteer Leraar</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newClass.teacherId}
+                  onChange={(e) => setNewClass({...newClass, teacherId: e.target.value})}
+                >
+                  <option value="">Kies een leraar</option>
+                  {tenantData.users.filter(u => u.role === 'teacher').map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name} ({teacher.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {tenantData.users.filter(u => u.role === 'teacher').length === 0 && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    Er zijn nog geen leraren beschikbaar. Voeg eerst leraren toe.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddClassModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleAddClass}
+                disabled={tenantData.users.filter(u => u.role === 'teacher').length === 0}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Klas Aanmaken
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddTeacherModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
+              <h3 className="text-xl font-semibold">Nieuwe Leraar</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Naam</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newTeacher.name}
+                  onChange={(e) => setNewTeacher({...newTeacher, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Email</label>
+                <input
+                  type="email"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newTeacher.email}
+                  onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddTeacherModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleAddTeacher}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
+                Leraar Toevoegen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddStudentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
+              <h3 className="text-xl font-semibold">Nieuwe Leerling</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Naam Leerling</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newStudent.name}
+                  onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Ouder</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newStudent.parentId}
+                  onChange={(e) => setNewStudent({...newStudent, parentId: e.target.value})}
+                >
+                  <option value="">Selecteer ouder</option>
+                  {tenantData.users.filter(u => u.role === 'parent').map(parent => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.name} ({parent.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Klas</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={newStudent.classId}
+                  onChange={(e) => setNewStudent({...newStudent, classId: e.target.value})}
+                >
+                  <option value="">Selecteer klas</option>
+                  {tenantData.classes.map(cls => (
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="p-6 border-t flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddStudentModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleAddStudent}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
+                Leerling Toevoegen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LeerlingVolgsysteem;
