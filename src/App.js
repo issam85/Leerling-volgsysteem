@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Users, BookOpen, User, Plus, Building2, LogOut, DollarSign } from 'lucide-react';
 
 // API Configuration
-const API_BASE_URL = 'https://moskee-backend-api-production.up.railway.app';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://moskee-backend-api-production.up.railway.app';
+//const API_BASE_URL = 'https://moskee-backend-api-production.up.railway.app';
 
 // Mock Database met complete data
 const mockDatabase = {
