@@ -46,5 +46,10 @@
     "al-hijra"
   ],
   "author": "Al-Hijra Moskee",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^4.1.8"
+  }
 }
