@@ -3,68 +3,6 @@ import { Users, BookOpen, User, Plus, Building2, LogOut, DollarSign } from 'luci
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://moskee-backend-api-production.up.railway.app';
-//const API_BASE_URL = 'https://moskee-backend-api-production.up.railway.app';
-
-// Mock Database met complete data
-const mockDatabase = {
-  'al-noor': {
-    mosque: { name: 'Al-Noor Moskee', address: 'Amsterdam' },
-    classes: [
-      { 
-        id: 1, 
-        name: 'Beginners Koran', 
-        teacher: 'Imam Hassan',
-        teacherId: 3,
-        students: [
-          { id: 1, name: 'Ahmed Ali', parentId: 2 }
-        ] 
-      }
-    ],
-    users: [
-      { id: 1, email: 'admin@alnoor.nl', password: 'admin', role: 'admin', name: 'Beheerder' },
-      { 
-        id: 2, 
-        email: 'ouder@alnoor.nl', 
-        password: 'TempPass1', 
-        role: 'parent', 
-        name: 'Said Ali',
-        phone: '06-12345678',
-        address: 'Hoofdstraat 123',
-        city: 'Amsterdam',
-        zipcode: '1234AB',
-        children: [1],
-        amountDue: 150,
-        isTemporaryPassword: true,
-        accountCreated: '2024-12-01T10:00:00.000Z'
-      },
-      {
-        id: 3,
-        email: 'hassan@alnoor.nl',
-        password: 'leraar123',
-        role: 'teacher',
-        name: 'Imam Hassan'
-      }
-    ],
-    payments: [
-      {
-        id: 1,
-        parentId: 2,
-        amount: 75,
-        date: '2024-12-15',
-        paymentMethod: 'overschrijving',
-        notes: 'Eerste deel betaling'
-      }
-    ]
-  },
-  'al-hijra': {
-    mosque: { name: 'Al-Hijra Moskee', address: 'Rotterdam' },
-    classes: [],
-    users: [
-      { id: 1, email: 'admin@al-hijra.nl', password: 'admin', role: 'admin', name: 'Beheerder Al-Hijra' }
-    ],
-    payments: []
-  }
-};
 
 const LeerlingVolgsysteem = () => {
   // Main application state
@@ -117,6 +55,16 @@ const LeerlingVolgsysteem = () => {
   });
   const [testEmailAddress, setTestEmailAddress] = useState('');
 
+  // Real data from database
+  const [realData, setRealData] = useState({
+    users: [],
+    classes: [],
+    students: [],
+    payments: [],
+    mosque: null,
+    loading: true
+  });
+
   // Utility functions
   const generateTempPassword = () => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -147,6 +95,41 @@ const LeerlingVolgsysteem = () => {
       throw error;
     }
   };
+
+  // Data laden vanuit database
+  const loadData = async () => {
+    try {
+      setRealData(prev => ({ ...prev, loading: true }));
+      
+      const mosqueId = 1; // Maak dynamisch gebaseerd op currentSubdomain
+      
+      const [usersRes, classesRes, studentsRes, paymentsRes] = await Promise.all([
+        apiCall(`/api/mosques/${mosqueId}/users`),
+        apiCall(`/api/mosques/${mosqueId}/classes`),
+        apiCall(`/api/mosques/${mosqueId}/students`),
+        apiCall(`/api/mosques/${mosqueId}/payments`)
+      ]);
+      
+      setRealData({
+        users: usersRes || [],
+        classes: classesRes || [],
+        students: studentsRes || [],
+        payments: paymentsRes || [],
+        mosque: { name: 'Al-Hijra Moskee', address: 'Rotterdam' }, // Temp
+        loading: false
+      });
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setRealData(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Laad data wanneer user inlogt
+  useEffect(() => {
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
 
   // Email service
   const sendEmail = async (recipientName, email, tempPassword, mosqueName, userType = 'ouder') => {
@@ -238,47 +221,68 @@ const LeerlingVolgsysteem = () => {
     setLoginData({ email: '', password: '' });
   };
 
-  const handleLogin = () => {
-    const tenantData = mockDatabase[currentSubdomain];
-    if (!tenantData) return;
-    
-    const user = tenantData.users.find(u => u.email === loginData.email && u.password === loginData.password);
-    if (user) {
-      setCurrentUser(user);
-    } else {
-      alert('Ongeldige inloggegevens');
+  const handleLogin = async () => {
+    try {
+      const result = await apiCall('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password,
+          subdomain: currentSubdomain
+        })
+      });
+      
+      if (result.success) {
+        setCurrentUser(result.user);
+      } else {
+        alert('Ongeldige inloggegevens');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Inloggen mislukt: ' + error.message);
     }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setLoginData({ email: '', password: '' });
+    setRealData({
+      users: [],
+      classes: [],
+      students: [],
+      payments: [],
+      mosque: null,
+      loading: true
+    });
   };
 
-  const handleAddClass = () => {
+  const handleAddClass = async () => {
     if (!newClass.name || !newClass.teacherId) {
       alert('Vul alle velden in');
       return;
     }
 
-    const tenantData = mockDatabase[currentSubdomain];
-    const selectedTeacher = tenantData.users.find(u => u.id === parseInt(newClass.teacherId));
-    if (!selectedTeacher) {
-      alert('Geselecteerde leraar niet gevonden');
-      return;
+    try {
+      const result = await apiCall('/api/classes', {
+        method: 'POST',
+        body: JSON.stringify({
+          mosque_id: 1, // Maak dynamisch
+          name: newClass.name,
+          teacher_id: parseInt(newClass.teacherId),
+          description: newClass.description || ''
+        })
+      });
+
+      if (result.success) {
+        setNewClass({ name: '', teacherId: '' });
+        setShowAddClassModal(false);
+        alert('Klas aangemaakt!');
+        await loadData(); // Herlaad data
+      }
+    } catch (error) {
+      console.error('Error adding class:', error);
+      alert('Er is een fout opgetreden bij het aanmaken van de klas: ' + error.message);
     }
-
-    tenantData.classes.push({
-      id: Date.now(),
-      name: newClass.name,
-      teacher: selectedTeacher.name,
-      teacherId: selectedTeacher.id,
-      students: []
-    });
-
-    setNewClass({ name: '', teacherId: '' });
-    setShowAddClassModal(false);
-    alert('Klas aangemaakt!');
   };
 
   const handleAddTeacher = async () => {
@@ -287,52 +291,38 @@ const LeerlingVolgsysteem = () => {
       return;
     }
 
-    const tenantData = mockDatabase[currentSubdomain];
-    const existingUser = tenantData.users.find(u => u.email === newTeacher.email.trim());
-    if (existingUser) {
-      let roleText;
-      switch(existingUser.role) {
-        case 'admin': roleText = 'beheerder'; break;
-        case 'teacher': roleText = 'leraar'; break;
-        case 'parent': roleText = 'ouder'; break;
-        default: roleText = 'gebruiker';
-      }
-      alert(`Dit email adres is al in gebruik door een ${roleText}: ${existingUser.name}`);
-      return;
-    }
-
     try {
       const tempPassword = generateTempPassword();
       
-      tenantData.users.push({
-        id: Date.now(),
-        email: newTeacher.email.trim(),
-        password: tempPassword,
-        role: 'teacher',
-        name: newTeacher.name.trim(),
-        isTemporaryPassword: true,
-        accountCreated: new Date().toISOString()
+      const result = await apiCall('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          mosque_id: 1, // Maak dynamisch
+          email: newTeacher.email.trim(),
+          name: newTeacher.name.trim(),
+          role: 'teacher',
+          password: tempPassword
+        })
       });
 
-      const emailResult = await sendEmail(
-        newTeacher.name.trim(),
-        newTeacher.email.trim(),
-        tempPassword,
-        tenantData.mosque.name,
-        'teacher'
-      );
-      
-      if (emailResult.success) {
+      if (result.success) {
+        // Probeer email te versturen
+        const emailResult = await sendEmail(
+          newTeacher.name.trim(),
+          newTeacher.email.trim(),
+          tempPassword,
+          realData.mosque?.name || 'Al-Hijra',
+          'teacher'
+        );
+        
         setNewTeacher({ name: '', email: '' });
         setShowAddTeacherModal(false);
         alert(`Leraar toegevoegd! Er is een email verzonden naar ${newTeacher.email.trim()} met inloggegevens.`);
-      } else {
-        throw new Error('Email kon niet worden verzonden');
+        await loadData(); // Herlaad data
       }
-      
     } catch (error) {
       console.error('Error adding teacher:', error);
-      alert('Er is een fout opgetreden bij het toevoegen van de leraar of het verzenden van de email');
+      alert('Er is een fout opgetreden bij het toevoegen van de leraar: ' + error.message);
     }
   };
 
@@ -346,110 +336,91 @@ const LeerlingVolgsysteem = () => {
       return;
     }
 
-    const tenantData = mockDatabase[currentSubdomain];
-    if (!tenantData.payments) tenantData.payments = [];
-    
-    const existingUser = tenantData.users.find(u => u.email === newParent.email.trim());
-    if (existingUser) {
-      let roleText;
-      switch(existingUser.role) {
-        case 'admin': roleText = 'beheerder'; break;
-        case 'teacher': roleText = 'leraar'; break;
-        case 'parent': roleText = 'ouder'; break;
-        default: roleText = 'gebruiker';
-      }
-      setParentError(`Dit email adres is al in gebruik door een ${roleText}: ${existingUser.name}`);
-      return;
-    }
-
     try {
       const tempPassword = generateTempPassword();
       
-      tenantData.users.push({
-        id: Date.now(),
-        email: newParent.email.trim(),
-        password: tempPassword,
-        role: 'parent',
-        name: newParent.name.trim(),
-        phone: newParent.phone.trim(),
-        address: newParent.address.trim(),
-        city: newParent.city.trim(),
-        zipcode: newParent.zipcode.trim(),
-        children: [],
-        amountDue: 0,
-        isTemporaryPassword: true,
-        accountCreated: new Date().toISOString()
+      const result = await apiCall('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          mosque_id: 1, // Maak dynamisch
+          email: newParent.email.trim(),
+          name: newParent.name.trim(),
+          role: 'parent',
+          phone: newParent.phone.trim(),
+          address: newParent.address.trim(),
+          city: newParent.city.trim(),
+          zipcode: newParent.zipcode.trim(),
+          password: tempPassword
+        })
       });
 
-      const emailResult = await sendEmail(
-        newParent.name.trim(),
-        newParent.email.trim(),
-        tempPassword,
-        tenantData.mosque.name,
-        'parent'
-      );
-      
-      if (emailResult.success) {
-        setEmailSent(true);
-        setSentEmailData({
-          parentName: newParent.name.trim(),
-          email: newParent.email.trim(),
-          mosqueName: tenantData.mosque.name
-        });
+      if (result.success) {
+        const emailResult = await sendEmail(
+          newParent.name.trim(),
+          newParent.email.trim(),
+          tempPassword,
+          realData.mosque?.name || 'Al-Hijra',
+          'parent'
+        );
         
-        setNewParent({ name: '', email: '', phone: '', address: '', city: '', zipcode: '' });
-        setParentError('');
-        
-        setTimeout(() => {
-          setShowAddParentModal(false);
-          setEmailSent(false);
-          setSentEmailData(null);
-        }, 4000);
-        
-      } else {
-        throw new Error('Email kon niet worden verzonden');
+        if (emailResult.success) {
+          setEmailSent(true);
+          setSentEmailData({
+            parentName: newParent.name.trim(),
+            email: newParent.email.trim(),
+            mosqueName: realData.mosque?.name || 'Al-Hijra'
+          });
+          
+          setNewParent({ name: '', email: '', phone: '', address: '', city: '', zipcode: '' });
+          setParentError('');
+          await loadData(); // Herlaad data
+          
+          setTimeout(() => {
+            setShowAddParentModal(false);
+            setEmailSent(false);
+            setSentEmailData(null);
+          }, 4000);
+        }
       }
-      
     } catch (error) {
       console.error('Error adding parent:', error);
-      setParentError('Er is een fout opgetreden bij het toevoegen van de ouder of het verzenden van de email');
+      setParentError('Er is een fout opgetreden bij het toevoegen van de ouder: ' + error.message);
     }
   };
 
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
     if (!newStudent.name || !newStudent.parentId || !newStudent.classId) {
       alert('Vul alle velden in');
       return;
     }
 
-    const tenantData = mockDatabase[currentSubdomain];
-    if (!tenantData.payments) tenantData.payments = [];
-    const studentId = Date.now();
-
-    const classIndex = tenantData.classes.findIndex(c => c.id === parseInt(newStudent.classId));
-    if (classIndex !== -1) {
-      tenantData.classes[classIndex].students.push({
-        id: studentId,
-        name: newStudent.name,
-        parentId: parseInt(newStudent.parentId)
+    try {
+      const result = await apiCall('/api/students', {
+        method: 'POST',
+        body: JSON.stringify({
+          mosque_id: 1, // Maak dynamisch
+          parent_id: parseInt(newStudent.parentId),
+          class_id: parseInt(newStudent.classId),
+          name: newStudent.name,
+          date_of_birth: '2010-01-01', // Voeg datepicker toe later
+          emergency_contact: 'Nog in te vullen',
+          emergency_phone: '+31600000000'
+        })
       });
-    }
 
-    const parent = tenantData.users.find(u => u.id === parseInt(newStudent.parentId));
-    if (parent) {
-      if (!parent.children) parent.children = [];
-      parent.children.push(studentId);
-      
-      const childCount = parent.children.length;
-      parent.amountDue = Math.min(childCount * 150, 450);
+      if (result.success) {
+        setNewStudent({ name: '', parentId: '', classId: '' });
+        setShowAddStudentModal(false);
+        alert('Leerling toegevoegd!');
+        await loadData(); // Herlaad data
+      }
+    } catch (error) {
+      console.error('Error adding student:', error);
+      alert('Er is een fout opgetreden bij het toevoegen van de leerling: ' + error.message);
     }
-
-    setNewStudent({ name: '', parentId: '', classId: '' });
-    setShowAddStudentModal(false);
-    alert('Leerling toegevoegd!');
   };
 
-  const handleAddPayment = () => {
+  const handleAddPayment = async () => {
     if (!newPayment.amount || !selectedParentForPayment) {
       alert('Vul alle verplichte velden in');
       return;
@@ -461,24 +432,31 @@ const LeerlingVolgsysteem = () => {
       return;
     }
 
-    const tenantData = mockDatabase[currentSubdomain];
-    if (!tenantData.payments) tenantData.payments = [];
+    try {
+      const result = await apiCall('/api/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          mosque_id: 1, // Maak dynamisch
+          parent_id: selectedParentForPayment.id,
+          amount: amount,
+          payment_method: newPayment.paymentMethod,
+          description: 'Maandelijkse bijdrage',
+          notes: newPayment.notes,
+          processed_by: currentUser.id
+        })
+      });
 
-    const today = new Date().toISOString().split('T')[0];
-    
-    tenantData.payments.push({
-      id: Date.now(),
-      parentId: selectedParentForPayment.id,
-      amount: amount,
-      date: today,
-      paymentMethod: newPayment.paymentMethod,
-      notes: newPayment.notes
-    });
-
-    setNewPayment({ amount: '', paymentMethod: 'contant', notes: '' });
-    setSelectedParentForPayment(null);
-    setShowAddPaymentModal(false);
-    alert('Betaling geregistreerd!');
+      if (result.success) {
+        setNewPayment({ amount: '', paymentMethod: 'contant', notes: '' });
+        setSelectedParentForPayment(null);
+        setShowAddPaymentModal(false);
+        alert('Betaling geregistreerd!');
+        await loadData(); // Herlaad data
+      }
+    } catch (error) {
+      console.error('Error adding payment:', error);
+      alert('Er is een fout opgetreden bij het registreren van de betaling: ' + error.message);
+    }
   };
 
   const testM365Configuration = async () => {
@@ -493,12 +471,11 @@ const LeerlingVolgsysteem = () => {
     }
 
     try {
-      const tenantData = mockDatabase[currentSubdomain];
       const emailResult = await sendEmail(
         'Test Gebruiker',
         testEmailAddress,
         'TEST123',
-        tenantData?.mosque?.name || 'Test Moskee',
+        realData.mosque?.name || 'Test Moskee',
         'test'
       );
       
@@ -516,15 +493,12 @@ const LeerlingVolgsysteem = () => {
 
   // Calculate payment status for a parent
   const calculateParentPaymentStatus = (parentId) => {
-    const tenantData = mockDatabase[currentSubdomain];
-    if (!tenantData) return { totalPaid: 0, amountDue: 0, remainingBalance: 0, paymentStatus: 'openstaand' };
-
-    const parent = tenantData.users.find(u => u.id === parentId);
+    const parent = realData.users.find(u => u.id === parentId);
     if (!parent) return { totalPaid: 0, amountDue: 0, remainingBalance: 0, paymentStatus: 'openstaand' };
 
-    const payments = tenantData.payments?.filter(p => p.parentId === parentId) || [];
+    const payments = realData.payments.filter(p => p.parent_id === parentId) || [];
     const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    const amountDue = parent.amountDue || 0;
+    const amountDue = parent.amount_due || 0;
     const remainingBalance = Math.max(0, amountDue - totalPaid);
     
     let paymentStatus = 'openstaand';
@@ -539,10 +513,7 @@ const LeerlingVolgsysteem = () => {
 
   // Calculate financial metrics
   const calculateFinancialMetrics = () => {
-    const tenantData = mockDatabase[currentSubdomain];
-    if (!tenantData) return { totalDue: 0, totalPaid: 0, percentagePaid: 0, totalOutstanding: 0 };
-
-    const parents = tenantData.users.filter(u => u.role === 'parent');
+    const parents = realData.users.filter(u => u.role === 'parent');
     
     let totalDue = 0;
     let totalPaid = 0;
@@ -563,8 +534,18 @@ const LeerlingVolgsysteem = () => {
     };
   };
 
-  // Get current tenant data
-  const tenantData = mockDatabase[currentSubdomain];
+  // Show loading state
+  if (realData.loading && currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="w-16 h-16 text-emerald-600 mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-semibold text-gray-700">Gegevens laden...</h2>
+          <p className="text-gray-500">Even geduld terwijl we uw data ophalen</p>
+        </div>
+      </div>
+    );
+  }
 
   // Registration Page Component
   if (currentSubdomain === 'register') {
@@ -610,7 +591,7 @@ const LeerlingVolgsysteem = () => {
   }
 
   // Not found page
-  if (!tenantData) {
+  if (!realData.mosque && !realData.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -633,7 +614,7 @@ const LeerlingVolgsysteem = () => {
         <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <BookOpen className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold">{tenantData.mosque.name}</h1>
+            <h1 className="text-2xl font-bold">{realData.mosque?.name || 'Al-Hijra Moskee'}</h1>
           </div>
           <div className="space-y-4">
             <div>
@@ -703,7 +684,7 @@ const LeerlingVolgsysteem = () => {
           <div className="flex items-center">
             <BookOpen className="w-8 h-8 text-emerald-600" />
             <div className="ml-3">
-              <h1 className="font-bold text-sm">{tenantData.mosque.name}</h1>
+              <h1 className="font-bold text-sm">{realData.mosque?.name || 'Moskee Systeem'}</h1>
               <p className="text-xs text-gray-600">{currentUser.role}</p>
             </div>
           </div>
@@ -830,7 +811,7 @@ const LeerlingVolgsysteem = () => {
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-6 text-white">
                 <h2 className="text-2xl font-bold mb-2">Welkom, {currentUser.name}</h2>
-                <p className="opacity-90">{tenantData.mosque.name}</p>
+                <p className="opacity-90">{realData.mosque?.name || 'Moskee Systeem'}</p>
                 <p className="opacity-75 text-sm mt-1">Rol: {currentUser.role}</p>
               </div>
               
@@ -882,7 +863,7 @@ const LeerlingVolgsysteem = () => {
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Leerlingen</p>
                           <p className="text-2xl font-bold">
-                            {tenantData.classes.reduce((acc, c) => acc + c.students.length, 0)}
+                            {realData.students?.length || 0}
                           </p>
                         </div>
                       </div>
@@ -892,7 +873,7 @@ const LeerlingVolgsysteem = () => {
                         <BookOpen className="w-8 h-8 text-emerald-600" />
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Klassen</p>
-                          <p className="text-2xl font-bold">{tenantData.classes.length}</p>
+                          <p className="text-2xl font-bold">{realData.classes?.length || 0}</p>
                         </div>
                       </div>
                     </div>
@@ -902,7 +883,7 @@ const LeerlingVolgsysteem = () => {
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Leraren</p>
                           <p className="text-2xl font-bold">
-                            {tenantData.users.filter(u => u.role === 'teacher').length}
+                            {realData.users?.filter(u => u.role === 'teacher')?.length || 0}
                           </p>
                         </div>
                       </div>
@@ -913,7 +894,7 @@ const LeerlingVolgsysteem = () => {
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Ouders</p>
                           <p className="text-2xl font-bold">
-                            {tenantData.users.filter(u => u.role === 'parent').length}
+                            {realData.users?.filter(u => u.role === 'parent')?.length || 0}
                           </p>
                         </div>
                       </div>
@@ -939,7 +920,7 @@ const LeerlingVolgsysteem = () => {
                 <h2 className="text-2xl font-bold">Klassen Beheer</h2>
                 <button 
                   onClick={() => {
-                    if (tenantData.users.filter(u => u.role === 'teacher').length === 0) {
+                    if (realData.users.filter(u => u.role === 'teacher').length === 0) {
                       alert('Voeg eerst leraren toe voordat u klassen kunt aanmaken.');
                       setActiveTab('teachers');
                       return;
@@ -953,7 +934,7 @@ const LeerlingVolgsysteem = () => {
                 </button>
               </div>
               
-              {tenantData.users.filter(u => u.role === 'teacher').length === 0 ? (
+              {realData.users.filter(u => u.role === 'teacher').length === 0 ? (
                 <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
                   <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Eerst leraren toevoegen</h3>
@@ -965,7 +946,7 @@ const LeerlingVolgsysteem = () => {
                     Naar Leraren
                   </button>
                 </div>
-              ) : tenantData.classes.length === 0 ? (
+              ) : realData.classes.length === 0 ? (
                 <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
                   <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Nog geen klassen</h3>
@@ -973,11 +954,11 @@ const LeerlingVolgsysteem = () => {
                 </div>
               ) : (
                 <div className="grid gap-6">
-                  {tenantData.classes.map(cls => (
+                  {realData.classes.map(cls => (
                     <div key={cls.id} className="bg-white p-6 rounded-xl shadow-sm border">
                       <h3 className="text-lg font-semibold">{cls.name}</h3>
-                      <p className="text-gray-600">Leraar: {cls.teacher}</p>
-                      <p className="text-sm text-gray-500">{cls.students.length} leerlingen</p>
+                      <p className="text-gray-600">Leraar: {cls.teacher?.name || 'Onbekend'}</p>
+                      <p className="text-sm text-gray-500">{cls.students?.length || 0} leerlingen</p>
                     </div>
                   ))}
                 </div>
@@ -1000,14 +981,14 @@ const LeerlingVolgsysteem = () => {
               </div>
               
               <div className="grid gap-6">
-                {tenantData.users.filter(u => u.role === 'teacher').length === 0 ? (
+                {realData.users.filter(u => u.role === 'teacher').length === 0 ? (
                   <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
                     <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold mb-2">Nog geen leraren</h3>
                     <p className="text-gray-600">Voeg leraren toe om klassen te kunnen beheren.</p>
                   </div>
                 ) : (
-                  tenantData.users.filter(u => u.role === 'teacher').map(teacher => (
+                  realData.users.filter(u => u.role === 'teacher').map(teacher => (
                     <div key={teacher.id} className="bg-white p-6 rounded-xl shadow-sm border">
                       <h3 className="text-lg font-semibold">{teacher.name}</h3>
                       <p className="text-gray-600">{teacher.email}</p>
@@ -1049,7 +1030,7 @@ const LeerlingVolgsysteem = () => {
                 </button>
               </div>
               
-              {tenantData.users.filter(u => u.role === 'parent').length === 0 ? (
+              {realData.users.filter(u => u.role === 'parent').length === 0 ? (
                 <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
                   <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Nog geen ouders</h3>
@@ -1070,7 +1051,7 @@ const LeerlingVolgsysteem = () => {
                   
                   {/* Tabel Rijen */}
                   <div className="divide-y">
-                    {tenantData.users.filter(u => u.role === 'parent').map(parent => {
+                    {realData.users.filter(u => u.role === 'parent').map(parent => {
                       const paymentStatus = calculateParentPaymentStatus(parent.id);
                       const isExpanded = selectedParentForDetails === parent.id;
                       
@@ -1101,7 +1082,7 @@ const LeerlingVolgsysteem = () => {
                               <div className="col-span-2">
                                 <div className="bg-emerald-100 px-3 py-1 rounded-full inline-block">
                                   <span className="text-emerald-700 text-sm font-medium">
-                                    {parent.children?.length || 0} kind{(parent.children?.length || 0) !== 1 ? 'eren' : ''}
+                                    {realData.students?.filter(s => s.parent_id === parent.id)?.length || 0} kind{(realData.students?.filter(s => s.parent_id === parent.id)?.length || 0) !== 1 ? 'eren' : ''}
                                   </span>
                                 </div>
                               </div>
@@ -1145,98 +1126,6 @@ const LeerlingVolgsysteem = () => {
                               </div>
                             </div>
                           </div>
-                          
-                          {/* Uitgevouwen details */}
-                          {isExpanded && (
-                            <div className="px-6 py-4 bg-gray-50 border-t">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                
-                                {/* Kinderen details */}
-                                {parent.children && parent.children.length > 0 && (
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Kinderen:</h4>
-                                    <div className="space-y-2">
-                                      {parent.children.map(childId => {
-                                        let childName = 'Onbekend kind';
-                                        let className = 'Geen klas';
-                                        tenantData.classes.forEach(cls => {
-                                          const student = cls.students.find(s => s.id === childId);
-                                          if (student) {
-                                            childName = student.name;
-                                            className = cls.name;
-                                          }
-                                        });
-                                        return (
-                                          <div key={childId} className="bg-white p-3 rounded border">
-                                            <div className="font-medium text-sm">{childName}</div>
-                                            <div className="text-xs text-gray-600">Klas: {className}</div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Betalingshistorie */}
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Betalingshistorie:</h4>
-                                  {(() => {
-                                    const payments = tenantData.payments?.filter(p => p.parentId === parent.id) || [];
-                                    if (payments.length === 0) {
-                                      return (
-                                        <div className="bg-white p-3 rounded border text-center">
-                                          <p className="text-sm text-gray-500">Nog geen betalingen</p>
-                                        </div>
-                                      );
-                                    }
-                                    return (
-                                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                                        {payments.reverse().map(payment => (
-                                          <div key={payment.id} className="bg-white p-3 rounded border">
-                                            <div className="flex justify-between items-start">
-                                              <div>
-                                                <div className="font-medium text-sm">€{payment.amount}</div>
-                                                <div className="text-xs text-gray-600">
-                                                  {new Date(payment.date).toLocaleDateString('nl-NL')}
-                                                </div>
-                                                <div className="text-xs text-gray-500 capitalize">
-                                                  {payment.paymentMethod}
-                                                </div>
-                                              </div>
-                                              {payment.notes && (
-                                                <div className="text-xs text-gray-500 italic max-w-24">
-                                                  {payment.notes}
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                              
-                              {/* Extra actieknoppen in details */}
-                              <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
-                                <button 
-                                  onClick={() => setSelectedParentForDetails(null)}
-                                  className="text-sm text-gray-600 hover:text-gray-800"
-                                >
-                                  Details sluiten
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedParentForPayment(parent);
-                                    setShowAddPaymentModal(true);
-                                  }}
-                                  className="text-sm bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
-                                >
-                                  Nieuwe Betaling
-                                </button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -1260,10 +1149,10 @@ const LeerlingVolgsysteem = () => {
                 </button>
               </div>
               
-              {tenantData.classes.length === 0 || tenantData.users.filter(u => u.role === 'parent').length === 0 ? (
+              {realData.classes.length === 0 || realData.users.filter(u => u.role === 'parent').length === 0 ? (
                 <div className="bg-white p-8 rounded-xl shadow-sm border text-center">
                   <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  {tenantData.classes.length === 0 ? (
+                  {realData.classes.length === 0 ? (
                     <>
                       <h3 className="text-lg font-semibold mb-2">Eerst een klas aanmaken</h3>
                       <p className="text-gray-600 mb-4">Voordat u leerlingen kunt toevoegen, moet u eerst een klas aanmaken.</p>
@@ -1297,7 +1186,7 @@ const LeerlingVolgsysteem = () => {
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Totaal Leerlingen</p>
                           <p className="text-2xl font-bold">
-                            {tenantData.classes.reduce((acc, c) => acc + c.students.length, 0)}
+                            {realData.students?.length || 0}
                           </p>
                         </div>
                       </div>
@@ -1307,7 +1196,7 @@ const LeerlingVolgsysteem = () => {
                         <BookOpen className="w-8 h-8 text-emerald-600" />
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Actieve Klassen</p>
-                          <p className="text-2xl font-bold">{tenantData.classes.length}</p>
+                          <p className="text-2xl font-bold">{realData.classes?.length || 0}</p>
                         </div>
                       </div>
                     </div>
@@ -1317,7 +1206,7 @@ const LeerlingVolgsysteem = () => {
                         <div className="ml-4">
                           <p className="text-gray-600 text-sm">Geregistreerde Ouders</p>
                           <p className="text-2xl font-bold">
-                            {tenantData.users.filter(u => u.role === 'parent').length}
+                            {realData.users?.filter(u => u.role === 'parent')?.length || 0}
                           </p>
                         </div>
                       </div>
@@ -1326,123 +1215,111 @@ const LeerlingVolgsysteem = () => {
 
                   {/* Leerlingen Tabel */}
                   <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                    {/* Tabel Header */}
-                    <div className="bg-gray-50 px-6 py-4 border-b">
-                      <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-600">
-                        <div className="col-span-3">Leerling</div>
-                        <div className="col-span-3">Klas & Leraar</div>
-                        <div className="col-span-4">Ouder Gegevens</div>
-                        <div className="col-span-2">Betalingsstatus</div>
+                    {realData.students?.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Nog geen leerlingen</h3>
+                        <p className="text-gray-600">Begin met het toevoegen van uw eerste leerling.</p>
                       </div>
-                    </div>
-                    
-                    {/* Tabel Rijen */}
-                    <div className="divide-y">
-                      {(() => {
-                        const allStudents = [];
-                        tenantData.classes.forEach(cls => {
-                          cls.students.forEach(student => {
-                            allStudents.push({
-                              ...student,
-                              className: cls.name,
-                              teacherName: cls.teacher
-                            });
-                          });
-                        });
-
-                        if (allStudents.length === 0) {
-                          return (
-                            <div className="p-8 text-center">
-                              <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                              <h3 className="text-lg font-semibold mb-2">Nog geen leerlingen</h3>
-                              <p className="text-gray-600">Begin met het toevoegen van uw eerste leerling.</p>
-                            </div>
-                          );
-                        }
-
-                        return allStudents.map(student => {
-                          const parent = tenantData.users.find(u => u.id === student.parentId);
-                          const paymentStatus = parent ? calculateParentPaymentStatus(parent.id) : null;
-                          
-                          return (
-                            <div key={`${student.id}-${student.className}`} className="px-6 py-4 hover:bg-gray-50">
-                              <div className="grid grid-cols-12 gap-4 items-center">
-                                {/* Leerling */}
-                                <div className="col-span-3">
-                                  <div className="flex items-center">
-                                    <div className="bg-emerald-100 w-10 h-10 rounded-full flex items-center justify-center">
-                                      <User className="w-5 h-5 text-emerald-600" />
-                                    </div>
-                                    <div className="ml-3">
-                                      <h3 className="font-semibold text-gray-900">{student.name}</h3>
-                                      <p className="text-sm text-gray-500">ID: {student.id}</p>
+                    ) : (
+                      <>
+                        {/* Tabel Header */}
+                        <div className="bg-gray-50 px-6 py-4 border-b">
+                          <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-600">
+                            <div className="col-span-3">Leerling</div>
+                            <div className="col-span-3">Klas & Leraar</div>
+                            <div className="col-span-4">Ouder Gegevens</div>
+                            <div className="col-span-2">Betalingsstatus</div>
+                          </div>
+                        </div>
+                        
+                        {/* Tabel Rijen */}
+                        <div className="divide-y">
+                          {realData.students.map(student => {
+                            const parent = realData.users.find(u => u.id === student.parent_id);
+                            const classInfo = realData.classes.find(c => c.id === student.class_id);
+                            const paymentStatus = parent ? calculateParentPaymentStatus(parent.id) : null;
+                            
+                            return (
+                              <div key={student.id} className="px-6 py-4 hover:bg-gray-50">
+                                <div className="grid grid-cols-12 gap-4 items-center">
+                                  {/* Leerling */}
+                                  <div className="col-span-3">
+                                    <div className="flex items-center">
+                                      <div className="bg-emerald-100 w-10 h-10 rounded-full flex items-center justify-center">
+                                        <User className="w-5 h-5 text-emerald-600" />
+                                      </div>
+                                      <div className="ml-3">
+                                        <h3 className="font-semibold text-gray-900">{student.name}</h3>
+                                        <p className="text-sm text-gray-500">ID: {student.id}</p>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                                
-                                {/* Klas & Leraar */}
-                                <div className="col-span-3">
-                                  <div className="bg-blue-100 px-3 py-1 rounded-full inline-block mb-1">
-                                    <span className="text-blue-700 text-sm font-medium">{student.className}</span>
+                                  
+                                  {/* Klas & Leraar */}
+                                  <div className="col-span-3">
+                                    <div className="bg-blue-100 px-3 py-1 rounded-full inline-block mb-1">
+                                      <span className="text-blue-700 text-sm font-medium">{classInfo?.name || 'Geen klas'}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600">Leraar: {classInfo?.teacher?.name || 'Onbekend'}</p>
                                   </div>
-                                  <p className="text-sm text-gray-600">Leraar: {student.teacherName}</p>
-                                </div>
-                                
-                                {/* Ouder Gegevens */}
-                                <div className="col-span-4">
-                                  {parent ? (
-                                    <>
-                                      <h4 className="font-medium text-gray-900">{parent.name}</h4>
-                                      <p className="text-sm text-gray-600">{parent.email}</p>
-                                      <p className="text-sm text-gray-500">{parent.phone}</p>
-                                      <p className="text-xs text-gray-400">{parent.address}, {parent.city}</p>
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-red-600">Ouder niet gevonden</p>
-                                  )}
-                                </div>
-                                
-                                {/* Betalingsstatus */}
-                                <div className="col-span-2">
-                                  {parent && paymentStatus ? (
-                                    <>
-                                      <div className={`px-3 py-1 rounded-full text-center mb-1 ${
-                                        paymentStatus.paymentStatus === 'betaald' 
-                                          ? 'bg-green-100 text-green-700' 
-                                          : paymentStatus.paymentStatus === 'deels_betaald'
-                                          ? 'bg-yellow-100 text-yellow-700'
-                                          : 'bg-red-100 text-red-700'
-                                      }`}>
-                                        <span className="text-xs font-medium">
-                                          {paymentStatus.paymentStatus === 'betaald' ? 'Betaald' : 
-                                           paymentStatus.paymentStatus === 'deels_betaald' ? 'Deels' : 'Open'}
-                                        </span>
-                                      </div>
-                                      <div className="text-sm text-gray-600 text-center">
-                                        €{paymentStatus.totalPaid} / €{paymentStatus.amountDue}
-                                      </div>
-                                      {paymentStatus.remainingBalance > 0 && (
-                                        <button
-                                          onClick={() => {
-                                            setSelectedParentForPayment(parent);
-                                            setShowAddPaymentModal(true);
-                                          }}
-                                          className="mt-1 text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 w-full"
-                                        >
-                                          + Betaling
-                                        </button>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">Geen gegevens</span>
-                                  )}
+                                  
+                                  {/* Ouder Gegevens */}
+                                  <div className="col-span-4">
+                                    {parent ? (
+                                      <>
+                                        <h4 className="font-medium text-gray-900">{parent.name}</h4>
+                                        <p className="text-sm text-gray-600">{parent.email}</p>
+                                        <p className="text-sm text-gray-500">{parent.phone}</p>
+                                        <p className="text-xs text-gray-400">{parent.address}, {parent.city}</p>
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-red-600">Ouder niet gevonden</p>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Betalingsstatus */}
+                                  <div className="col-span-2">
+                                    {parent && paymentStatus ? (
+                                      <>
+                                        <div className={`px-3 py-1 rounded-full text-center mb-1 ${
+                                          paymentStatus.paymentStatus === 'betaald' 
+                                            ? 'bg-green-100 text-green-700' 
+                                            : paymentStatus.paymentStatus === 'deels_betaald'
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : 'bg-red-100 text-red-700'
+                                        }`}>
+                                          <span className="text-xs font-medium">
+                                            {paymentStatus.paymentStatus === 'betaald' ? 'Betaald' : 
+                                             paymentStatus.paymentStatus === 'deels_betaald' ? 'Deels' : 'Open'}
+                                          </span>
+                                        </div>
+                                        <div className="text-sm text-gray-600 text-center">
+                                          €{paymentStatus.totalPaid} / €{paymentStatus.amountDue}
+                                        </div>
+                                        {paymentStatus.remainingBalance > 0 && (
+                                          <button
+                                            onClick={() => {
+                                              setSelectedParentForPayment(parent);
+                                              setShowAddPaymentModal(true);
+                                            }}
+                                            className="mt-1 text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 w-full"
+                                          >
+                                            + Betaling
+                                          </button>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-gray-400">Geen gegevens</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               )}
@@ -1459,7 +1336,7 @@ const LeerlingVolgsysteem = () => {
                     className="px-3 py-2 border rounded-lg text-sm"
                     onChange={(e) => {
                       if (e.target.value) {
-                        const parent = tenantData.users.find(u => u.id === parseInt(e.target.value));
+                        const parent = realData.users.find(u => u.id === parseInt(e.target.value));
                         setSelectedParentForPayment(parent);
                         setShowAddPaymentModal(true);
                       }
@@ -1467,7 +1344,7 @@ const LeerlingVolgsysteem = () => {
                     value=""
                   >
                     <option value="">Snelle betaling voor...</option>
-                    {tenantData.users.filter(u => u.role === 'parent').map(parent => (
+                    {realData.users.filter(u => u.role === 'parent').map(parent => (
                       <option key={parent.id} value={parent.id}>{parent.name}</option>
                     ))}
                   </select>
@@ -1477,11 +1354,11 @@ const LeerlingVolgsysteem = () => {
               {/* Betalingen statistieken */}
               {(() => {
                 const metrics = calculateFinancialMetrics();
-                const totalPayments = tenantData.payments?.length || 0;
+                const totalPayments = realData.payments?.length || 0;
                 const thisMonth = new Date().getMonth();
                 const thisYear = new Date().getFullYear();
-                const thisMonthPayments = tenantData.payments?.filter(p => {
-                  const paymentDate = new Date(p.date);
+                const thisMonthPayments = realData.payments?.filter(p => {
+                  const paymentDate = new Date(p.payment_date || p.date);
                   return paymentDate.getMonth() === thisMonth && paymentDate.getFullYear() === thisYear;
                 }) || [];
                 const thisMonthTotal = thisMonthPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -1536,7 +1413,7 @@ const LeerlingVolgsysteem = () => {
                   <h3 className="text-lg font-semibold">Alle Betalingen</h3>
                 </div>
                 
-                {!tenantData.payments || tenantData.payments.length === 0 ? (
+                {!realData.payments || realData.payments.length === 0 ? (
                   <div className="p-8 text-center">
                     <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h4 className="text-lg font-semibold mb-2">Nog geen betalingen</h4>
@@ -1558,10 +1435,10 @@ const LeerlingVolgsysteem = () => {
                     
                     {/* Tabel Rijen */}
                     <div className="divide-y max-h-96 overflow-y-auto">
-                      {tenantData.payments
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                      {realData.payments
+                        .sort((a, b) => new Date(b.payment_date || b.date) - new Date(a.payment_date || a.date))
                         .map(payment => {
-                          const parent = tenantData.users.find(u => u.id === payment.parentId);
+                          const parent = realData.users.find(u => u.id === payment.parent_id);
                           const paymentStatus = parent ? calculateParentPaymentStatus(parent.id) : null;
                           
                           return (
@@ -1570,10 +1447,10 @@ const LeerlingVolgsysteem = () => {
                                 {/* Datum */}
                                 <div className="col-span-2">
                                   <div className="text-sm font-medium text-gray-900">
-                                    {new Date(payment.date).toLocaleDateString('nl-NL')}
+                                    {new Date(payment.payment_date || payment.date).toLocaleDateString('nl-NL')}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {new Date(payment.date).toLocaleDateString('nl-NL', { weekday: 'short' })}
+                                    {new Date(payment.payment_date || payment.date).toLocaleDateString('nl-NL', { weekday: 'short' })}
                                   </div>
                                 </div>
                                 
@@ -1607,12 +1484,12 @@ const LeerlingVolgsysteem = () => {
                                 {/* Betaalmethode */}
                                 <div className="col-span-2">
                                   <div className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
-                                    payment.paymentMethod === 'contant' ? 'bg-yellow-100 text-yellow-700' :
-                                    payment.paymentMethod === 'pin' ? 'bg-blue-100 text-blue-700' :
-                                    payment.paymentMethod === 'overschrijving' ? 'bg-green-100 text-green-700' :
+                                    payment.payment_method === 'contant' ? 'bg-yellow-100 text-yellow-700' :
+                                    payment.payment_method === 'pin' ? 'bg-blue-100 text-blue-700' :
+                                    payment.payment_method === 'overschrijving' ? 'bg-green-100 text-green-700' :
                                     'bg-purple-100 text-purple-700'
                                   }`}>
-                                    {payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
+                                    {(payment.payment_method || 'contant').charAt(0).toUpperCase() + (payment.payment_method || 'contant').slice(1)}
                                   </div>
                                 </div>
                                 
@@ -1698,7 +1575,7 @@ const LeerlingVolgsysteem = () => {
                         onClick={() => {
                           setShowM365ConfigModal(true);
                           if (!testEmailAddress) {
-                            setTestEmailAddress(`admin@${tenantData.mosque.name.toLowerCase().replace(/\s+/g, '')}.nl`);
+                            setTestEmailAddress(`admin@${realData.mosque?.name?.toLowerCase().replace(/\s+/g, '') || 'moskee'}.nl`);
                           }
                         }}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -1780,7 +1657,7 @@ const LeerlingVolgsysteem = () => {
                       <input
                         type="text"
                         className="w-full px-3 py-2 border rounded-lg bg-gray-50"
-                        value={tenantData.mosque.name}
+                        value={realData.mosque?.name || 'Al-Hijra Moskee'}
                         readOnly
                       />
                     </div>
@@ -1789,7 +1666,7 @@ const LeerlingVolgsysteem = () => {
                       <input
                         type="text"
                         className="w-full px-3 py-2 border rounded-lg bg-gray-50"
-                        value={tenantData.mosque.address}
+                        value={realData.mosque?.address || 'Rotterdam'}
                         readOnly
                       />
                     </div>
@@ -1835,7 +1712,7 @@ const LeerlingVolgsysteem = () => {
                   onChange={(e) => setNewClass({...newClass, teacherId: e.target.value})}
                 >
                   <option value="">Kies een leraar</option>
-                  {tenantData.users.filter(u => u.role === 'teacher').map(teacher => (
+                  {realData.users.filter(u => u.role === 'teacher').map(teacher => (
                     <option key={teacher.id} value={teacher.id}>
                       {teacher.name} ({teacher.email})
                     </option>
@@ -2078,7 +1955,7 @@ const LeerlingVolgsysteem = () => {
                   onChange={(e) => setNewStudent({...newStudent, parentId: e.target.value})}
                 >
                   <option value="">Selecteer ouder</option>
-                  {tenantData.users.filter(u => u.role === 'parent').map(parent => (
+                  {realData.users.filter(u => u.role === 'parent').map(parent => (
                     <option key={parent.id} value={parent.id}>
                       {parent.name} ({parent.email})
                     </option>
@@ -2093,7 +1970,7 @@ const LeerlingVolgsysteem = () => {
                   onChange={(e) => setNewStudent({...newStudent, classId: e.target.value})}
                 >
                   <option value="">Selecteer klas</option>
-                  {tenantData.classes.map(cls => (
+                  {realData.classes.map(cls => (
                     <option key={cls.id} value={cls.id}>{cls.name}</option>
                   ))}
                 </select>
@@ -2369,4 +2246,3 @@ const LeerlingVolgsysteem = () => {
 };
 
 export default LeerlingVolgsysteem;
-       
