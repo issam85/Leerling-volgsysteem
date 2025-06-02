@@ -45,6 +45,18 @@ const LeerlingVolgsysteem = () => {
   const [parentError, setParentError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [sentEmailData, setSentEmailData] = useState(null);
+
+  useEffect(() => {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    try {
+      setCurrentUser(JSON.parse(savedUser));
+    } catch (error) {
+      console.error('Error loading saved user:', error);
+      localStorage.removeItem('currentUser');
+    }
+  }
+}, []);
   
   // Microsoft 365 configuration
   const [m365Config, setM365Config] = useState({
@@ -222,39 +234,43 @@ const LeerlingVolgsysteem = () => {
   };
 
   const handleLogin = async () => {
-    try {
-      const result = await apiCall('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: loginData.email,
-          password: loginData.password,
-          subdomain: currentSubdomain
-        })
-      });
-      
-      if (result.success) {
-        setCurrentUser(result.user);
-      } else {
-        alert('Ongeldige inloggegevens');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Inloggen mislukt: ' + error.message);
+  try {
+    const result = await apiCall('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: loginData.email,
+        password: loginData.password,
+        subdomain: currentSubdomain
+      })
+    });
+    
+    if (result.success) {
+      setCurrentUser(result.user);
+      // Bewaar user in localStorage
+      localStorage.setItem('currentUser', JSON.stringify(result.user));
+    } else {
+      alert('Ongeldige inloggegevens');
     }
-  };
+  } catch (error) {
+    console.error('Login error:', error);
+    alert('Inloggen mislukt: ' + error.message);
+  }
+};
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setLoginData({ email: '', password: '' });
-    setRealData({
-      users: [],
-      classes: [],
-      students: [],
-      payments: [],
-      mosque: null,
-      loading: true
-    });
-  };
+  setCurrentUser(null);
+  setLoginData({ email: '', password: '' });
+  // Verwijder user uit localStorage
+  localStorage.removeItem('currentUser');
+  setRealData({
+    users: [],
+    classes: [],
+    students: [],
+    payments: [],
+    mosque: null,
+    loading: true
+  });
+};
 
   const handleAddClass = async () => {
     if (!newClass.name || !newClass.teacherId) {
