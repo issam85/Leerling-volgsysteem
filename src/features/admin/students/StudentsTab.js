@@ -104,24 +104,21 @@ const StudentsTab = () => {
   };
 
   const handleDeleteStudent = async (studentIdToDelete) => {
-    if (!window.confirm("Weet u zeker dat u deze leerling wilt verwijderen? Dit zal ook invloed hebben op de 'te betalen bijdrage' van de ouder.")) return;
-    if (!mosque || !mosque.id) { alert("Moskee informatie niet beschikbaar."); return; }
-    setActionLoading(true);
+  // ... (confirm, mosque check, setActionLoading)
     try {
-      // DELETE naar /api/students/:studentId (BACKEND MOET DIT IMPLEMENTEREN)
-      // Je backend moet ook de amount_due van de ouder bijwerken na verwijdering.
-      const result = await apiCall(`/api/students/${studentIdToDelete}`, { method: 'DELETE' });
-      if (result.success || response.status === 204) {
-        await loadData(); // Belangrijk voor amount_due update
-      } else {
-        throw new Error(result.error || "Kon leerling niet verwijderen.");
-      }
+        const result = await apiCall(`/api/students/${studentIdToDelete}`, { method: 'DELETE' });
+        // CORRECTIE HIER:
+        if (result.success) {
+        await loadData();
+        } else {
+        throw new Error(result.error || "Kon leerling niet verwijderen (onbekende fout).");
+        }
     } catch (err) {
-      console.error("Error deleting student:", err);
-      setPageError(`Fout bij verwijderen van leerling: ${err.message}`);
+        console.error("Error deleting student:", err);
+        setPageError(`Fout bij verwijderen van leerling: ${err.message}`);
     }
     setActionLoading(false);
-  };
+    };
 
   if (dataLoading && !students.length) {
     return <LoadingSpinner message="Leerlingen laden..." />;

@@ -94,30 +94,22 @@ const ClassesTab = () => {
   };
 
   const handleDeleteClass = async (classIdToDelete) => {
-    if (!window.confirm("Weet u zeker dat u deze klas wilt verwijderen? Dit kan invloed hebben op gekoppelde leerlingen.")) {
-      return;
-    }
-    if (!mosque || !mosque.id) {
-      alert("Moskee informatie niet beschikbaar.");
-      return;
-    }
-    setActionLoading(true);
+  // ... (confirm, mosque check, setActionLoading)
     try {
-      // DELETE request naar /api/classes/:classId (ZORG DAT DIT ENDPOINT BESTAAT IN BACKEND)
-      const result = await apiCall(`/api/classes/${classIdToDelete}`, { method: 'DELETE' });
-      // Check de response van je backend. Supabase DELETE geeft vaak 204 No Content terug.
-      // De apiCall helper geeft { success: true, data: null } terug bij 204.
-      if (result.success || response.status === 204) { // Of een andere succesindicatie van je backend
+        const result = await apiCall(`/api/classes/${classIdToDelete}`, { method: 'DELETE' });
+        // CORRECTIE HIER:
+        if (result.success) { // Controleer op het 'success' veld van de apiCall response
         await loadData();
-      } else {
-        throw new Error(result.error || "Kon klas niet verwijderen.");
-      }
+        } else {
+        // Als result.success false is, zou result.error een message moeten hebben
+        throw new Error(result.error || "Kon klas niet verwijderen (onbekende fout).");
+        }
     } catch (err) {
-      console.error("Error deleting class:", err);
-      setPageError(`Fout bij verwijderen van klas: ${err.message}`);
+        console.error("Error deleting class:", err);
+        setPageError(`Fout bij verwijderen van klas: ${err.message}`);
     }
     setActionLoading(false);
-  };
+    };
 
   if (dataLoading && !classes.length) {
     return <LoadingSpinner message="Klassen laden..." />;

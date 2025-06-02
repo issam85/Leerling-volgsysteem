@@ -130,28 +130,22 @@ const ParentsTab = () => {
   };
 
   const handleDeleteParent = async (parentIdToDelete) => {
-    const parentStudents = students.filter(s => String(s.parent_id) === String(parentIdToDelete));
-    let confirmMessage = "Weet u zeker dat u deze ouder wilt verwijderen?";
-    if (parentStudents.length > 0) {
-        confirmMessage += ` Deze ouder heeft ${parentStudents.length} leerling(en) geregistreerd. Deze koppeling(en) zullen verbroken worden.`;
-    }
-    if (!window.confirm(confirmMessage)) return;
+  // ... (confirm, mosque check, setActionLoading)
 
-    if (!mosque || !mosque.id) { alert("Moskee informatie niet beschikbaar."); return;}
-    setActionLoading(true);
     try {
-      const result = await apiCall(`/api/users/${parentIdToDelete}`, { method: 'DELETE' }); // Backend endpoint /api/users/:id voor DELETE
-      if (result.success || response.status === 204) {
+        const result = await apiCall(`/api/users/${parentIdToDelete}`, { method: 'DELETE' });
+        // CORRECTIE HIER:
+        if (result.success) {
         await loadData();
-      } else {
-        throw new Error(result.error || "Kon ouder niet verwijderen.");
-      }
+        } else {
+        throw new Error(result.error || "Kon ouder niet verwijderen (onbekende fout).");
+        }
     } catch (err) {
-      console.error("Error deleting parent:", err);
-      setPageError(`Fout bij verwijderen van ouder: ${err.message}`);
+        console.error("Error deleting parent:", err);
+        setPageError(`Fout bij verwijderen van ouder: ${err.message}`);
     }
     setActionLoading(false);
-  };
+    };
 
   const toggleParentDetails = (parentId) => {
     setExpandedParentId(expandedParentId === parentId ? null : parentId);

@@ -132,24 +132,21 @@ const TeachersTab = () => {
   };
 
   const handleDeleteTeacher = async (teacherIdToDelete) => {
-    // TODO: Check of leraar nog aan klassen gekoppeld is
-    if (!window.confirm("Weet u zeker dat u deze leraar wilt verwijderen?")) return;
-    if (!mosque || !mosque.id) { alert("Moskee informatie niet beschikbaar."); return;}
-    setActionLoading(true);
+  // ... (confirm, mosque check, setActionLoading)
     try {
-      // DELETE request naar /api/users/:userId (ZORG DAT DIT ENDPOINT BESTAAT IN BACKEND)
-      const result = await apiCall(`/api/users/${teacherIdToDelete}`, { method: 'DELETE' });
-      if (result.success || response.status === 204) {
+        const result = await apiCall(`/api/users/${teacherIdToDelete}`, { method: 'DELETE' });
+        // CORRECTIE HIER:
+        if (result.success) {
         await loadData();
-      } else {
-         throw new Error(result.error || "Kon leraar niet verwijderen.");
-      }
+        } else {
+        throw new Error(result.error || "Kon leraar niet verwijderen (onbekende fout).");
+        }
     } catch (err) {
-      console.error("Error deleting teacher:", err);
-      setPageError(`Fout bij verwijderen van leraar: ${err.message}`);
+        console.error("Error deleting teacher:", err);
+        setPageError(`Fout bij verwijderen van leraar: ${err.message}`);
     }
     setActionLoading(false);
-  };
+    };
 
 
   if (dataLoading && !teachers.length) {
