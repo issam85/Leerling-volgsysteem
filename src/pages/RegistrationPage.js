@@ -114,7 +114,7 @@ const RegistrationPage = () => {
                 <legend className="text-lg font-medium text-gray-700 px-2">Moskee Gegevens</legend>
                 <div className="space-y-4 mt-2">
                   <Input label="Naam van de Moskee *" name="mosqueName" value={formData.mosqueName} onChange={handleChange} required />
-                  <Input label="Gewenst Subdomein (voor mijlvs.nl) *" name="subdomain" value={formData.subdomain} onChange={handleChange} placeholder="bijv. alistiqama (alleen kleine letters, cijfers, koppeltekens)" required />
+                  <Input label="Gewenst Subdomein (voor mijnlvs.nl) *" name="subdomain" value={formData.subdomain} onChange={handleChange} placeholder="moet uniek zijn" required />
                   <Input label="Adres (straat & nr)" name="address" value={formData.address} onChange={handleChange} />
                   <div className="grid md:grid-cols-2 gap-4"> <Input label="Postcode" name="zipcode" value={formData.zipcode} onChange={handleChange} /> <Input label="Stad" name="city" value={formData.city} onChange={handleChange} /> </div>
                   <div className="grid md:grid-cols-2 gap-4"> <Input label="Telefoonnummer Moskee" name="phone" type="tel" value={formData.phone} onChange={handleChange} /> <Input label="Contact Email Moskee" name="email" type="email" value={formData.email} onChange={handleChange} /> </div>
