@@ -6,7 +6,7 @@ import { generateTempPassword } from '../../../utils/authHelpers';
 import { calculateParentPaymentStatus } from '../../../utils/financials';
 import Button from '../../../components/Button';
 import AddParentModal from './AddParentModal';
-import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle, KeyRound } from 'lucide-react'; // KeyRound toegevoegd
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,29 +28,37 @@ const ParentsTab = () => {
   const [modalErrorText, setModalErrorText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [expandedParentId, setExpandedParentId] = useState(null);
+  const [pageMessage, setPageMessage] = useState({ type: '', text: '' }); // Voor feedbackberichten
   const navigate = useNavigate();
 
   const parents = users ? users.filter(u => u.role === 'parent') : [];
 
   useEffect(() => {
-    if (dataError) setPageError(dataError);
-    else setPageError('');
+    if (dataError) {
+      setPageError(dataError);
+      setPageMessage({ type: '', text: '' }); // Reset page message on new data error
+    } else {
+      setPageError('');
+    }
   }, [dataError]);
 
   const handleOpenAddModal = () => {
     setEditingParent(null);
     setShowAddParentModal(true);
     setModalErrorText('');
+    setPageMessage({ type: '', text: '' }); // Reset page message
   };
 
   const handleOpenEditModal = (parent) => {
     setEditingParent(parent);
     setShowAddParentModal(true);
     setModalErrorText('');
+    setPageMessage({ type: '', text: '' }); // Reset page message
   };
 
   const handleParentSubmit = async (parentDataFromModal) => {
     setModalErrorText('');
+    setPageMessage({ type: '', text: '' }); 
     console.log("[ParentsTab] parentDataFromModal received for submit:", JSON.stringify(parentDataFromModal, null, 2));
 
     const requiredFields = ['name', 'email', 'phone', 'address', 'zipcode', 'city'];
@@ -105,6 +113,7 @@ const ParentsTab = () => {
         setShowAddParentModal(false);
         setEditingParent(null);
         await loadData(); 
+        setPageMessage({ type: 'success', text: `Ouder succesvol ${editingParent ? 'bewerkt' : 'toegevoegd'}.` });
         setActionLoading(false);
         return true; 
       } else {
@@ -131,16 +140,42 @@ const ParentsTab = () => {
     }
     setActionLoading(true);
     setPageError('');
+    setPageMessage({ type: '', text: '' });
     try {
       const result = await apiCall(`/api/users/${parentIdToDelete}`, { method: 'DELETE' });
       if (result.success) {
         await loadData();
+        setPageMessage({ type: 'success', text: 'Ouder succesvol verwijderd.' });
       } else {
         throw new Error(result.error || "Kon ouder niet verwijderen.");
       }
     } catch (err) {
       console.error("Error deleting parent:", err);
       setPageError(`Fout bij verwijderen van ouder: ${err.message}`);
+    }
+    setActionLoading(false);
+  };
+
+  const handleSendNewPassword = async (parent) => {
+    if (!window.confirm(`Weet u zeker dat u een nieuw tijdelijk wachtwoord wilt sturen naar ${parent.name} (${parent.email})? De ouder moet hiermee opnieuw inloggen en het wachtwoord wijzigen.`)) {
+      return;
+    }
+    setActionLoading(true);
+    setPageMessage({ type: '', text: '' }); 
+    try {
+      const result = await apiCall(`/api/users/${parent.id}/send-new-password`, { method: 'POST' });
+      if (result.success) {
+        setPageMessage({ type: 'success', text: result.message });
+      } else {
+        let errMsg = result.error || 'Kon nieuw wachtwoord niet versturen.';
+        if (result.details?.newPasswordForManualDelivery) {
+            errMsg += ` U kunt het wachtwoord handmatig doorgeven: ${result.details.newPasswordForManualDelivery}`;
+        }
+        setPageMessage({ type: 'error', text: errMsg });
+      }
+    } catch (err) {
+      console.error("Error sending new password to parent:", err);
+      setPageMessage({ type: 'error', text: `Fout bij versturen nieuw wachtwoord: ${err.message}` });
     }
     setActionLoading(false);
   };
@@ -162,6 +197,12 @@ const ParentsTab = () => {
           Nieuwe Ouder
         </Button>
       </div>
+      
+      {pageMessage.text && (
+        <div className={`my-4 p-3 rounded-md text-sm ${pageMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          {pageMessage.text}
+        </div>
+      )}
 
       {pageError && (
         <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
@@ -205,6 +246,16 @@ const ParentsTab = () => {
                     {paymentInfo.paymentStatus.replace('_', ' ')}
                   </div>
                   <div className="col-span-12 sm:col-span-4 lg:col-span-2 flex justify-end items-center space-x-1 mt-2 sm:mt-0">
+                     <Button 
+                        onClick={(e) => { e.stopPropagation(); handleSendNewPassword(parent);}} 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-orange-600 hover:text-orange-800 p-1.5" 
+                        title="Nieuw wachtwoord sturen"
+                        disabled={actionLoading}
+                     >
+                        <KeyRound size={16} />
+                     </Button>
                      <Button onClick={(e) => { e.stopPropagation(); handleOpenEditModal(parent);}} variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 p-1.5" title="Bewerken" disabled={actionLoading}> <Edit3 size={16} /> </Button>
                      <Button onClick={(e) => { e.stopPropagation(); handleDeleteParent(parent.id);}} variant="ghost" size="sm" className="text-red-600 hover:text-red-800 p-1.5" title="Verwijderen" disabled={actionLoading}> <Trash2 size={16} /> </Button>
                      <span className="p-1.5 text-gray-400">{isExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</span>

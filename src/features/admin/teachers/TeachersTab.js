@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
-import { generateTempPassword, sendUserWelcomeEmailViaBackend } from '../../../utils/authHelpers';
+import { generateTempPassword } from '../../../utils/authHelpers'; // Als je ook hier een welkomstmail zou sturen
 import Button from '../../../components/Button';
-import AddTeacherModal from './AddTeacherModal';
-import { User as UserIcon, Plus, Edit3, Trash2, Mail, AlertCircle } from 'lucide-react';
+import AddTeacherModal from './AddTeacherModal'; // Aangenomen dat je deze hebt
+import { Users, Plus, Edit3, Trash2, KeyRound, AlertCircle } from 'lucide-react'; // KeyRound toegevoegd
 import LoadingSpinner from '../../../components/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
+
 
 const TeachersTab = () => {
   const { realData, loadData } = useData();
@@ -16,31 +18,51 @@ const TeachersTab = () => {
   const [pageError, setPageError] = useState('');
   const [modalErrorText, setModalErrorText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [pageMessage, setPageMessage] = useState({ type: '', text: '' });
+  const navigate = useNavigate();
 
-  const teachers = users.filter(u => u.role === 'teacher');
+  const teachers = users ? users.filter(u => u.role === 'teacher') : [];
 
   useEffect(() => {
-    if (dataError) setPageError(dataError); else setPageError('');
+    if (dataError) {
+        setPageError(dataError);
+        setPageMessage({ type: '', text: '' });
+    } else {
+        setPageError('');
+    }
   }, [dataError]);
 
   const handleOpenAddModal = () => {
     setEditingTeacher(null);
     setShowAddTeacherModal(true);
     setModalErrorText('');
+    setPageMessage({ type: '', text: '' });
   };
 
   const handleOpenEditModal = (teacher) => {
     setEditingTeacher(teacher);
     setShowAddTeacherModal(true);
     setModalErrorText('');
+    setPageMessage({ type: '', text: '' });
   };
 
   const handleTeacherSubmit = async (teacherDataFromModal) => {
     setModalErrorText('');
-    if (!teacherDataFromModal.name.trim() || !teacherDataFromModal.email.trim()) {
-      setModalErrorText('Naam en email zijn verplicht.');
+    setPageMessage({ type: '', text: '' });
+    console.log("[TeachersTab] teacherDataFromModal received:", JSON.stringify(teacherDataFromModal, null, 2));
+
+    const requiredFields = ['name', 'email']; // Pas aan indien nodig
+    for (const field of requiredFields) {
+      if (!teacherDataFromModal[field] || !String(teacherDataFromModal[field]).trim()) {
+        setModalErrorText(`Veld "${field.charAt(0).toUpperCase() + field.slice(1)}" is verplicht.`);
+        return false;
+      }
+    }
+    if (!/\S+@\S+\.\S+/.test(teacherDataFromModal.email.trim())) {
+      setModalErrorText('Voer een geldig emailadres in.');
       return false;
     }
+
     if (!mosque || !mosque.id) {
       setModalErrorText("Moskee informatie niet beschikbaar.");
       return false;
@@ -52,72 +74,35 @@ const TeachersTab = () => {
       const payloadBase = {
         name: teacherDataFromModal.name.trim(),
         email: teacherDataFromModal.email.trim(),
+        phone: teacherDataFromModal.phone?.trim() || null, // Optioneel veld
         role: 'teacher',
-        // Andere velden zoals phone, address kunnen hier ook als ze in AddTeacherModal zijn
       };
 
       if (editingTeacher) {
-        // PUT request naar /api/users/:userId (ZORG DAT DIT ENDPOINT BESTAAT IN BACKEND)
-        // Zorg dat je backend de mosque_id check doet of dat de user bij de mosque hoort
         result = await apiCall(`/api/users/${editingTeacher.id}`, {
           method: 'PUT',
           body: JSON.stringify(payloadBase),
         });
       } else {
         const tempPassword = generateTempPassword();
-        const payload = {
-          ...payloadBase,
-          password: tempPassword,
-          mosque_id: mosque.id, // Vereist door je backend /api/users POST
+        const payload = { 
+            ...payloadBase, 
+            password: tempPassword, 
+            mosque_id: mosque.id,
+            // Stuur 'sendWelcomeEmail' mee als je die checkbox ook voor leraren hebt
+            // sendWelcomeEmail: teacherDataFromModal.sendEmail 
         };
-        // POST request naar /api/users
-        result = await apiCall(`/api/users`, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-
-        // Je backend geeft { success: true, user: ... } terug
-        if ((result.success || result.user) && teacherDataFromModal.sendEmail) {
-          // Stuur welkomstmail
-          if (mosque.m365_configured && mosque.m365_tenant_id && mosque.m365_client_id && mosque.m365_sender_email) {
-            // Client Secret is hier het probleem. Je backend /api/send-email-m365 verwacht het.
-            // De frontend zou de secret niet moeten bewaren.
-            // OPLOSSING: Je backend /api/users POST endpoint kan de email direct triggeren na user creatie,
-            // gebruikmakend van de opgeslagen M365 secret.
-            // OF: De frontend moet de secret (tijdelijk) hebben na M365 configuratie om mee te sturen.
-            // Voor nu: aanname dat je de secret *ergens* vandaan haalt voor de API call.
-            // Dit is een placeholder, want 'DE_M365_CLIENT_SECRET_HIER' is niet correct.
-            console.warn("Client Secret voor M365 email is nodig maar niet veilig beschikbaar hier. Overweeg backend-triggered email.");
-            const m365ApiCredentials = {
-                tenantId: mosque.m365_tenant_id,
-                clientId: mosque.m365_client_id,
-                clientSecret: "DE_M365_CLIENT_SECRET_HIER_VEILIG_VERKRIJGEN_OF_BACKEND_LATEN_DOEN", // ZEER BELANGRIJK AANDACHTSPUNT
-                senderEmail: mosque.m365_sender_email,
-            };
-            if (m365ApiCredentials.clientSecret !== "DE_M365_CLIENT_SECRET_HIER_VEILIG_VERKRIJGEN_OF_BACKEND_LATEN_DOEN") { // Alleen als secret echt is verkregen
-                 await sendUserWelcomeEmailViaBackend(
-                    apiCall,
-                    (result.user || result.data).name, // Afhankelijk van backend response structuur
-                    (result.user || result.data).email,
-                    tempPassword,
-                    mosque.name,
-                    'teacher',
-                    m365ApiCredentials
-                );
-            } else {
-                 setModalErrorText(prev => (prev ? prev + " " : "") + "Leraar toegevoegd, maar welkomstmail kon niet worden verzonden (M365 secret niet beschikbaar).");
-            }
-
-          } else {
-            setModalErrorText(prev => (prev ? prev + " " : "") + "Leraar toegevoegd, maar M365 is niet (volledig) geconfigureerd voor emails.");
-          }
-        }
+        result = await apiCall(`/api/users`, { method: 'POST', body: JSON.stringify(payload) });
+        // Optioneel: Logica voor welkomstmail voor leraren, vergelijkbaar met ParentsTab,
+        // maar de backend /api/users route stuurt nu alleen mail voor 'parent' rol.
+        // Je zou de backend moeten aanpassen als leraren ook een automatische welkomstmail moeten krijgen.
       }
 
       if (result.success || result.user || result.data) {
         setShowAddTeacherModal(false);
         setEditingTeacher(null);
         await loadData();
+        setPageMessage({ type: 'success', text: `Leraar succesvol ${editingTeacher ? 'bewerkt' : 'toegevoegd'}.` });
         setActionLoading(false);
         return true;
       } else {
@@ -132,24 +117,51 @@ const TeachersTab = () => {
   };
 
   const handleDeleteTeacher = async (teacherIdToDelete) => {
-  // ... (confirm, mosque check, setActionLoading)
+    if (!window.confirm("Weet u zeker dat u deze leraar wilt verwijderen? Gekoppelde klassen zullen handmatig een nieuwe leraar moeten krijgen.")) return;
+    
+    setActionLoading(true);
+    setPageError('');
+    setPageMessage({ type: '', text: '' });
     try {
-        const result = await apiCall(`/api/users/${teacherIdToDelete}`, { method: 'DELETE' });
-        // CORRECTIE HIER:
-        if (result.success) {
+      const result = await apiCall(`/api/users/${teacherIdToDelete}`, { method: 'DELETE' });
+      if (result.success) {
         await loadData();
-        } else {
-        throw new Error(result.error || "Kon leraar niet verwijderen (onbekende fout).");
-        }
+        setPageMessage({ type: 'success', text: 'Leraar succesvol verwijderd.' });
+      } else {
+        throw new Error(result.error || "Kon leraar niet verwijderen.");
+      }
     } catch (err) {
-        console.error("Error deleting teacher:", err);
-        setPageError(`Fout bij verwijderen van leraar: ${err.message}`);
+      console.error("Error deleting teacher:", err);
+      setPageError(`Fout bij verwijderen van leraar: ${err.message}`);
     }
     setActionLoading(false);
-    };
+  };
 
+  const handleSendNewPassword = async (teacher) => {
+    if (!window.confirm(`Weet u zeker dat u een nieuw tijdelijk wachtwoord wilt sturen naar ${teacher.name} (${teacher.email})? De leraar moet hiermee opnieuw inloggen en het wachtwoord wijzigen.`)) {
+      return;
+    }
+    setActionLoading(true);
+    setPageMessage({ type: '', text: '' });
+    try {
+      const result = await apiCall(`/api/users/${teacher.id}/send-new-password`, { method: 'POST' });
+      if (result.success) {
+        setPageMessage({ type: 'success', text: result.message });
+      } else {
+        let errMsg = result.error || 'Kon nieuw wachtwoord niet versturen.';
+        if (result.details?.newPasswordForManualDelivery) {
+            errMsg += ` U kunt het wachtwoord handmatig doorgeven: ${result.details.newPasswordForManualDelivery}`;
+        }
+        setPageMessage({ type: 'error', text: errMsg });
+      }
+    } catch (err) {
+      console.error("Error sending new password to teacher:", err);
+      setPageMessage({ type: 'error', text: `Fout bij versturen nieuw wachtwoord: ${err.message}` });
+    }
+    setActionLoading(false);
+  };
 
-  if (dataLoading && !teachers.length) {
+  if (dataLoading && (!teachers || teachers.length === 0)) {
     return <LoadingSpinner message="Leraren laden..." />;
   }
 
@@ -163,40 +175,55 @@ const TeachersTab = () => {
         </Button>
       </div>
 
+      {pageMessage.text && (
+        <div className={`my-4 p-3 rounded-md text-sm ${pageMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          {pageMessage.text}
+        </div>
+      )}
+
       {pageError && (
         <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
           <AlertCircle size={20} className="mr-2" /> {pageError}
         </div>
       )}
 
-      {teachers.length === 0 && !dataLoading ? (
+      {!dataLoading && teachers && teachers.length === 0 ? (
         <div className="card text-center">
-          <UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen leraren</h3>
-          <p className="text-gray-600">Voeg leraren toe om klassen en leerlingen te kunnen beheren.</p>
+          <p className="text-gray-600">Voeg leraren toe om klassen aan te kunnen maken.</p>
         </div>
-      ) : (
-        <div className="table-responsive-wrapper bg-white rounded-xl shadow border">
+      ) : teachers && teachers.length > 0 ? (
+        <div className="bg-white rounded-xl shadow-md overflow-x-auto border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Naam</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefoon</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acties</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefoon</th>
+                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Acties</span></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {teachers.map(teacher => (
-                <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate" title={teacher.id}>{teacher.id.substring(0,8)}...</td>
+                <tr key={teacher.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono" title={teacher.id}>{teacher.id.substring(0,8)}...</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{teacher.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{teacher.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{teacher.phone || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{teacher.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{teacher.phone || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                    <Button 
+                        onClick={() => handleSendNewPassword(teacher)} 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-orange-600 hover:text-orange-800 p-1.5" 
+                        title="Nieuw wachtwoord sturen"
+                        disabled={actionLoading}
+                    >
+                        <KeyRound size={16} />
+                    </Button>
                     <Button onClick={() => handleOpenEditModal(teacher)} variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 p-1.5" title="Bewerken" disabled={actionLoading}> <Edit3 size={16} /> </Button>
-                    {/* TODO: Knop om welkomstmail opnieuw te sturen? */}
                     <Button onClick={() => handleDeleteTeacher(teacher.id)} variant="ghost" size="sm" className="text-red-600 hover:text-red-800 p-1.5" title="Verwijderen" disabled={actionLoading}> <Trash2 size={16} /> </Button>
                   </td>
                 </tr>
@@ -204,7 +231,7 @@ const TeachersTab = () => {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {showAddTeacherModal && (
         <AddTeacherModal
@@ -212,7 +239,7 @@ const TeachersTab = () => {
           onClose={() => { setShowAddTeacherModal(false); setEditingTeacher(null); setModalErrorText(''); }}
           onSubmit={handleTeacherSubmit}
           initialData={editingTeacher}
-          modalError={modalErrorText}
+          modalError={modalErrorText} // Property naam consistent houden
           isLoading={actionLoading}
         />
       )}
