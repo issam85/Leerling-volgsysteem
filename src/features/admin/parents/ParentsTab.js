@@ -2,13 +2,22 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
-import { generateTempPassword } from '../../../utils/authHelpers'; // sendUserWelcomeEmailViaBackend is niet meer nodig hier
+import { generateTempPassword } from '../../../utils/authHelpers';
 import { calculateParentPaymentStatus } from '../../../utils/financials';
 import Button from '../../../components/Button';
 import AddParentModal from './AddParentModal';
 import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
+
+// Helper functie om valuta te formatteren en NaN/null/undefined te voorkomen
+const formatCurrency = (value) => {
+  const number = parseFloat(value);
+  if (!isNaN(number)) {
+    return number.toFixed(2);
+  }
+  return '0.00'; // Fallback waarde als het geen geldig getal is
+};
 
 const ParentsTab = () => {
   const { realData, loadData } = useData();
@@ -40,7 +49,6 @@ const ParentsTab = () => {
     setModalErrorText('');
   };
 
-  // AANGEPAST: E-maillogica verwijderd uit frontend. Backend handelt dit af.
   const handleParentSubmit = async (parentDataFromModal) => {
     setModalErrorText('');
     console.log("[ParentsTab] parentDataFromModal received for submit:", JSON.stringify(parentDataFromModal, null, 2));
@@ -78,22 +86,18 @@ const ParentsTab = () => {
       };
 
       if (editingParent) {
-        // Logica voor bewerken blijft hetzelfde
         result = await apiCall(`/api/users/${editingParent.id}`, {
           method: 'PUT',
           body: JSON.stringify(payloadBase),
         });
       } else {
-        // Logica voor nieuwe ouder: e-maillogica is hier verwijderd.
         const tempPassword = generateTempPassword();
-        
         const payload = { 
             ...payloadBase, 
             password: tempPassword, 
             mosque_id: mosque.id,
-            sendWelcomeEmail: parentDataFromModal.sendEmail // Stuur de checkbox-waarde mee
+            sendWelcomeEmail: parentDataFromModal.sendEmail 
         };
-        
         result = await apiCall(`/api/users`, { method: 'POST', body: JSON.stringify(payload) });
       }
 
@@ -211,10 +215,10 @@ const ParentsTab = () => {
                     <h4 className="text-sm font-semibold text-gray-800 mb-1">Details voor {parent.name}:</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-xs">
                         <div><strong>Telefoon:</strong> {parent.phone || '-'}</div>
-                        <div><strong>Verschuldigd:</strong> €{paymentInfo.amountDue != null ? paymentInfo.amountDue.toFixed(2) : '0.00'}</div>
-                        <div><strong>Betaald:</strong> €{paymentInfo.totalPaid != null ? paymentInfo.totalPaid.toFixed(2) : '0.00'}</div>
+                        <div><strong>Verschuldigd:</strong> €{formatCurrency(paymentInfo.amountDue)}</div>
+                        <div><strong>Betaald:</strong> €{formatCurrency(paymentInfo.totalPaid)}</div>
                         <div className={parseFloat(paymentInfo.remainingBalance) > 0 ? 'font-semibold text-red-600' : 'text-green-600'}>
-                            <strong>Openstaand:</strong> €{paymentInfo.remainingBalance != null ? paymentInfo.remainingBalance.toFixed(2) : '0.00'}
+                            <strong>Openstaand:</strong> €{formatCurrency(paymentInfo.remainingBalance)}
                         </div>
                         <div><strong>Account ID:</strong> <span className="font-mono truncate" title={parent.id}>{parent.id ? parent.id.substring(0,8) + '...' : '-'}</span></div>
                         <div><strong>Geregistreerd op:</strong> {parent.created_at ? new Date(parent.created_at).toLocaleDateString('nl-NL') : '-'}</div>
