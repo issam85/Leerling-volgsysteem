@@ -12,8 +12,7 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
     address: '',
     zipcode: '',
     city: '',
-    amount_due_input: '0.00', // Gebruik een aparte state voor de input string
-    sendEmail: true,
+    sendEmail: true, // amount_due_input is verwijderd
   });
   const [formValidationError, setFormValidationError] = useState('');
 
@@ -26,8 +25,8 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
         address: initialData?.address || '',
         zipcode: initialData?.zipcode || '',
         city: initialData?.city || '',
-        amount_due_input: initialData?.amount_due ? String(parseFloat(initialData.amount_due).toFixed(2)) : '0.00',
-        sendEmail: !initialData,
+        // amount_due wordt nu door backend beheerd o.b.v. studenten
+        sendEmail: !initialData, // Alleen standaard aanvinken bij nieuwe ouder
       });
       setFormValidationError('');
     }
@@ -44,10 +43,10 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormValidationError('');
-    const requiredFields = ['name', 'email', 'phone', 'address', 'zipcode', 'city', 'amount_due_input'];
+    const requiredFields = ['name', 'email', 'phone', 'address', 'zipcode', 'city'];
     for (const field of requiredFields) {
       if (!formData[field] || !String(formData[field]).trim()) {
-        setFormValidationError(`Veld "${field === 'amount_due_input' ? 'Maandelijkse Bijdrage' : field.charAt(0).toUpperCase() + field.slice(1)}" is verplicht.`);
+        setFormValidationError(`Veld "${field.charAt(0).toUpperCase() + field.slice(1)}" is verplicht.`);
         return;
       }
     }
@@ -55,14 +54,10 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
       setFormValidationError('Voer een geldig emailadres in.');
       return;
     }
-    const parsedAmountDue = parseFloat(formData.amount_due_input);
-    if (isNaN(parsedAmountDue) || parsedAmountDue < 0) {
-      setFormValidationError('Voer een geldig bedrag in voor de maandelijkse bijdrage (0 of hoger).');
-      return;
-    }
 
-    // Stuur de data door, inclusief de correct geparste amount_due
-    const success = await onSubmit({ ...formData, amount_due_input: parsedAmountDue }); // Parent handelt sluiten af
+    // `amount_due` wordt niet meer meegestuurd vanuit dit formulier.
+    // De backend zet het initieel op 0 voor een nieuwe ouder.
+    const success = await onSubmit(formData); // Parent (ParentsTab) handelt sluiten af
   };
 
   return (
@@ -84,14 +79,14 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
           <Input label="Volledige Naam *" name="name" value={formData.name} onChange={handleChange} required />
           <Input label="Emailadres *" name="email" type="email" value={formData.email} onChange={handleChange} required />
-          <Input label="Telefoonnummer *" name="phone" type="tel" value={formData.phone} onChange={handleChange} required />
-          <Input label="Maandelijkse Bijdrage (€) *" name="amount_due_input" type="number" value={formData.amount_due_input} onChange={handleChange} min="0" step="0.01" placeholder="0.00" required/>
         </div>
+        <Input label="Telefoonnummer *" name="phone" type="tel" value={formData.phone} onChange={handleChange} required />
         <Input label="Adres (Straat en huisnummer) *" name="address" value={formData.address} onChange={handleChange} required />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
           <Input label="Postcode *" name="zipcode" value={formData.zipcode} onChange={handleChange} required />
           <Input label="Woonplaats *" name="city" value={formData.city} onChange={handleChange} required />
         </div>
+        {/* Input voor amount_due is hier verwijderd */}
 
         {!initialData && (
           <div className="flex items-center pt-2">
