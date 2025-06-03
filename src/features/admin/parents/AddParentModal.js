@@ -12,7 +12,7 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
     address: '',
     zipcode: '',
     city: '',
-    sendEmail: true, // amount_due_input is verwijderd
+    sendEmail: true, // Standaard aangevinkt voor nieuwe ouder
   });
   const [formValidationError, setFormValidationError] = useState('');
 
@@ -25,10 +25,10 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
         address: initialData?.address || '',
         zipcode: initialData?.zipcode || '',
         city: initialData?.city || '',
-        // amount_due wordt nu door backend beheerd o.b.v. studenten
-        sendEmail: !initialData, // Alleen standaard aanvinken bij nieuwe ouder
+        sendEmail: !initialData, // Alleen standaard aanvinken bij nieuwe ouder, anders default van state (true)
       });
-      setFormValidationError('');
+      setFormValidationError(''); 
+      // apiErrorProp wordt extern beheerd, hier niet resetten
     }
   }, [isOpen, initialData]);
 
@@ -42,11 +42,14 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormValidationError('');
+    setFormValidationError(''); 
+    
     const requiredFields = ['name', 'email', 'phone', 'address', 'zipcode', 'city'];
     for (const field of requiredFields) {
       if (!formData[field] || !String(formData[field]).trim()) {
-        setFormValidationError(`Veld "${field.charAt(0).toUpperCase() + field.slice(1)}" is verplicht.`);
+        let fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
+        if (field === 'zipcode') fieldLabel = 'Postcode';
+        setFormValidationError(`Veld "${fieldLabel}" is verplicht.`);
         return;
       }
     }
@@ -55,15 +58,16 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
       return;
     }
 
-    // `amount_due` wordt niet meer meegestuurd vanuit dit formulier.
-    // De backend zet het initieel op 0 voor een nieuwe ouder.
-    const success = await onSubmit(formData); // Parent (ParentsTab) handelt sluiten af
+    // De onSubmit (handleParentSubmit in ParentsTab) retourneert true/false
+    // wat gebruikt kan worden om te bepalen of de modal gesloten moet worden.
+    // In ParentsTab wordt dit al afgehandeld (setShowAddParentModal(false)).
+    await onSubmit(formData); 
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={onClose} // onClose wordt aangeroepen door Modal component zelf bij escape of buiten klikken
       title={initialData ? "Ouder Bewerken" : "Nieuwe Ouder Toevoegen"}
       size="lg"
       footer={
@@ -77,24 +81,33 @@ const AddParentModal = ({ isOpen, onClose, onSubmit, initialData, modalError: ap
     >
       <form id="addParentForm" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-          <Input label="Volledige Naam *" name="name" value={formData.name} onChange={handleChange} required />
-          <Input label="Emailadres *" name="email" type="email" value={formData.email} onChange={handleChange} required />
+          <Input label="Volledige Naam *" name="name" value={formData.name} onChange={handleChange} required placeholder="Jan Jansen"/>
+          <Input label="Emailadres *" name="email" type="email" value={formData.email} onChange={handleChange} required placeholder="ouder@email.com"/>
         </div>
-        <Input label="Telefoonnummer *" name="phone" type="tel" value={formData.phone} onChange={handleChange} required />
-        <Input label="Adres (Straat en huisnummer) *" name="address" value={formData.address} onChange={handleChange} required />
+        <Input label="Telefoonnummer *" name="phone" type="tel" value={formData.phone} onChange={handleChange} required placeholder="0612345678"/>
+        <Input label="Adres (Straat en huisnummer) *" name="address" value={formData.address} onChange={handleChange} required placeholder="Voorbeeldstraat 123"/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-          <Input label="Postcode *" name="zipcode" value={formData.zipcode} onChange={handleChange} required />
-          <Input label="Woonplaats *" name="city" value={formData.city} onChange={handleChange} required />
+          <Input label="Postcode *" name="zipcode" value={formData.zipcode} onChange={handleChange} required placeholder="1234 AB"/>
+          <Input label="Woonplaats *" name="city" value={formData.city} onChange={handleChange} required placeholder="Amsterdam"/>
         </div>
-        {/* Input voor amount_due is hier verwijderd */}
-
-        {!initialData && (
+        
+        {!initialData && ( // Alleen tonen voor nieuwe ouder
           <div className="flex items-center pt-2">
-            <input id="sendWelcomeEmailParent" name="sendEmail" type="checkbox" checked={formData.sendEmail} onChange={handleChange} className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-offset-0"/>
+            <input 
+                id="sendWelcomeEmailParent" 
+                name="sendEmail" 
+                type="checkbox" 
+                checked={formData.sendEmail} 
+                onChange={handleChange} 
+                className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-offset-0"
+            />
             <label htmlFor="sendWelcomeEmailParent" className="ml-2 block text-sm text-gray-900">Welkomstmail met inloggegevens versturen</label>
           </div>
         )}
-        {apiErrorProp && <p className="text-red-500 bg-red-100 p-2 rounded-md text-sm">{apiErrorProp}</p>}
+
+        {/* Toon API error van de prop (door ParentsTab gezet) */}
+        {apiErrorProp && <p className="text-red-500 bg-red-100 p-2 rounded-md text-sm mt-2">{apiErrorProp}</p>}
+        {/* Toon client-side validatiefout */}
         {formValidationError && <p className="text-red-500 text-sm mt-2">{formValidationError}</p>}
       </form>
     </Modal>
