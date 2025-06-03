@@ -129,8 +129,7 @@ const M365ConfigModal = ({ isOpen, onClose, onSubmit, initialConfig, isLoading, 
         <Input label="Afzender Emailadres (Vanuit M365) *" name="senderEmail" type="email" value={configForm.senderEmail} onChange={handleChange} placeholder="bijv. noreply@uwdomein.com" required />
 
         {formValidationError && <p className="text-red-600 bg-red-100 p-2 rounded-md text-sm">{formValidationError}</p>}
-        {apiErrorProp && <p className="text-red-600 bg-red-100 p-2 rounded-md text-sm">{apiErrorProp}</p>}
-
+        
         <div className="pt-5 border-t mt-6">
             <h4 className="text-md font-semibold text-gray-700 mb-2">Test Email Versturen</h4>
             <p className="text-xs text-gray-500 mb-2">Sla eerst de configuratie op als u wijzigingen heeft gemaakt voordat u test. Als de Client Secret hierboven leeg is, zal de test proberen de reeds opgeslagen secret te gebruiken (indien M365 al geconfigureerd was).</p>
