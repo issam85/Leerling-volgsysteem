@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import Button from '../../../components/Button';
-import M365ConfigModal from './M365ConfigModal';
+import M365ConfigModal from './M365ConfigModal'; // Zorg dat dit pad correct is
 import { Building, Mail, ServerCog, CheckCircle, XCircle, Edit, AlertCircle, Save, SlidersHorizontal } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Input from '../../../components/Input';
@@ -13,7 +13,7 @@ const SettingsTab = () => {
   const { mosque, loading: dataLoading, error: dataError } = realData;
 
   const [showM365ConfigModal, setShowM365ConfigModal] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false); // Voor opslaan acties
+  const [actionLoading, setActionLoading] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
 
   // State voor moskee basisgegevens formulier
@@ -21,15 +21,18 @@ const SettingsTab = () => {
     name: '', address: '', city: '', zipcode: '', phone: '', email: '', website: ''
   });
 
-  // State voor M365 configuratie (alleen voor weergave en doorgeven aan modal)
+  // State voor M365 configuratie (voor weergave en doorgeven aan modal)
   const [displayM365Config, setDisplayM365Config] = useState({
     tenantId: '', clientId: '', configured: false, senderEmail: ''
   });
 
   // State voor bijdrage staffel formulier
   const [contributionSettingsForm, setContributionSettingsForm] = useState({
-    contribution_1_child: '', contribution_2_children: '', contribution_3_children: '',
-    contribution_4_children: '', contribution_5_plus_children: '',
+    contribution_1_child: '',
+    contribution_2_children: '',
+    contribution_3_children: '',
+    contribution_4_children: '',
+    contribution_5_plus_children: '',
   });
 
   // Effect om form states te vullen wanneer mosque data uit context verandert
@@ -45,7 +48,7 @@ const SettingsTab = () => {
         email: mosque.email || '',
         website: mosque.website || '',
       });
-      setDisplayM365Config({ // Deze state is voor het tonen van de geconfigureerde M365 data
+      setDisplayM365Config({
         tenantId: mosque.m365_tenant_id || '',
         clientId: mosque.m365_client_id || '',
         configured: mosque.m365_configured || false,
@@ -58,10 +61,10 @@ const SettingsTab = () => {
         contribution_4_children: mosque.contribution_4_children !== null ? String(mosque.contribution_4_children) : '450',
         contribution_5_plus_children: mosque.contribution_5_plus_children !== null ? String(mosque.contribution_5_plus_children) : '450',
       });
-      setFormMessage({ type: '', text: '' }); // Clear message on mosque data refresh
+      // Clear any previous message when new mosque data comes in
+      // setFormMessage({ type: '', text: '' }); // Kan flikkeren veroorzaken als je net een succesmsg had
     } else {
         console.log("[SettingsTab] useEffect: mosque data is null or undefined. Resetting forms.");
-        // Reset forms if mosque data becomes null (e.g., on logout or error)
         setMosqueDetailsForm({ name: '', address: '', city: '', zipcode: '', phone: '', email: '', website: '' });
         setDisplayM365Config({ tenantId: '', clientId: '', configured: false, senderEmail: '' });
         setContributionSettingsForm({ contribution_1_child: '150', contribution_2_children: '300', contribution_3_children: '450', contribution_4_children: '450', contribution_5_plus_children: '450' });
@@ -72,7 +75,7 @@ const SettingsTab = () => {
     setFormMessage({ type: '', text: '' });
     if (!mosque || !mosque.id) { setFormMessage({ type: 'error', text: 'Moskee ID niet gevonden.' }); return false; }
     if (!configDataFromModal.tenantId || !configDataFromModal.clientId || !configDataFromModal.senderEmail) { setFormMessage({ type: 'error', text: 'Tenant ID, Client ID en Afzender Email zijn verplicht.'}); return false; }
-    if (!displayM365Config.configured && !configDataFromModal.clientSecret) { setFormMessage({ type: 'error', text: 'Client Secret is verplicht voor de eerste configuratie.'}); return false; }
+    if (!displayM365Config.configured && !configDataFromModal.clientSecret.trim()) { setFormMessage({ type: 'error', text: 'Client Secret is verplicht voor de eerste configuratie.'}); return false; }
     
     setActionLoading(true);
     try {
@@ -88,12 +91,12 @@ const SettingsTab = () => {
       console.log("[SettingsTab] Saving M365 settings, payload:", JSON.stringify(payload, null, 2));
       const result = await apiCall(`/api/mosques/${mosque.id}/m365-settings`, { method: 'PUT', body: JSON.stringify(payload) });
       
-      if (result.success && result.data) { // Check for success and data from backend
+      if (result.success && result.data) {
         setFormMessage({ type: 'success', text: 'Microsoft 365 configuratie opgeslagen!' });
         setShowM365ConfigModal(false);
-        await loadData(); // Forceer refresh van alle data, inclusief moskee
+        await loadData();
         return true;
-      } else { throw new Error(result.error || "Kon M365 configuratie niet opslaan (onbekende serverrespons)."); }
+      } else { throw new Error(result.error || "Kon M365 configuratie niet opslaan."); }
     } catch (err) {
       console.error('Error saving M365 config:', err);
       setFormMessage({ type: 'error', text: `Fout bij opslaan M365: ${err.message}` });
@@ -114,10 +117,11 @@ const SettingsTab = () => {
     
     setActionLoading(true);
     try {
+      console.log("[SettingsTab] Saving Mosque details, payload:", JSON.stringify(mosqueDetailsForm, null, 2));
       const result = await apiCall(`/api/mosques/${mosque.id}`, { method: 'PUT', body: JSON.stringify(mosqueDetailsForm) });
       if (result.id || (result.success && result.data)) {
         setFormMessage({ type: 'success', text: 'Moskeegegevens succesvol opgeslagen!' });
-        await loadData(); // Forceer refresh
+        await loadData();
       } else { throw new Error(result.error || "Kon moskeegegevens niet opslaan."); }
     } catch (err) {
       console.error("Error saving mosque details:", err);
@@ -149,10 +153,11 @@ const SettingsTab = () => {
     
     setActionLoading(true);
     try {
+      console.log("[SettingsTab] Saving Contribution settings, payload:", JSON.stringify(payload, null, 2));
       const result = await apiCall(`/api/mosques/${mosque.id}/contribution-settings`, { method: 'PUT', body: JSON.stringify(payload) });
       if (result.success && result.data) {
         setFormMessage({ type: 'success', text: 'Instellingen voor bijdrage succesvol opgeslagen!' });
-        await loadData(); // Forceer refresh
+        await loadData();
       } else { throw new Error(result.error || "Kon bijdrage-instellingen niet opslaan."); }
     } catch (err) {
       console.error("Error saving contribution settings:", err);
@@ -229,14 +234,15 @@ const SettingsTab = () => {
          <div className="space-y-2 text-sm"> <div className="flex justify-between items-center p-3 rounded bg-gray-50 border"> <span>Backend API:</span> <span className="flex items-center font-semibold text-green-600"><CheckCircle size={16} className="mr-1.5"/>Verbonden</span> </div> </div>
       </div>
 
-      {showM365ConfigModal && (
+      {showM365ConfigModal && mosque && ( // Zorg dat mosque bestaat voordat je modal rendert
         <M365ConfigModal
           isOpen={showM365ConfigModal}
           onClose={() => setShowM365ConfigModal(false)}
           onSubmit={handleM365ConfigSave}
-          initialConfig={displayM365Config} // Geef de huidige display config mee
+          initialConfig={displayM365Config}
           isLoading={actionLoading}
-          mosqueName={mosque?.name || "Test Moskee"}
+          mosqueName={mosque.name || "Test Moskee"}
+          mosqueId={mosque.id} // Geef mosqueId mee
         />
       )}
     </div>
