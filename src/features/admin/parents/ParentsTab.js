@@ -6,7 +6,7 @@ import { generateTempPassword, sendUserWelcomeEmailViaBackend } from '../../../u
 import { calculateParentPaymentStatus } from '../../../utils/financials';
 import Button from '../../../components/Button';
 import AddParentModal from './AddParentModal';
-import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'; // DollarSign, MessageSquare, Info verwijderd als niet gebruikt
+import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,12 +16,11 @@ const ParentsTab = () => {
   const [showAddParentModal, setShowAddParentModal] = useState(false);
   const [editingParent, setEditingParent] = useState(null);
   const [pageError, setPageError] = useState('');
-  const [modalErrorText, setModalErrorText] = useState(''); // Fouten specifiek voor de modal
+  const [modalErrorText, setModalErrorText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [expandedParentId, setExpandedParentId] = useState(null);
   const navigate = useNavigate();
 
-  // Filter parents alleen als users data beschikbaar is
   const parents = users ? users.filter(u => u.role === 'parent') : [];
 
   useEffect(() => {
@@ -42,24 +41,19 @@ const ParentsTab = () => {
   };
 
   const handleParentSubmit = async (parentDataFromModal) => {
-    setModalErrorText(''); // Reset modal specifieke error
-    console.log("[ParentsTab] parentDataFromModal received:", JSON.stringify(parentDataFromModal, null, 2)); // DEBUG
+    setModalErrorText('');
+    console.log("[ParentsTab] parentDataFromModal received for submit:", JSON.stringify(parentDataFromModal, null, 2));
 
-    // GECORRIGEERDE VALIDATIE: 'amount_due_input' is verwijderd
     const requiredFields = ['name', 'email', 'phone', 'address', 'zipcode', 'city'];
     for (const field of requiredFields) {
       if (!parentDataFromModal[field] || !String(parentDataFromModal[field]).trim()) {
-        // Maak een gebruiksvriendelijkere labelnaam voor de error
         let fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
         if (field === 'zipcode') fieldLabel = 'Postcode';
-        // Voeg meer specifieke labels toe indien nodig
-
         setModalErrorText(`Veld "${fieldLabel}" is verplicht.`);
-        return false; // Stopt de submit en toont error in de modal (via prop)
+        return false;
       }
     }
-    // Email validatie
-     if (!/\S+@\S+\.\S+/.test(parentDataFromModal.email.trim())) {
+    if (!/\S+@\S+\.\S+/.test(parentDataFromModal.email.trim())) {
       setModalErrorText('Voer een geldig emailadres in.');
       return false;
     }
@@ -72,7 +66,6 @@ const ParentsTab = () => {
 
     try {
       let result;
-      // GECORRIGEERDE PAYLOAD: 'amount_due' wordt niet meer meegestuurd, backend zet op 0.
       const payloadBase = {
         name: parentDataFromModal.name.trim(),
         email: parentDataFromModal.email.trim(),
@@ -81,6 +74,7 @@ const ParentsTab = () => {
         city: parentDataFromModal.city.trim(),
         zipcode: parentDataFromModal.zipcode.trim(),
         role: 'parent',
+        // amount_due wordt nu door backend beheerd
       };
 
       if (editingParent) {
@@ -90,40 +84,36 @@ const ParentsTab = () => {
         });
       } else {
         const tempPassword = generateTempPassword();
-        const payload = {
-          ...payloadBase,
-          password: tempPassword,
-          mosque_id: mosque.id,
-        };
-        result = await apiCall(`/api/users`, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
+        const payload = { ...payloadBase, password: tempPassword, mosque_id: mosque.id };
+        result = await apiCall(`/api/users`, { method: 'POST', body: JSON.stringify(payload) });
 
-        const createdUser = result.user || result.data; // Backend stuurt user in 'user' of 'data'
+        const createdUser = result.user || result.data;
         if ((result.success || createdUser) && parentDataFromModal.sendEmail) {
+          console.log("[ParentsTab] Attempting to send welcome email for new parent:", createdUser.email);
           if (mosque.m365_configured && mosque.m365_tenant_id && mosque.m365_client_id && mosque.m365_sender_email) {
-            // De clientSecret voor de API call moet hier vandaan komen:
-            // Optie 1: Backend haalt opgeslagen secret op (BESTE)
-            // Optie 2: Frontend heeft het (tijdelijk) als admin net M365 heeft geconfigureerd.
-            // Voor nu, aanname dat backend de opgeslagen secret gebruikt als clientSecret hier leeg is.
-            const m365ApiCredentials = {
-                tenantId: mosque.m365_tenant_id,
-                clientId: mosque.m365_client_id,
-                clientSecret: "", // Laat leeg, backend moet opgeslagen secret gebruiken
-                senderEmail: mosque.m365_sender_email,
-            };
-            await sendUserWelcomeEmailViaBackend(
-                apiCall,
-                createdUser.name,
-                createdUser.email,
-                tempPassword,
-                mosque.name,
-                'parent',
-                m365ApiCredentials
-            );
+            try {
+              const emailResult = await sendUserWelcomeEmailViaBackend(
+                  apiCall,
+                  createdUser.name,
+                  createdUser.email,
+                  tempPassword,
+                  mosque.name,
+                  mosque.id, // Stuur mosque.id mee
+                  'parent',
+                  mosque // Geef het hele mosque object mee (bevat m365_tenant_id, etc.)
+              );
+              if (!emailResult.success) {
+                setModalErrorText(prev => (prev ? prev + " " : "") + `Ouder toegevoegd, maar welkomstmail kon niet worden verzonden: ${emailResult.error}`);
+              } else {
+                console.log("[ParentsTab] Welcome email to parent reported as sent.");
+              }
+            } catch (emailCatchError) {
+                console.error("[ParentsTab] Exception during sendUserWelcomeEmailViaBackend for parent:", emailCatchError);
+                setModalErrorText(prev => (prev ? prev + " " : "") + `Fout bij versturen welkomstmail: ${emailCatchError.message}`);
+            }
           } else {
-             setModalErrorText(prev => (prev ? prev + " " : "") + "Ouder toegevoegd, maar M365 is niet (volledig) geconfigureerd voor emails.");
+             setModalErrorText(prev => (prev ? prev + " " : "") + "Ouder toegevoegd, maar M365 is niet (volledig) geconfigureerd voor emails in de database.");
+             console.warn("[ParentsTab] M365 not fully configured in DB for welcome email to parent.");
           }
         }
       }
@@ -131,7 +121,7 @@ const ParentsTab = () => {
       if (result.success || result.user || result.data) {
         setShowAddParentModal(false);
         setEditingParent(null);
-        await loadData();
+        await loadData(); // Forceer refresh van alle data
         setActionLoading(false);
         return true;
       } else {
@@ -139,7 +129,6 @@ const ParentsTab = () => {
       }
     } catch (err) {
       console.error('Error submitting parent:', err);
-      // Deze error wordt nu in de modal getoond via de modalErrorText prop
       setModalErrorText(err.message || `Fout bij het ${editingParent ? 'bewerken' : 'toevoegen'} van de ouder.`);
       setActionLoading(false);
       return false;
@@ -244,7 +233,7 @@ const ParentsTab = () => {
                         <div className={parseFloat(paymentInfo.remainingBalance) > 0 ? 'font-semibold text-red-600' : 'text-green-600'}>
                             <strong>Openstaand:</strong> €{paymentInfo.remainingBalance}
                         </div>
-                        <div><strong>Account ID:</strong> <span className="font-mono truncate" title={parent.id}>{parent.id.substring(0,8)}...</span></div>
+                        <div><strong>Account ID:</strong> <span className="font-mono truncate" title={parent.id}>{parent.id ? parent.id.substring(0,8) + '...' : '-'}</span></div>
                         <div><strong>Geregistreerd op:</strong> {new Date(parent.created_at).toLocaleDateString('nl-NL')}</div>
                     </div>
                     {parentStudents.length > 0 && (
@@ -255,7 +244,7 @@ const ParentsTab = () => {
                             </ul>
                         </div>
                     )}
-                    {/* Hier kun je knoppen toevoegen voor specifieke acties per ouder */}
+                    {/* TODO: Knoppen voor specifieke acties */}
                   </div>
                 )}
               </div>
@@ -270,7 +259,7 @@ const ParentsTab = () => {
           onClose={() => { setShowAddParentModal(false); setEditingParent(null); setModalErrorText(''); }}
           onSubmit={handleParentSubmit}
           initialData={editingParent}
-          modalError={modalErrorText} // Geef modal-specifieke error door
+          modalError={modalErrorText}
           isLoading={actionLoading}
         />
       )}
