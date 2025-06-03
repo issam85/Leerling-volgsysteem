@@ -1,7 +1,8 @@
+// src/pages/LoginPage.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext'; // Om moskeenaam te krijgen
+import { useData } from '../contexts/DataContext'; 
 import { BookOpen } from 'lucide-react';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -12,7 +13,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain } = useAuth();
-  const { realData } = useData(); // Voor moskeenaam
+  const { realData } = useData(); 
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -29,20 +30,18 @@ const LoginPage = () => {
     setError('');
     try {
       await login(email, password);
-      // Navigatie gebeurt door de useEffect of ProtectedRoute na succesvolle login
     } catch (err) {
       setError(err.message || 'Inloggen mislukt. Controleer uw gegevens.');
     }
   };
 
-  if (loadingUser && !currentUser) { // Toon spinner alleen als we echt op user wachten en er nog geen is
+  if (loadingUser && !currentUser) { 
     return <LoadingSpinner message="Authenticatie controleren..." />;
   }
-  // Als user al bestaat (bijv. na refresh en localStorage), niet de login tonen.
-  // Dit wordt nu afgehandeld door de useEffect hierboven.
 
-  // Gebruik de moskeenaam uit realData indien beschikbaar, anders fallback op subdomein
-  const mosqueTitle = realData.mosque?.name || (currentSubdomain !== 'register' ? `${currentSubdomain.charAt(0).toUpperCase() + currentSubdomain.slice(1)} LVS` : 'Leerling Volgsysteem');
+  const mosqueTitle = realData.mosque?.name || (currentSubdomain !== 'register' ? `${currentSubdomain.charAt(0).toUpperCase() + currentSubdomain.slice(1)}` : 'Leerling Volgsysteem');
+  const mosqueCity = realData.mosque?.city;
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-teal-50 to-sky-100 flex items-center justify-center p-4">
@@ -52,7 +51,7 @@ const LoginPage = () => {
             <BookOpen className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{mosqueTitle}</h1>
-          {realData.mosque && realData.mosque.city && <p className="text-sm text-gray-500">{realData.mosque.city}</p>}
+          {mosqueCity && <p className="text-sm text-gray-500">{mosqueCity}</p>}
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
@@ -80,19 +79,33 @@ const LoginPage = () => {
             {loadingUser ? 'Bezig met inloggen...' : 'Inloggen'}
           </Button>
         </form>
-        {currentSubdomain !== 'register' && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-600 mb-2">Demo accounts ({currentSubdomain}):</p>
-            <div className="text-xs space-y-1 text-gray-700">
-                <div><strong>Admin:</strong> admin@{currentSubdomain}.nl / admin</div>
-                {/* Voeg andere demo accounts toe indien nodig */}
+
+        <div className="mt-6 text-center text-sm text-gray-600 space-y-1">
+            <p>
+                Nieuwe gebruiker? Uw beheerder maakt een account voor u aan.
+            </p>
+            <p>
+                Na aanmelding ontvangt u uw inloggegevens per e-mail.
+            </p>
+        </div>
+
+        {/* Toon demo accounts alleen in development omgeving en niet op de register pagina */}
+        {process.env.NODE_ENV === 'development' && currentSubdomain !== 'register' && (
+            <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-200 text-center">
+            <p className="text-xs text-gray-500 font-semibold mb-1">DEV: Demo ({currentSubdomain})</p>
+            <div className="text-xs space-y-0.5 text-gray-600">
+                <p><strong>Admin:</strong> admin@{currentSubdomain}.nl / admin</p>
+                {/* Voeg hier eventueel een leraar demo account toe als je die hebt */}
+                {/* <p><strong>Leraar:</strong> leraar@{currentSubdomain}.nl / leraar</p> */}
             </div>
             </div>
         )}
-        <div className="mt-6 text-center">
+        
+        <div className="mt-8 text-center">
           <Button
             variant="link"
-            onClick={() => switchSubdomain('register')}
+            className="text-emerald-600 hover:text-emerald-700"
+            onClick={() => switchSubdomain('register')} // Leid naar de "hub" of registratiepagina
           >
             Andere moskee of Registreren?
           </Button>
