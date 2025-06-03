@@ -1,3 +1,4 @@
+// src/contexts/DataContext.js
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -5,60 +6,52 @@ import { useAuth } from './AuthContext';
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
-  const { currentUser, currentSubdomain, loadingUser: authLoading } = useAuth(); // authLoading om te voorkomen dat te vroeg wordt geladen
+  const { currentUser, currentSubdomain, loadingUser: authLoading } = useAuth();
   const [realData, setRealData] = useState({
     users: [],
     classes: [],
     students: [],
     payments: [],
     mosque: null,
-    loading: true, // Start met true, wordt false na eerste poging tot laden
+    loading: true,
     error: null,
   });
 
-  // Haalt het volledige mosque object op, inclusief M365 config
   const fetchMosqueDataBySubdomain = useCallback(async (subdomain) => {
     if (subdomain && subdomain !== 'register') {
       try {
-        console.log(`DataContext: Fetching mosque details for subdomain: ${subdomain}`);
-        // Je backend /api/mosque/:subdomain geeft het mosque object terug
-        const mosqueDetails = await apiCall(`/api/mosque/${subdomain}`);
+        const cacheBuster = `timestamp=${Date.now()}`;
+        const endpoint = `/api/mosque/${subdomain}?${cacheBuster}`;
+        console.log(`[DataContext] FETCHING mosque details for subdomain: ${subdomain} from endpoint: ${endpoint} (Timestamp: ${new Date().toLocaleTimeString()})`);
+        const mosqueDetails = await apiCall(endpoint);
+        console.log("[DataContext] RECEIVED mosque details from API:", JSON.stringify(mosqueDetails, null, 2));
         if (mosqueDetails && mosqueDetails.id) {
           return mosqueDetails;
         } else {
-          console.warn(`DataContext: No mosque details found for subdomain: ${subdomain} from API.`);
-          // Dit kan betekenen dat het subdomein niet bestaat in de DB
-          throw new Error(`Moskee voor subdomein '${subdomain}' niet gevonden.`);
+          console.warn(`[DataContext] No mosque details found or no ID in response for subdomain: ${subdomain}`);
+          throw new Error(`Moskee voor subdomein '${subdomain}' niet gevonden of ongeldige respons.`);
         }
       } catch (error) {
-        console.error(`DataContext: Error fetching mosque details for subdomain ${subdomain}:`, error);
-        throw error; // Gooi door zodat loadData het kan afhandelen
+        console.error(`[DataContext] Error fetching mosque details for subdomain ${subdomain}:`, error.message);
+        throw error;
       }
     }
-    return null; // Geen subdomein of 'register'
-  }, []);
+    return null;
+  }, []); // Empty dependency array: function itself doesn't change
 
-
-  const loadData = useCallback(async () => {
-    if (!currentUser || currentSubdomain === 'register' || !realData.mosque || !realData.mosque.id) {
-      // Als er geen user is, of geen geldig mosque object, niet proberen data te laden
-      // De mosque data wordt eerst gehaald in de useEffect hieronder.
-      if (!realData.mosque && currentSubdomain !== 'register' && currentUser) {
-        // Probeer mosque data te laden als die nog niet is geladen
-        console.log("DataContext: Mosque data missing, attempting to fetch in loadData guard.");
-        // Dit zou idealiter al gebeurd moeten zijn in de useEffect
-      } else {
-         setRealData(prev => ({ ...prev, users: [], classes: [], students: [], payments: [], loading: false, error: prev.error }));
-      }
+  const loadDetailedData = useCallback(async (mosqueForDataLoading) => {
+    if (!currentUser || !mosqueForDataLoading || !mosqueForDataLoading.id) {
+      console.log("[DataContext] loadDetailedData: Pre-conditions not met (no currentUser or no mosqueForDataLoading). Skipping.");
+      setRealData(prev => ({ ...prev, users: [], classes: [], students: [], payments: [], loading: false }));
       return;
     }
 
-    console.log(`DataContext: Loading data for mosque ID: ${realData.mosque.id}`);
-    setRealData(prev => ({ ...prev, loading: true, error: null })); // Reset error voor nieuwe laadpoging
+    console.log(`[DataContext] loadDetailedData: Loading for mosque ID: ${mosqueForDataLoading.id} (Timestamp: ${new Date().toLocaleTimeString()})`);
+    // Set loading for detailed data, but keep existing mosque data
+    setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
-      const mosqueId = realData.mosque.id;
-      // Je backend geeft direct de arrays terug, geen .data property nodig.
+      const mosqueId = mosqueForDataLoading.id;
       const [usersRes, classesRes, studentsRes, paymentsRes] = await Promise.all([
         apiCall(`/api/mosques/${mosqueId}/users`),
         apiCall(`/api/mosques/${mosqueId}/classes`),
@@ -66,8 +59,10 @@ export const DataProvider = ({ children }) => {
         apiCall(`/api/mosques/${mosqueId}/payments`),
       ]);
 
+      console.log("[DataContext] loadDetailedData: RECEIVED detailed data. Users:", usersRes?.length, "Classes:", classesRes?.length, "Students:", studentsRes?.length, "Payments:", paymentsRes?.length);
+
       setRealData(prev => ({
-        ...prev, // Behoud het bestaande mosque object
+        ...prev, // This ensures mosque data from mosqueForDataLoading is kept
         users: usersRes || [],
         classes: classesRes || [],
         students: studentsRes || [],
@@ -76,71 +71,98 @@ export const DataProvider = ({ children }) => {
         error: null,
       }));
     } catch (error) {
-      console.error('DataContext: Error loading detailed data (users, classes, etc.):', error);
+      console.error('[DataContext] loadDetailedData: Error loading detailed data:', error);
       setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van gegevens." }));
     }
-  }, [currentUser, currentSubdomain, realData.mosque]); // Afhankelijk van realData.mosque
+  }, [currentUser]); // Only currentUser, as mosqueForDataLoading is passed as argument
 
-  // Effect om eerst mosque data te laden o.b.v. subdomein, dan pas andere data
+  // Effect to fetch mosque data when subdomain changes or auth state is ready
   useEffect(() => {
-    if (authLoading || currentSubdomain === 'register') {
-      setRealData(prev => ({ ...prev, mosque: null, loading: currentSubdomain !== 'register' })); // Blijf laden als niet register
+    console.log("[DataContext] Mosque Fetch useEffect. AuthLoading:", authLoading, "Subdomain:", currentSubdomain, "Current mosque subdomain:", realData.mosque?.subdomain);
+    if (authLoading) {
+      console.log("[DataContext] Auth is loading, delaying mosque fetch.");
+      setRealData(prev => ({ ...prev, loading: true })); // Indicate loading
+      return;
+    }
+    if (currentSubdomain === 'register') {
+      console.log("[DataContext] On register subdomain, clearing mosque data and stopping load.");
+      setRealData({ users: [], classes: [], students: [], payments: [], mosque: null, loading: false, error: null });
       return;
     }
 
-    if (!currentUser && currentSubdomain !== 'register') {
-        // Geen user, maar wel een subdomein, haal wel moskee info op voor login pagina
-        console.log("DataContext: No current user, but attempting to fetch mosque data for login page branding.");
-    } else if (!currentUser && currentSubdomain === 'register') {
-        // Registratie pagina, geen moskee data nodig
-        setRealData(prev => ({ ...prev, mosque: null, loading: false, error: null}));
-        return;
+    // Fetch mosque data if it's not present, or if the subdomain has changed
+    if (!realData.mosque || realData.mosque.subdomain !== currentSubdomain) {
+      console.log(`[DataContext] Mosque data needs refresh (current: ${realData.mosque?.subdomain}, target: ${currentSubdomain}). Fetching...`);
+      setRealData(prev => ({ ...prev, loading: true, error: null, mosque: null })); // Clear old mosque while fetching
+      fetchMosqueDataBySubdomain(currentSubdomain)
+        .then(mosqueObject => {
+          if (mosqueObject) {
+            console.log("[DataContext] SETTING realData.mosque after fetch:", JSON.stringify(mosqueObject, null, 2));
+            // State update for mosque will trigger the next useEffect to load detailed data
+            setRealData(prev => ({ ...prev, mosque: mosqueObject, /* loading will be handled by loadDetailedData call */ error: null }));
+          } else {
+            console.warn(`[DataContext] No mosque object returned for subdomain ${currentSubdomain}.`);
+            setRealData(prev => ({ ...prev, mosque: null, loading: false, error: `Moskee voor subdomein '${currentSubdomain}' kon niet worden geladen.` }));
+          }
+        })
+        .catch(err => {
+          console.error("[DataContext] Error in fetchMosqueDataBySubdomain promise chain:", err);
+          setRealData(prev => ({ ...prev, mosque: null, loading: false, error: err.message }));
+        });
+    } else {
+      console.log("[DataContext] Mosque data already present and subdomain matches. Current mosque:", realData.mosque?.name);
+      // If mosque data is present, but other data might not be (e.g., after login but before detailed load)
+      // and if we are not currently loading. The detailed data load is handled by the next useEffect.
+      if (realData.loading && !currentUser) { // If was loading but user logged out
+          setRealData(prev => ({ ...prev, loading: false }));
+      }
     }
+  }, [authLoading, currentSubdomain, fetchMosqueDataBySubdomain, currentUser]); // currentUser added to re-evaluate if mosque needs fetch on login/logout
 
-
-    setRealData(prev => ({ ...prev, loading: true, error: null }));
-    fetchMosqueDataBySubdomain(currentSubdomain)
-      .then(mosqueObject => {
-        if (mosqueObject) {
-          setRealData(prev => ({ ...prev, mosque: mosqueObject, loading: false, error: null }));
-          // Als er een currentUser is, trigger dan het laden van de rest van de data.
-          // Dit gebeurt nu via de dependency change van realData.mosque in de loadData useEffect.
-        } else if (currentSubdomain !== 'register') {
-          // Geen mosqueObject maar het is ook niet de register pagina
-          setRealData(prev => ({ ...prev, mosque: null, loading: false, error: `Moskee voor subdomein '${currentSubdomain}' kon niet worden geladen.` }));
-        } else {
-            // Register pagina, geen error nodig als mosqueObject null is
-            setRealData(prev => ({...prev, mosque: null, loading: false, error: null}));
-        }
-      })
-      .catch(err => {
-        setRealData(prev => ({ ...prev, mosque: null, loading: false, error: err.message }));
-      });
-  }, [authLoading, currentUser, currentSubdomain, fetchMosqueDataBySubdomain]);
-
-
-  // Effect om data te laden als currentUser of realData.mosque verandert
+  // Effect to load detailed data once currentUser and realData.mosque are available
   useEffect(() => {
+    console.log("[DataContext] Detailed Data Load useEffect. currentUser:", !!currentUser, "realData.mosque:", !!realData.mosque?.id, "authLoading:", authLoading);
     if (currentUser && realData.mosque && realData.mosque.id && !authLoading) {
-      loadData();
+      console.log("[DataContext] Conditions met for loading detailed data with mosque:", realData.mosque.name);
+      loadDetailedData(realData.mosque);
     } else if (!currentUser && !authLoading) {
-      // Reset specifieke data als user uitlogt, maar behoud mosque info als die er is
+      console.log("[DataContext] No currentUser and not authLoading. Resetting arrays, keeping mosque if present.");
       setRealData(prev => ({
-          ...prev, // Behoud mosque en error state van vorige fetchMosqueDataBySubdomain
-          users: [],
-          classes: [],
-          students: [],
-          payments: [],
-          loading: false, // Stop met laden als er geen user is
+          ...prev, // Keep mosque data if it was fetched (e.g., for login page branding)
+          users: [], classes: [], students: [], payments: [],
+          loading: false, // Not loading if no user
       }));
     }
-  }, [currentUser, realData.mosque, authLoading, loadData]);
+  }, [currentUser, realData.mosque, authLoading, loadDetailedData]);
+
+  const refreshAllData = useCallback(async () => {
+    console.log("[DataContext] RefreshAllData called. Forcing mosque refetch.");
+    // Eerst de moskee data forceren opnieuw te halen
+    if (currentSubdomain && currentSubdomain !== 'register') {
+        setRealData(prev => ({ ...prev, loading: true, error: null})); // Start loading indicator
+        try {
+            const mosqueObject = await fetchMosqueDataBySubdomain(currentSubdomain);
+            if (mosqueObject && mosqueObject.id) {
+                // Als moskee succesvol is opgehaald, laad dan de rest
+                // setRealData in loadDetailedData zal mosqueObject gebruiken
+                await loadDetailedData(mosqueObject);
+            } else {
+                throw new Error("Kon moskeegegevens niet opnieuw laden voor volledige refresh.");
+            }
+        } catch (error) {
+            console.error("[DataContext] Error during refreshAllData (mosque fetch part):", error);
+            setRealData(prev => ({ ...prev, loading: false, error: error.message }));
+        }
+    } else {
+        console.log("[DataContext] refreshAllData: Cannot refresh, no valid subdomain or on register page.");
+    }
+  }, [currentSubdomain, fetchMosqueDataBySubdomain, loadDetailedData]);
 
 
   const value = {
     realData,
-    loadData, // Om handmatig herladen mogelijk te maken
-    currentUser, // Handig om hier ook te hebben voor gemak
+    loadData: refreshAllData, // `loadData` in de app noemt nu `refreshAllData`
+    currentUser, // Voor gemakkelijke toegang in componenten
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
