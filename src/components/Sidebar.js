@@ -1,21 +1,19 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { BookOpen, Users, User as UserIcon, Building2, LogOut, DollarSign, Settings as SettingsIcon } from 'lucide-react'; // SettingsIcon toegevoegd
+import { LayoutDashboard, BookOpen, Users, User as UserIcon, Building2, LogOut, DollarSign, Settings as SettingsIcon, ClipboardCheck } from 'lucide-react';
+import appLogo from '../assets/logo-mijnlvs-64.png'; // <-- LOGO IMPORT HIER
 
 const Sidebar = () => {
   const { currentUser, logout } = useAuth();
   const { realData } = useData();
-  const navigate = useNavigate();
 
   const handleLogoutClick = () => {
-    logout(); // AuthContext handelt navigatie naar /login af
+    logout();
   };
 
-  // currentUser check is belangrijk, anders crasht het als het kort null is
   if (!currentUser) {
-      // Kan een minimalistische sidebar tonen of null
       return null;
   }
 
@@ -29,11 +27,12 @@ const Sidebar = () => {
   const mosqueName = realData.mosque?.name || "Leerling Volgsysteem";
 
   return (
-    <div className="w-64 bg-white shadow-xl flex flex-col h-screen fixed left-0 top-0 z-30"> {/* fixed voor echte sidebar */}
+    <div className="w-64 bg-white shadow-xl flex flex-col h-screen fixed left-0 top-0 z-30">
       <div className="p-5 border-b border-gray-200">
         <div className="flex items-center">
           <div className="p-2 bg-emerald-500 rounded-lg mr-3">
-            <BookOpen className="w-6 h-6 text-white" />
+            {/* Gebruik de geïmporteerde logo variabele */}
+            <img src={appLogo} alt="MijnLVS Logo" className="w-6 h-6" />
           </div>
           <div>
             <h1 className="font-bold text-md text-gray-800 truncate" title={mosqueName}>{mosqueName}</h1>
@@ -44,7 +43,7 @@ const Sidebar = () => {
 
       <nav className="flex-grow p-4 space-y-1.5 overflow-y-auto">
           <NavLink to="/dashboard" className={getNavLinkClass}>
-            <BookOpen className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" />
+            <LayoutDashboard className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" />
             Dashboard
           </NavLink>
 
@@ -71,20 +70,23 @@ const Sidebar = () => {
               Betalingen
             </NavLink>
             <NavLink to="/admin/settings" className={getNavLinkClass}>
-              <SettingsIcon className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" /> {/* SettingsIcon */}
+              <SettingsIcon className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" />
               Instellingen
             </NavLink>
           </>
         )}
 
         {currentUser.role === 'teacher' && (
-          <NavLink to="/teacher/my-class" className={getNavLinkClass}> {/* TODO: Maak deze route en pagina */}
-            <Users className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" />
-            Mijn Klas
-          </NavLink>
+          <>
+            <NavLink to="/teacher/my-classes" className={getNavLinkClass}>
+              <BookOpen className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" />
+              Mijn Klassen
+            </NavLink>
+            {/* Voeg hier eventueel meer leraar-specifieke links toe */}
+          </>
         )}
         {currentUser.role === 'parent' && (
-             <NavLink to="/parent/overview" className={getNavLinkClass}> {/* TODO: Maak deze route en pagina */}
+             <NavLink to="/parent/my-children" className={getNavLinkClass}>
                 <Users className="w-5 h-5 mr-3 flex-shrink-0 group-hover:text-emerald-700" />
                 Mijn Kinderen
             </NavLink>
@@ -103,10 +105,5 @@ const Sidebar = () => {
     </div>
   );
 };
-// Belangrijk: Omdat de sidebar nu `fixed` is, moet de `MainLayout` een `padding-left` krijgen
-// die gelijk is aan de breedte van de sidebar (w-64 -> pl-64).
-// In MainLayout.js, in de <main> tag:
-// <main className="flex-1 overflow-x-hidden overflow-y-auto pl-64">
-// En de Sidebar zelf hoeft niet meer in de flex-container van MainLayout.
 
 export default Sidebar;

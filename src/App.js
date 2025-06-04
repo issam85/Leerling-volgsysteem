@@ -1,6 +1,6 @@
 // src/App.js
 import React from 'react';
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'; // Outlet toegevoegd
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 
@@ -8,17 +8,21 @@ import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import RegistrationPage from './pages/RegistrationPage';
 import DashboardPage from './pages/DashboardPage';
+// Admin Pages
 import ClassesPage from './pages/ClassesPage';
 import TeachersPage from './pages/TeachersPage';
 import ParentsPage from './pages/ParentsPage';
 import StudentsPage from './pages/StudentsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SettingsPage from './pages/SettingsPage';
-import MyChildrenPage from './pages/MyChildrenPage'; // NIEUW
-// import MyClassPage from './pages/MyClassPage'; // Voor leraren (nog niet volledig geïmplementeerd)
+// Parent Pages
+import MyChildrenPage from './pages/MyChildrenPage';
+// Teacher Pages (NIEUW)
+import TeacherMyClassesPage from './pages/TeacherMyClassesPage';
+import TeacherClassAttendancePage from './pages/TeacherClassAttendancePage';
+
 import LoadingSpinner from './components/LoadingSpinner';
 
-// Helper component om routes te beschermen
 const ProtectedRoute = ({ children, adminOnly = false, teacherOnly = false, parentOnly = false }) => {
   const { currentUser, loadingUser } = useAuth();
   const location = useLocation();
@@ -35,14 +39,11 @@ const ProtectedRoute = ({ children, adminOnly = false, teacherOnly = false, pare
   if (adminOnly && currentUser.role !== 'admin') authorized = false;
   if (teacherOnly && currentUser.role !== 'teacher') authorized = false;
   if (parentOnly && currentUser.role !== 'parent') authorized = false;
-  // Je kunt hier ook combineren, bijv. admin OR teacher
-
+  
   if (!authorized) {
-    // Stuur naar dashboard als niet geautoriseerd voor specifieke rol-route
-    // De DashboardPage zelf kan dan een "Geen toegang" melding tonen als nodig,
-    // of de gebruiker ziet daar de content voor zijn/haar eigen rol.
     console.warn(`User ${currentUser.email} (role: ${currentUser.role}) tried to access a restricted route.`);
-    return <Navigate to="/dashboard" state={{ unauthorizedAttempt: true, requiredRole: adminOnly ? 'admin' : (teacherOnly ? 'teacher' : (parentOnly ? 'parent' : 'unknown')) }} replace />;
+    const requiredRole = adminOnly ? 'admin' : (teacherOnly ? 'teacher' : (parentOnly ? 'parent' : 'unknown'));
+    return <Navigate to="/dashboard" state={{ unauthorizedAttempt: true, requiredRole: requiredRole }} replace />;
   }
 
   return children;
@@ -75,14 +76,12 @@ const AppRoutes = () => {
       )}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<Navigate to="/login" replace />} /> {/* Als men toch hier komt */}
+        <Route path="/register" element={<Navigate to="/login" replace />} />
 
-        {/* Routes die MainLayout gebruiken en een ingelogde gebruiker vereisen */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
 
-          {/* Admin specifieke sub-routes onder /admin/ */}
           <Route path="admin" element={<ProtectedRoute adminOnly={true}><Outlet /></ProtectedRoute>}>
             <Route path="classes" element={<ClassesPage />} />
             <Route path="teachers" element={<TeachersPage />} />
@@ -90,30 +89,25 @@ const AppRoutes = () => {
             <Route path="students" element={<StudentsPage />} />
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="settings" element={<SettingsPage />} />
-             {/* Eventueel een index route voor /admin als je een admin-specifiek overzicht wilt */}
-            <Route index element={<Navigate to="/dashboard" replace />} /> {/* Of naar een admin overzicht */}
-          </Route>
-
-          {/* Leraar specifieke sub-routes onder /teacher/ */}
-          {/* <Route path="teacher" element={<ProtectedRoute teacherOnly={true}><Outlet /></ProtectedRoute>}>
-            <Route path="my-class" element={<MyClassPage />} />
             <Route index element={<Navigate to="/dashboard" replace />} />
-          </Route> */}
-
-          {/* Ouder specifieke sub-routes onder /parent/ */}
-          <Route path="parent" element={<ProtectedRoute parentOnly={true}><Outlet /></ProtectedRoute>}>
-            <Route path="my-children" element={<MyChildrenPage />} /> {/* NIEUWE ROUTE */}
-            {/* Voeg hier meer ouder-specifieke routes toe, bijv. betalingsoverzicht */}
-            {/* <Route path="payments" element={<ParentPaymentsPage />} /> */}
-            <Route index element={<Navigate to="/dashboard" replace />} /> {/* Standaard voor /parent naar dashboard */}
           </Route>
 
+          {/* LERAAR SPECIFIEKE ROUTES */}
+          <Route path="teacher" element={<ProtectedRoute teacherOnly={true}><Outlet /></ProtectedRoute>}>
+            <Route path="my-classes" element={<TeacherMyClassesPage />} />
+            <Route path="class/:classId/attendance" element={<TeacherClassAttendancePage />} />
+            {/* <Route path="class/:classId/students" element={<TeacherClassStudentsPage />} /> */}
+            {/* <Route path="profile" element={<TeacherProfilePage />} /> */}
+            <Route index element={<Navigate to="my-classes" replace />} /> {/* Standaard naar klassen overzicht */}
+          </Route>
+
+          <Route path="parent" element={<ProtectedRoute parentOnly={true}><Outlet /></ProtectedRoute>}>
+            <Route path="my-children" element={<MyChildrenPage />} />
+            <Route index element={<Navigate to="my-children" replace />} />
+          </Route>
         </Route>
 
-        {/* Fallback voor alle andere paden */}
-        <Route path="*" element={
-          currentUser ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
-        } />
+        <Route path="*" element={ currentUser ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace /> } />
       </Routes>
     </DataProvider>
   );
