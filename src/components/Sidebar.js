@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { LayoutDashboard, BookOpen, Users, User as UserIcon, Building2, LogOut, DollarSign, Settings as SettingsIcon, ClipboardCheck } from 'lucide-react';
-import appLogo from '../assets/logo-mijnlvs-64.png'; // <-- LOGO IMPORT HIER
+import appLogo from '../assets/logo-mijnlvs.png'; // <-- LOGO IMPORT HIER
 
 const Sidebar = () => {
   const { currentUser, logout } = useAuth();
