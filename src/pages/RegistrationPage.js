@@ -1,169 +1,198 @@
-// src/pages/RegistrationPage.jsx
-import React, { useState } from 'react';
-import { BookOpen, Building2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { apiCall } from '../services/api';
-import Input from '../components/Input';
-import Button from '../components/Button';
-import LoadingSpinner from '../components/LoadingSpinner';
+// src/pages/RegistrationPage.js
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { apiCall } from '../services/api'; // Zorg dat het pad correct is
+import { useAuth } from '../contexts/AuthContext'; // Voor currentSubdomain
+import Button from '../components/Button'; // Zorg dat het pad correct is
+import Input from '../components/Input';   // Zorg dat het pad correct is
+import LoadingSpinner from '../components/LoadingSpinner'; // Zorg dat het pad correct is
+import appLogo from '../assets/logo-mijnlvs-64.png'; // Zorg dat het pad correct is
 
 const RegistrationPage = () => {
-  const { switchSubdomain } = useAuth();
   const [formData, setFormData] = useState({
-    orgName: '',
+    mosqueName: '',
     subdomain: '',
     adminName: '',
     adminEmail: '',
     adminPassword: '',
+    confirmPassword: '',
     address: '',
     city: '',
     zipcode: '',
     phone: '',
-    contactEmail: '',
     website: '',
+    contactEmail: '', // Contact e-mail voor de moskee zelf
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const navigate = useNavigate();
+  const { currentSubdomain, switchSubdomain } = useAuth();
+
+  useEffect(() => {
+    // Als we op een ander subdomein dan 'register' zijn, redirect
+    if (currentSubdomain && currentSubdomain !== 'register') {
+      // Probeer naar het login scherm van het gedetecteerde subdomein te gaan
+      // Dit vereist dat de switchSubdomain logica de pagina herlaadt of de AuthContext update.
+      // Voor nu, simpelweg redirect naar /login op het huidige (verkeerde) subdomein.
+      // Een betere UX zou zijn om de gebruiker een keuze te geven.
+      console.warn(`RegistrationPage geladen op verkeerd subdomein: ${currentSubdomain}. Redirect naar login.`);
+      navigate('/login');
+    }
+  }, [currentSubdomain, navigate]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (name === 'orgName' && !formData.subdomain) {
-      const generatedSubdomain = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      setFormData((prev) => ({ ...prev, subdomain: generatedSubdomain }));
-    }
-
-    if (name === 'adminEmail' && !formData.contactEmail) {
-      setFormData((prev) => ({ ...prev, contactEmail: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const validateForm = () => {
-    if (!formData.orgName || !formData.subdomain || !formData.adminName || !formData.adminEmail || !formData.adminPassword) {
-      return 'Velden met * zijn verplicht.';
-    }
-
-    if (formData.adminPassword.length < 8) {
-      return 'Wachtwoord moet minimaal 8 karakters lang zijn.';
-    }
-
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.subdomain)) {
-      return 'Subdomein mag alleen kleine letters, cijfers en koppeltekens bevatten, en mag niet starten of eindigen met een koppelteken.';
-    }
-
-    return '';
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
     setError('');
     setSuccessMessage('');
 
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+    if (formData.adminPassword !== formData.confirmPassword) {
+      setError('Wachtwoorden komen niet overeen.');
+      setLoading(false);
       return;
     }
+    if (formData.adminPassword.length < 8) {
+        setError('Wachtwoord moet minimaal 8 karakters lang zijn.');
+        setLoading(false);
+        return;
+    }
 
-    setLoading(true);
+    // Velden die de backend verwacht voor de /api/mosques/register route
+    const payload = {
+      mosqueName: formData.mosqueName.trim(),
+      subdomain: formData.subdomain.trim().toLowerCase(),
+      adminName: formData.adminName.trim(),
+      adminEmail: formData.adminEmail.trim().toLowerCase(),
+      adminPassword: formData.adminPassword, // Wachtwoord niet trimmen
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      zipcode: formData.zipcode.trim().toUpperCase(),
+      phone: formData.phone.trim(),
+      website: formData.website.trim(),
+      email: formData.contactEmail.trim().toLowerCase() || formData.adminEmail.trim().toLowerCase(), // Backend verwacht 'email' voor moskee contact
+    };
+
+    // ----- VOEG DEZE CONSOLE.LOG TOE -----
+    console.log("REGISTRATION PAYLOAD TO BACKEND (Frontend):", JSON.stringify(payload, null, 2));
+    // ------------------------------------
+
+    // Client-side check voor de velden die de backend als strict vereist markeert
+    // (mosqueName, subdomain, adminName, adminEmail, adminPassword)
+    if (!payload.mosqueName || !payload.subdomain || !payload.adminName || !payload.adminEmail || !payload.adminPassword) {
+        setError('Naam organisatie, subdomein, naam beheerder, email beheerder en wachtwoord beheerder zijn verplicht.');
+        setLoading(false);
+        return;
+    }
+
+
     try {
       const result = await apiCall('/api/mosques/register', {
         method: 'POST',
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
+      // De backend stuurt nu {success: true, message: ..., mosque: ..., admin: ...} bij succes
       if (result.success) {
-        setSuccessMessage(result.message || `Registratie succesvol! Subdomein: ${result.mosque?.subdomain || formData.subdomain}.`);
+        setSuccessMessage(`Registratie succesvol voor ${result.mosque.name}! U kunt nu inloggen op https://${result.mosque.subdomain}.mijnlvs.nl/login met de admin gegevens.`);
+        // Optioneel: reset formulier
+        setFormData({
+            mosqueName: '', subdomain: '', adminName: '', adminEmail: '', adminPassword: '', confirmPassword: '',
+            address: '', city: '', zipcode: '', phone: '', website: '', contactEmail: ''
+        });
+        // Niet direct navigeren, laat de succesmessage zien.
+        // De gebruiker kan dan zelf naar de nieuwe subdomein URL gaan.
       } else {
+        // Als de backend {success: false, error: "bericht"} stuurt
         setError(result.error || 'Registratie mislukt. Probeer het opnieuw.');
       }
     } catch (err) {
-      let displayError = err.message || 'Er is een fout opgetreden.';
-      if (displayError.toLowerCase().includes('emailadres is al geregistreerd')) {
-        displayError = 'Dit e-mailadres is al in gebruik.';
-      } else if (displayError.toLowerCase().includes('subdomein is al in gebruik')) {
-        displayError = 'Dit subdomein is al bezet.';
-      }
-      setError(displayError);
+      console.error("Registration Page Submit Error:", err);
+      setError(err.message || 'Er is een onbekende fout opgetreden tijdens de registratie.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+  
+  // Als we op een ander subdomein zijn, render niets of een melding, want App.js zou al moeten redirecten.
+  if (currentSubdomain && currentSubdomain !== 'register') {
+    return <LoadingSpinner message="Verkeerd subdomein, bezig met doorsturen..."/>; 
+  }
+
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-100 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {loading && <LoadingSpinner message="Registratie verwerken..." />}
-      <header className="bg-white shadow-sm mb-8">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <BookOpen className="w-8 h-8 text-emerald-600" />
-            <h1 className="ml-3 text-xl font-bold text-gray-800">Leerling Volgsysteem</h1>
-          </div>
-          <div className="space-x-2">
-            <Button onClick={() => switchSubdomain('al-noor')} variant="secondary" size="sm">Al-Noor Demo</Button>
-            <Button onClick={() => switchSubdomain('al-hijra')} variant="secondary" size="sm">Al-Hijra Demo</Button>
-          </div>
-        </div>
-      </header>
+      <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
+        <img className="mx-auto h-16 w-auto" src={appLogo} alt="MijnLVS Logo" />
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Nieuwe Moskee Registreren
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Al een account voor uw moskee?{' '}
+          <button onClick={() => switchSubdomain('al-hijra')} className="font-medium text-emerald-600 hover:text-emerald-500">
+            Ga naar inloggen
+          </button>
+        </p>
+      </div>
 
-      <main className="max-w-3xl mx-auto px-4">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-3">Registreer Uw Organisatie</h1>
-          <p className="text-lg text-gray-600">Begin vandaag nog met een modern leerlingvolgsysteem.</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10">
-          <div className="text-center mb-6">
-            <Building2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold text-gray-700">Registratieformulier</h2>
-          </div>
-
-          {error && <p className="mb-4 text-red-700 bg-red-100 p-3 rounded-md text-center font-medium">{error}</p>}
-          {successMessage && <p className="mb-4 text-green-700 bg-green-100 p-3 rounded-md text-center font-medium">{successMessage}</p>}
-
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
+        <div className="bg-white py-8 px-4 shadow-xl rounded-lg sm:px-10">
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded-md text-sm">
+              {successMessage}
+            </div>
+          )}
           {!successMessage && (
-            <form onSubmit={handleRegister} className="space-y-5">
-              <fieldset className="border border-gray-300 p-4 rounded-md">
-                <legend className="text-lg font-medium text-gray-700 px-2">Organisatiegegevens</legend>
-                <div className="space-y-4 mt-2">
-                  <Input label="Naam organisatie *" name="orgName" value={formData.orgName} onChange={handleChange} required />
-                  <Input label="Gewenst subdomein *" name="subdomain" value={formData.subdomain} onChange={handleChange} placeholder="uniek, zonder spaties" required />
-                  <Input label="Adres" name="address" value={formData.address} onChange={handleChange} />
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Input label="Postcode" name="zipcode" value={formData.zipcode} onChange={handleChange} />
-                    <Input label="Plaats" name="city" value={formData.city} onChange={handleChange} />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Input label="Telefoonnummer" name="phone" type="tel" value={formData.phone} onChange={handleChange} />
-                    <Input label="Contact email" name="contactEmail" type="email" value={formData.contactEmail} onChange={handleChange} />
-                  </div>
-                  <Input label="Website (optioneel)" name="website" type="url" value={formData.website} onChange={handleChange} />
-                </div>
-              </fieldset>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div>
+                <h3 className="text-lg font-medium leading-6 text-gray-900">Organisatiegegevens</h3>
+                <p className="mt-1 text-sm text-gray-500">Details van de moskee of onderwijsinstelling.</p>
+              </div>
 
-              <fieldset className="border border-gray-300 p-4 rounded-md">
-                <legend className="text-lg font-medium text-gray-700 px-2">Beheerder</legend>
-                <div className="space-y-4 mt-2">
-                  <Input label="Naam beheerder *" name="adminName" value={formData.adminName} onChange={handleChange} required />
-                  <Input label="Email beheerder *" name="adminEmail" type="email" value={formData.adminEmail} onChange={handleChange} required />
-                  <Input label="Wachtwoord *" name="adminPassword" type="password" value={formData.adminPassword} onChange={handleChange} required />
-                </div>
-              </fieldset>
+              <Input label="Naam organisatie *" name="mosqueName" value={formData.mosqueName} onChange={handleChange} required />
+              <Input label="Gewenst subdomein * (bijv. al-noor)" name="subdomain" value={formData.subdomain} onChange={handleChange} required placeholder="alnoor (alleen letters, cijfers, koppelstreepjes)" />
+              <p className="mt-1 text-xs text-gray-500">Uw unieke adres wordt: {formData.subdomain || "[subdomein]"}.mijnlvs.nl</p>
+              
+              <Input label="Adres (straat + huisnr)" name="address" value={formData.address} onChange={handleChange} />
+              <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                <Input label="Postcode" name="zipcode" value={formData.zipcode} onChange={handleChange} />
+                <Input label="Plaats" name="city" value={formData.city} onChange={handleChange} />
+              </div>
+              <Input label="Telefoonnummer organisatie" name="phone" type="tel" value={formData.phone} onChange={handleChange} />
+              <Input label="Contact email organisatie" name="contactEmail" type="email" value={formData.contactEmail} onChange={handleChange} />
+              <Input label="Website (optioneel)" name="website" type="url" value={formData.website} onChange={handleChange} placeholder="https://www.voorbeeld.nl" />
 
-              <p className="text-xs text-gray-500">Velden gemarkeerd met * zijn verplicht.</p>
-              <Button type="submit" variant="primary" fullWidth disabled={loading} className="py-3 text-base">
-                {loading ? 'Bezig met registreren...' : 'Registratie aanvragen'}
-              </Button>
+              <div className="pt-6">
+                <h3 className="text-lg font-medium leading-6 text-gray-900">Beheerdergegevens</h3>
+                <p className="mt-1 text-sm text-gray-500">De eerste beheerder voor dit account.</p>
+              </div>
+
+              <Input label="Naam beheerder *" name="adminName" value={formData.adminName} onChange={handleChange} required />
+              <Input label="Emailadres beheerder *" name="adminEmail" type="email" value={formData.adminEmail} onChange={handleChange} required />
+              <Input label="Wachtwoord beheerder *" name="adminPassword" type="password" value={formData.adminPassword} onChange={handleChange} required />
+              <Input label="Bevestig wachtwoord *" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} required />
+              
+              <div>
+                <Button type="submit" fullWidth variant="primary" size="lg" disabled={loading}>
+                  {loading ? 'Registreren...' : 'Registreer Moskee'}
+                </Button>
+              </div>
             </form>
           )}
-
-          <p className="mt-8 text-center text-sm text-gray-500">
-            Heeft uw organisatie al een account?{' '}
-            <Button variant="link" onClick={() => switchSubdomain('al-hijra')}>Log hier in</Button>
-          </p>
         </div>
-      </main>
+      </div>
     </div>
   );
 };
