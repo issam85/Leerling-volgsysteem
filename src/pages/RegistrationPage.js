@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'; // Voor currentSubdomain
 import Button from '../components/Button'; // Zorg dat het pad correct is
 import Input from '../components/Input';   // Zorg dat het pad correct is
 import LoadingSpinner from '../components/LoadingSpinner'; // Zorg dat het pad correct is
-import appLogo from '../assets/logo-mijnlvs-64.png'; // Zorg dat het pad correct is
+import appLogo from '../assets/logo-mijnlvs'; // Zorg dat het pad correct is
 
 const RegistrationPage = () => {
   const [formData, setFormData] = useState({
