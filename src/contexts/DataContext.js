@@ -1,4 +1,4 @@
-// src/contexts/DataContext.js - VOLLEDIGE VERSIE met loop fixes
+// src/contexts/DataContext.js - VOLLEDIGE VERSIE met syntax fix
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -88,47 +88,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  const loadParentInitialData = useCallback(async (mosqueForDataLoading) => {
-    if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
-      console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
-      setRealData(prev => ({ ...prev, loading: false }));
-      return;
-    }
-    
-    console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}, Mosque: ${mosqueForDataLoading.name}`);
-    setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
-
-    try {
-      // For parents, we only need students (their children) and basic mosque info
-      const [studentsRes, paymentsRes] = await Promise.all([
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/payments`),
-      ]);
-      
-      const allStudents = studentsRes || [];
-      const allPayments = paymentsRes || [];
-      
-      // Filter to only their children
-      const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
-      const parentPayments = allPayments.filter(p => String(p.parent_id) === String(currentUser.id));
-      
-      console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
-
-      setRealData(prev => ({
-        ...prev,
-        students: parentChildren, // Only their children
-        payments: parentPayments, // Only their payments
-        users: [currentUser], // Only themselves
-        classes: [], // Don't need all classes for parents
-        teacherAssignedClasses: [],
-        loading: false,
-        error: null,
-      }));
-    } catch (error) {
-      console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
-      setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
-    }
-  }, [currentUser]);
+  const loadTeacherInitialData = useCallback(async (mosqueForDataLoading) => {
     if (!currentUser || currentUser.role !== 'teacher' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
       console.log("[DataContext] loadTeacherInitialData: Pre-conditions not met for teacher. Skipping.");
       setRealData(prev => ({ 
@@ -172,7 +132,7 @@ export const DataProvider = ({ children }) => {
       console.error('[DataContext] loadTeacherInitialData: Error loading teacher data:', error);
       setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van leraar gegevens." }));
     }
-  }, [currentUser]); // Simplified dependencies - removed realData dependencies
+  }, [currentUser]);
 
   const loadParentInitialData = useCallback(async (mosqueForDataLoading) => {
     if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
@@ -350,7 +310,7 @@ export const DataProvider = ({ children }) => {
           setRealData(prev => ({ ...prev, mosque: null, loading: false, error: err.message }));
         });
     }
-  }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain]); // Removed realData.mosque from deps
+  }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain]);
 
   // Role-based data loading effect - with loop prevention
   useEffect(() => {
@@ -389,7 +349,7 @@ export const DataProvider = ({ children }) => {
         loading: false, error: null,
       });
     }
-  }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]); // Added loadParentInitialData
+  }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]);
 
   const refreshAllData = useCallback(async () => {
     console.log("[DataContext] RefreshAllData called.");
