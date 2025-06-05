@@ -42,6 +42,20 @@ export const AuthProvider = ({ children }) => {
       emergencyTimeoutRef.current = null;
     }
     
+    // Cleanup auth listener before reset
+    if (authListenerRef.current) {
+      try {
+        if (typeof authListenerRef.current.unsubscribe === 'function') {
+          authListenerRef.current.unsubscribe();
+        } else if (typeof authListenerRef.current === 'function') {
+          authListenerRef.current();
+        }
+      } catch (cleanupError) {
+        console.warn("[AuthContext] Auth listener cleanup error:", cleanupError);
+      }
+      authListenerRef.current = null;
+    }
+    
     // Reset flags
     isLoggingOut.current = false;
     loginInProgress.current = false;
@@ -176,15 +190,20 @@ export const AuthProvider = ({ children }) => {
     setTimeout(checkInitialSession, 200);
   }, []);
 
-  // AUTH LISTENER - defensief
+  // AUTH LISTENER - defensief met correcte cleanup
   useEffect(() => {
     if (authListenerRef.current) {
-      authListenerRef.current.unsubscribe();
+      // Nieuwe Supabase versie: auth listener returnt een functie, geen object
+      if (typeof authListenerRef.current === 'function') {
+        authListenerRef.current(); // Call the function to unsubscribe
+      } else if (authListenerRef.current.unsubscribe) {
+        authListenerRef.current.unsubscribe(); // Old way
+      }
     }
 
     console.log("[AuthContext] Setting up auth listener...");
     
-    authListenerRef.current = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("[AuthContext] Auth event:", event, session ? 'with session' : 'no session');
         
@@ -256,9 +275,17 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
+    // Store the subscription for cleanup
+    authListenerRef.current = subscription;
+
     return () => {
       if (authListenerRef.current) {
-        authListenerRef.current.unsubscribe();
+        // New Supabase: subscription has unsubscribe method or is a function
+        if (typeof authListenerRef.current.unsubscribe === 'function') {
+          authListenerRef.current.unsubscribe();
+        } else if (typeof authListenerRef.current === 'function') {
+          authListenerRef.current();
+        }
         authListenerRef.current = null;
       }
     };
