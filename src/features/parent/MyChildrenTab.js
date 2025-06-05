@@ -1,7 +1,8 @@
-// src/features/parent/MyChildrenTab.js - Uitgebreide versie met absentie statistieken
-import React from 'react';
+// src/features/parent/MyChildrenTab.js - Uitgebreid met Qor'aan voortgang
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import QuranProgressView from './QuranProgressView';
 import { 
   Users, 
   BookOpen as ClassIcon, 
@@ -12,7 +13,10 @@ import {
   XCircle, 
   Clock, 
   TrendingUp,
-  BarChart3
+  BarChart3,
+  BookMarked,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
@@ -27,6 +31,9 @@ const MyChildrenTab = () => {
     loading: dataLoading, 
     error: dataError 
   } = realData;
+
+  const [expandedChild, setExpandedChild] = useState(null);
+  const [showQuranProgress, setShowQuranProgress] = useState({});
 
   // Wacht tot alle benodigde data is geladen
   if (dataLoading && (!students?.length || !classes?.length || !users?.length) && !dataError) {
@@ -68,13 +75,24 @@ const MyChildrenTab = () => {
     return { percentage: attendancePercentage, latePercentage };
   };
 
+  const toggleChildExpansion = (childId) => {
+    setExpandedChild(expandedChild === childId ? null : childId);
+  };
+
+  const toggleQuranProgress = (childId) => {
+    setShowQuranProgress(prev => ({
+      ...prev,
+      [childId]: !prev[childId]
+    }));
+  };
+
   // Render attendancestatistieken component
   const AttendanceStats = ({ childId, childName }) => {
     const stats = attendanceStats?.[childId];
     
     if (!stats) {
       return (
-        <div className="mt-4 pt-3 border-t border-gray-200">
+        <div className="pt-3 border-t border-gray-200">
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center">
             <BarChart3 size={14} className="mr-1" />
             Aanwezigheid
@@ -90,7 +108,7 @@ const MyChildrenTab = () => {
     const latePercentage = attendanceResult.latePercentage;
     
     return (
-      <div className="mt-4 pt-3 border-t border-gray-200">
+      <div className="pt-3 border-t border-gray-200">
         <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center">
           <BarChart3 size={14} className="mr-1" />
           Aanwezigheid ({total} lessen)
@@ -206,51 +224,108 @@ const MyChildrenTab = () => {
             const childClass = classes ? classes.find(c => String(c.id) === String(child.class_id)) : null;
             const teacherUser = users && childClass?.teacher_id ? users.find(u => u.role === 'teacher' && String(u.id) === String(childClass.teacher_id)) : null;
             const teacherName = teacherUser?.name || <span className="italic text-gray-500">Nog niet toegewezen</span>;
+            const isExpanded = expandedChild === child.id;
+            const showingQuranProgress = showQuranProgress[child.id];
 
             return (
               <div key={child.id} className="card hover:shadow-lg transition-shadow duration-150">
+                {/* Child header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start mb-3">
+                  <div className="flex-1">
                     <h3 className="text-2xl font-semibold text-emerald-700">{child.name}</h3>
                     {child.active === false && (
-                        <span className="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full mt-1 sm:mt-0">Inactief</span>
+                      <span className="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full mt-1">Inactief</span>
                     )}
+                  </div>
+                  
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+                    <button
+                      onClick={() => toggleQuranProgress(child.id)}
+                      className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        showingQuranProgress 
+                          ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200' 
+                          : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                      }`}
+                    >
+                      <BookMarked size={14} className="mr-1" />
+                      Qor'aan Voortgang
+                    </button>
+                    
+                    <button
+                      onClick={() => toggleChildExpansion(child.id)}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200"
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp size={14} className="mr-1" />
+                          Inklappen
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} className="mr-1" />
+                          Details
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                {/* Quick overview */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-4">
                   <div className="flex items-center py-1">
                     <ClassIcon size={18} className="mr-2.5 text-blue-600 flex-shrink-0" />
-                    <strong className="w-28 inline-block flex-shrink-0">Klas:</strong>
+                    <strong className="w-24 inline-block flex-shrink-0">Klas:</strong>
                     <span>{childClass?.name || <span className="italic text-gray-500">Geen klas</span>}</span>
                   </div>
                   <div className="flex items-center py-1">
                     <TeacherIcon size={18} className="mr-2.5 text-purple-600 flex-shrink-0" />
-                    <strong className="w-28 inline-block flex-shrink-0">Leraar:</strong>
+                    <strong className="w-24 inline-block flex-shrink-0">Leraar:</strong>
                     <span>{teacherName}</span>
                   </div>
-                  {child.date_of_birth && (
-                    <div className="flex items-center py-1">
-                      <CalendarDays size={18} className="mr-2.5 text-gray-500 flex-shrink-0" />
-                      <strong className="w-28 inline-block flex-shrink-0">Geboortedatum:</strong>
-                      <span>{new Date(child.date_of_birth).toLocaleDateString('nl-NL')}</span>
-                    </div>
-                  )}
                 </div>
 
-                {/* Aanwezigheidsstatistieken */}
-                <AttendanceStats childId={child.id} childName={child.name} />
-
-                {childClass?.description && (
-                    <div className="mt-4 pt-3 border-t border-gray-200">
-                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Informatie over de klas:</h4>
-                        <p className="text-xs text-gray-600">{childClass.description}</p>
-                    </div>
+                {/* Qor'aan Progress Section */}
+                {showingQuranProgress && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200">
+                    <QuranProgressView 
+                      childId={child.id} 
+                      childName={child.name} 
+                    />
+                  </div>
                 )}
 
-                {child.notes && (
-                     <div className="mt-4 pt-3 border-t border-gray-200">
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div className="space-y-4">
+                    {/* Extra details */}
+                    {child.date_of_birth && (
+                      <div className="flex items-center py-1 text-sm">
+                        <CalendarDays size={18} className="mr-2.5 text-gray-500 flex-shrink-0" />
+                        <strong className="w-28 inline-block flex-shrink-0">Geboortedatum:</strong>
+                        <span>{new Date(child.date_of_birth).toLocaleDateString('nl-NL')}</span>
+                      </div>
+                    )}
+
+                    {/* Aanwezigheidsstatistieken */}
+                    <AttendanceStats childId={child.id} childName={child.name} />
+
+                    {/* Class description */}
+                    {childClass?.description && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Informatie over de klas:</h4>
+                        <p className="text-xs text-gray-600">{childClass.description}</p>
+                      </div>
+                    )}
+
+                    {/* Child notes */}
+                    {child.notes && (
+                      <div className="pt-3 border-t border-gray-200">
                         <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Notities over {child.name}:</h4>
                         <p className="text-xs text-gray-600 whitespace-pre-wrap">{child.notes}</p>
-                    </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             );
