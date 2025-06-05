@@ -105,33 +105,25 @@ export const DataProvider = ({ children }) => {
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
-      let allClasses = realData.classes && realData.classes.length > 0 ? realData.classes : [];
-      let allStudents = realData.students && realData.students.length > 0 ? realData.students : [];
-      let allUsers = realData.users && realData.users.length > 0 ? realData.users : [];
+      // Always fetch fresh data for teachers to avoid dependency loops
+      const [classesRes, studentsRes, usersRes] = await Promise.all([
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`),
+      ]);
       
-      const dataToFetch = [];
-      if (allClasses.length === 0) dataToFetch.push(apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`).then(res => ({ type: 'classes', data: res || [] })));
-      if (allStudents.length === 0) dataToFetch.push(apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`).then(res => ({ type: 'students', data: res || [] })));
-      if (allUsers.length === 0) dataToFetch.push(apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`).then(res => ({ type: 'users', data: res || [] })));
-
-      if (dataToFetch.length > 0) {
-          console.log(`[DataContext] loadTeacherInitialData: Fetching general mosque data (classes/students/users) as it's not in state.`);
-          const results = await Promise.all(dataToFetch);
-          results.forEach(result => {
-              if (result.type === 'classes') allClasses = result.data;
-              if (result.type === 'students') allStudents = result.data;
-              if (result.type === 'users') allUsers = result.data;
-          });
-      }
+      const allClasses = classesRes || [];
+      const allStudents = studentsRes || [];
+      const allUsers = usersRes || [];
       
       const assignedClasses = allClasses.filter(c => String(c.teacher_id) === String(currentUser.id) && c.active);
       console.log(`[DataContext] loadTeacherInitialData: Filtered ${assignedClasses.length} assigned classes for teacher ${currentUser.name}. Total classes in mosque: ${allClasses.length}`);
 
       setRealData(prev => ({
         ...prev,
-        users: allUsers.length > 0 ? allUsers : prev.users,
-        classes: allClasses.length > 0 ? allClasses : prev.classes,
-        students: allStudents.length > 0 ? allStudents : prev.students,
+        users: allUsers,
+        classes: allClasses,
+        students: allStudents,
         teacherAssignedClasses: assignedClasses,
         loading: false,
         error: null,
@@ -140,7 +132,7 @@ export const DataProvider = ({ children }) => {
       console.error('[DataContext] loadTeacherInitialData: Error loading teacher data:', error);
       setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van leraar gegevens." }));
     }
-  }, [currentUser, realData.classes, realData.students, realData.users]);
+  }, [currentUser]); // Simplified dependencies - removed realData dependencies
 
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
     if (!currentUser || !realData.mosque?.id || !classId) return [];
