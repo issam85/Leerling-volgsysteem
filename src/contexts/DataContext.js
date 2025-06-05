@@ -167,7 +167,7 @@ export const DataProvider = ({ children }) => {
   setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
   try {
-    // Voor ouders laden we students, classes EN users (voor leraarsnamen)
+    // Voor ouders laden we students, classes, users EN absentie statistieken
     const [studentsRes, classesRes, usersRes] = await Promise.all([
       apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
       apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
@@ -182,12 +182,30 @@ export const DataProvider = ({ children }) => {
     const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
     console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
 
+    // Haal absentie statistieken op voor elk kind
+    let attendanceStats = {};
+    if (parentChildren.length > 0) {
+      try {
+        const childIds = parentChildren.map(child => child.id);
+        const statsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students/attendance-stats`, {
+          method: 'POST',
+          body: JSON.stringify({ student_ids: childIds })
+        });
+        attendanceStats = statsRes || {};
+        console.log(`[DataContext] loadParentInitialData: Loaded attendance stats for ${Object.keys(attendanceStats).length} children`);
+      } catch (error) {
+        console.error('[DataContext] Error loading attendance stats:', error);
+        // Niet fataal - ga door zonder statistieken
+      }
+    }
+
     setRealData(prev => ({
       ...prev,
       students: parentChildren, // Alleen hun kinderen
       payments: [], // Leeg voor nu - kan later apart geladen worden
       users: allUsers, // Alle users (zodat leraarsnamen getoond kunnen worden)
       classes: allClasses, // Alle klassen (zodat klasnamen getoond kunnen worden)
+      attendanceStats: attendanceStats, // Absentie statistieken per kind
       teacherAssignedClasses: [],
       loading: false,
       error: null,
@@ -197,6 +215,21 @@ export const DataProvider = ({ children }) => {
     setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
   }
 }, [currentUser]);
+
+// En update je initialState om attendanceStats toe te voegen:
+const [realData, setRealData] = useState({
+  users: [],
+  classes: [],
+  students: [],
+  payments: [],
+  mosque: null,
+  teacherAssignedClasses: [],
+  currentClassLessons: [],
+  currentLessonAttendance: [],
+  attendanceStats: {}, // NIEUW: absentie statistieken per leerling
+  loading: false,
+  error: null,
+});
 
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
     if (!currentUser || !realData.mosque?.id || !classId) return [];

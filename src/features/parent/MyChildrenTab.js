@@ -1,14 +1,32 @@
-// src/features/parent/MyChildrenTab.js
+// src/features/parent/MyChildrenTab.js - Uitgebreide versie met absentie statistieken
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
-import { Users, BookOpen as ClassIcon, User as TeacherIcon, CalendarDays, AlertCircle, Smile, Frown } from 'lucide-react'; // Smile/Frown voor aanwezigheid (voorbeeld)
-import LoadingSpinner from '../../components/LoadingSpinner'; // Zorg dat dit pad correct is
+import { 
+  Users, 
+  BookOpen as ClassIcon, 
+  User as TeacherIcon, 
+  CalendarDays, 
+  AlertCircle, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  TrendingUp,
+  BarChart3
+} from 'lucide-react';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 const MyChildrenTab = () => {
   const { currentUser } = useAuth();
   const { realData } = useData();
-  const { students, classes, users, loading: dataLoading, error: dataError } = realData; // users voor lerarennamen
+  const { 
+    students, 
+    classes, 
+    users, 
+    attendanceStats, 
+    loading: dataLoading, 
+    error: dataError 
+  } = realData;
 
   // Wacht tot alle benodigde data is geladen
   if (dataLoading && (!students?.length || !classes?.length || !users?.length) && !dataError) {
@@ -34,11 +52,111 @@ const MyChildrenTab = () => {
   // Filter de kinderen van de ingelogde ouder
   const myChildren = students ? students.filter(student => String(student.parent_id) === String(currentUser.id)) : [];
 
+  // Helper functie om aanwezigheidspercentage te berekenen
+  const calculateAttendancePercentage = (stats) => {
+    if (!stats) return 0;
+    const total = stats.aanwezig + stats.afwezig_ongeoorloofd + stats.afwezig_geoorloofd + stats.te_laat;
+    if (total === 0) return 0;
+    return Math.round((stats.aanwezig / total) * 100);
+  };
+
+  // Render attendancestatistieken component
+  const AttendanceStats = ({ childId, childName }) => {
+    const stats = attendanceStats?.[childId];
+    
+    if (!stats) {
+      return (
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center">
+            <BarChart3 size={14} className="mr-1" />
+            Aanwezigheid
+          </h4>
+          <p className="text-sm text-gray-500 italic">Nog geen aanwezigheidsgegevens beschikbaar</p>
+        </div>
+      );
+    }
+
+    const total = stats.aanwezig + stats.afwezig_ongeoorloofd + stats.afwezig_geoorloofd + stats.te_laat;
+    const attendancePercentage = calculateAttendancePercentage(stats);
+    
+    return (
+      <div className="mt-4 pt-3 border-t border-gray-200">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center">
+          <BarChart3 size={14} className="mr-1" />
+          Aanwezigheid ({total} lessen)
+        </h4>
+        
+        {/* Percentage indicator */}
+        <div className="flex items-center mb-3">
+          <TrendingUp size={16} className="mr-2 text-blue-600" />
+          <span className="text-sm font-medium text-gray-700 mr-2">Aanwezigheidspercentage:</span>
+          <span className={`text-sm font-bold px-2 py-1 rounded ${
+            attendancePercentage >= 90 ? 'text-green-700 bg-green-100' :
+            attendancePercentage >= 75 ? 'text-yellow-700 bg-yellow-100' :
+            'text-red-700 bg-red-100'
+          }`}>
+            {attendancePercentage}%
+          </span>
+        </div>
+
+        {/* Statistieken grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="flex items-center p-2 bg-green-50 rounded-lg">
+            <CheckCircle2 size={16} className="mr-2 text-green-600 flex-shrink-0" />
+            <div>
+              <div className="font-semibold text-green-800">{stats.aanwezig}</div>
+              <div className="text-green-600">Aanwezig</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center p-2 bg-red-50 rounded-lg">
+            <XCircle size={16} className="mr-2 text-red-600 flex-shrink-0" />
+            <div>
+              <div className="font-semibold text-red-800">{stats.afwezig_ongeoorloofd}</div>
+              <div className="text-red-600">Afwezig</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center p-2 bg-yellow-50 rounded-lg">
+            <Clock size={16} className="mr-2 text-yellow-600 flex-shrink-0" />
+            <div>
+              <div className="font-semibold text-yellow-800">{stats.te_laat}</div>
+              <div className="text-yellow-600">Te laat</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center p-2 bg-blue-50 rounded-lg">
+            <CheckCircle2 size={16} className="mr-2 text-blue-600 flex-shrink-0" />
+            <div>
+              <div className="font-semibold text-blue-800">{stats.afwezig_geoorloofd}</div>
+              <div className="text-blue-600">Geoorloofde afwezigheid</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar voor visuele weergave */}
+        {total > 0 && (
+          <div className="mt-3">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  attendancePercentage >= 90 ? 'bg-green-500' :
+                  attendancePercentage >= 75 ? 'bg-yellow-500' :
+                  'bg-red-500'
+                }`}
+                style={{ width: `${attendancePercentage}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <h2 className="page-title">Mijn Kinderen</h2>
-        {/* Hier zou een knop kunnen komen om bijv. een nieuw kind aan te melden (indien die flow bestaat) */}
       </div>
 
       {myChildren.length === 0 && !dataLoading ? (
@@ -54,8 +172,6 @@ const MyChildrenTab = () => {
         <div className="space-y-6">
           {myChildren.map(child => {
             const childClass = classes ? classes.find(c => String(c.id) === String(child.class_id)) : null;
-            // De 'teacher' info zit genest in 'childClass' door je backend query voor klassen
-            // Echter, de 'teacher' in classes is alleen een ID. We moeten de leraar opzoeken in de 'users' array.
             const teacherUser = users && childClass?.teacher_id ? users.find(u => u.role === 'teacher' && String(u.id) === String(childClass.teacher_id)) : null;
             const teacherName = teacherUser?.name || <span className="italic text-gray-500">Nog niet toegewezen</span>;
 
@@ -63,7 +179,7 @@ const MyChildrenTab = () => {
               <div key={child.id} className="card hover:shadow-lg transition-shadow duration-150">
                 <div className="flex flex-col sm:flex-row justify-between items-start mb-3">
                     <h3 className="text-2xl font-semibold text-emerald-700">{child.name}</h3>
-                    {child.active === false && ( // Toon als kind inactief is
+                    {child.active === false && (
                         <span className="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full mt-1 sm:mt-0">Inactief</span>
                     )}
                 </div>
@@ -86,13 +202,10 @@ const MyChildrenTab = () => {
                       <span>{new Date(child.date_of_birth).toLocaleDateString('nl-NL')}</span>
                     </div>
                   )}
-                  {/* Voorbeeld voor toekomstige uitbreidingen */}
-                  {/* <div className="flex items-center py-1">
-                    <Smile size={18} className="mr-2.5 text-green-500 flex-shrink-0" />
-                    <strong className="w-28 inline-block flex-shrink-0">Aanwezigheid:</strong>
-                    <span>95% (Voorbeeld)</span>
-                  </div> */}
                 </div>
+
+                {/* Aanwezigheidsstatistieken */}
+                <AttendanceStats childId={child.id} childName={child.name} />
 
                 {childClass?.description && (
                     <div className="mt-4 pt-3 border-t border-gray-200">
