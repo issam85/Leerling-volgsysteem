@@ -205,13 +205,28 @@ const TeacherClassAttendancePage = () => {
         }));
 
         try {
-            const success = await saveAttendanceForLesson(currentLesson.id, payload);
-            if (success) {
-                setPageMessage('Absenties succesvol opgeslagen! Wijzigingen blijven bewaard tot u de pagina verlaat.');
-                // Keep the local state - don't reload from database
-                // User can continue making changes and save again
+            console.log("[Attendance] Saving attendance payload:", payload);
+            const result = await saveAttendanceForLesson(currentLesson.id, payload);
+            
+            if (result.success) {
+                setPageMessage('Absenties succesvol opgeslagen in database!');
+                
+                // Update local state with fresh database data
+                if (result.freshData && currentLesson.klas && currentLesson.klas.students) {
+                    console.log("[Attendance] Updating local state with fresh database data");
+                    const freshAttMap = {};
+                    currentLesson.klas.students.forEach(student => {
+                        const record = result.freshData.find(att => att.leerling_id === student.id);
+                        freshAttMap[student.id] = {
+                            status: record?.status || 'aanwezig',
+                            notities_absentie: record?.notities_absentie || '',
+                        };
+                    });
+                    setAttendanceRecords(freshAttMap);
+                    console.log("[Attendance] Local state updated with database values");
+                }
             } else {
-                setPageError('Opslaan van absenties mislukt.');
+                setPageError(result.error || 'Opslaan van absenties mislukt.');
             }
         } catch (err) {
             console.error("[Attendance] Error saving attendance:", err);

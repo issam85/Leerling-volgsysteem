@@ -233,16 +233,24 @@ export const DataProvider = ({ children }) => {
       });
       
       if (result.success) {
-        // DON'T automatically refresh - let component manage its own state
-        // The component knows what it just saved, no need to overwrite with DB data
-        console.log("[DataContext] Attendance saved successfully - component will handle state");
-        return true;
+        // ALWAYS refresh attendance data from database after save
+        try {
+          console.log("[DataContext] Save successful, refreshing attendance from database...");
+          const freshAttendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
+          setRealData(prev => ({ ...prev, currentLessonAttendance: freshAttendance || [] }));
+          console.log("[DataContext] Fresh attendance data loaded:", freshAttendance?.length || 0, "records");
+          return { success: true, freshData: freshAttendance || [] };
+        } catch (fetchError) {
+          console.error("[DataContext] Could not refresh attendance after save:", fetchError);
+          // Save was successful, but refresh failed - still return success
+          return { success: true, freshData: null };
+        }
       }
       throw new Error(result.error || "Opslaan van absenties mislukt.");
     } catch (error) {
       console.error("[DataContext] Error saving attendance:", error);
       setRealData(prev => ({...prev, error: error.message }));
-      return false;
+      return { success: false, error: error.message };
     }
   }, [currentUser?.id]);
 
