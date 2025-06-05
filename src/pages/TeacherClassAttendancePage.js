@@ -207,7 +207,9 @@ const TeacherClassAttendancePage = () => {
         try {
             const success = await saveAttendanceForLesson(currentLesson.id, payload);
             if (success) {
-                setPageMessage('Absenties succesvol opgeslagen!');
+                setPageMessage('Absenties succesvol opgeslagen! Wijzigingen blijven bewaard tot u de pagina verlaat.');
+                // Keep the local state - don't reload from database
+                // User can continue making changes and save again
             } else {
                 setPageError('Opslaan van absenties mislukt.');
             }

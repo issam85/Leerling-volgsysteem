@@ -233,13 +233,9 @@ export const DataProvider = ({ children }) => {
       });
       
       if (result.success) {
-        // Refresh attendance data after save
-        try {
-          const attendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
-          setRealData(prev => ({ ...prev, currentLessonAttendance: attendance || [] }));
-        } catch (fetchError) {
-          console.warn("[DataContext] Could not refresh attendance after save:", fetchError);
-        }
+        // DON'T automatically refresh - let component manage its own state
+        // The component knows what it just saved, no need to overwrite with DB data
+        console.log("[DataContext] Attendance saved successfully - component will handle state");
         return true;
       }
       throw new Error(result.error || "Opslaan van absenties mislukt.");
@@ -248,7 +244,7 @@ export const DataProvider = ({ children }) => {
       setRealData(prev => ({...prev, error: error.message }));
       return false;
     }
-  }, [currentUser?.id]); // Removed fetchAttendanceForLesson dependency
+  }, [currentUser?.id]);
 
   const createLesson = useCallback(async (mosqueId, classId, lessonData) => {
       if (!mosqueId || !classId || !lessonData) return null;
