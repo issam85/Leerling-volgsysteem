@@ -141,7 +141,9 @@ export const AuthProvider = ({ children }) => {
             setCurrentUser(null);
             localStorage.removeItem(`currentUser_${activeSubdomain}`);
             
-            if (location.pathname !== '/login' && activeSubdomain !== 'register') {
+            // Only navigate if not already on login page
+            if (window.location.pathname !== '/login' && activeSubdomain !== 'register') {
+              console.log("[AuthContext] Navigating to login after logout");
               navigate('/login', { replace: true });
             }
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -246,20 +248,29 @@ export const AuthProvider = ({ children }) => {
   }, [currentSubdomain]);
 
   const handleLogout = useCallback(async () => {
-    setLoadingUser(true);
     console.log("[AuthContext] Logout initiated");
     
     try {
+      // Clear user state immediately to prevent any loops
+      setCurrentUser(null);
+      localStorage.removeItem(`currentUser_${currentSubdomain}`);
+      
+      // Then sign out from Supabase (this will trigger SIGNED_OUT event)
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error during Supabase signOut:", error);
       }
+      
+      // Force navigate to login immediately
+      console.log("[AuthContext] Force navigating to login");
+      navigate('/login', { replace: true });
+      
     } catch (error) {
       console.error("Logout error:", error);
-    } finally {
-      setLoadingUser(false);
+      // Even on error, navigate to login
+      navigate('/login', { replace: true });
     }
-  }, []);
+  }, [currentSubdomain, navigate]);
 
   const switchSubdomain = useCallback((newSubdomain) => {
     const currentHostname = window.location.hostname;

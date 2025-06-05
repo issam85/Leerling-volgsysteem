@@ -307,14 +307,13 @@ export const DataProvider = ({ children }) => {
         setRealData(prev => ({ ...prev, loading: false }));
       }
     } else if (!currentUser && lastLoadedUserId.current !== null) {
-      console.log("[DataContext] No currentUser (e.g. after logout). Resetting data.");
+      console.log("[DataContext] No currentUser (logout detected). Resetting data.");
       lastLoadedUserId.current = null;
-      setRealData(prev => ({
-          ...prev,
-          users: [], classes: [], students: [], payments: [],
-          teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
-          loading: false, error: null,
-      }));
+      setRealData({
+        users: [], classes: [], students: [], payments: [], mosque: null,
+        teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
+        loading: false, error: null,
+      });
     }
   }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData]); // Controlled dependencies
 
