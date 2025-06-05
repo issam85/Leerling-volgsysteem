@@ -1,6 +1,5 @@
-// src/contexts/AuthContext.js - DEFINITIEVE FIX voor Supabase v2
+// src/contexts/AuthContext.js - DEFINITIEVE FIX voor Supabase v2 met Direct Login
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { apiCall } from '../services/api'; // Je bestaande apiCall
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient'; // Importeer je Supabase client
 
@@ -117,6 +116,11 @@ export const AuthProvider = ({ children }) => {
                 setCurrentUser(appUser);
                 localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
                 console.log("[AuthContext] SIGNED_IN: currentUser set:", appUser);
+                
+                // Navigeer naar dashboard na succesvolle login
+                if (location.pathname === '/login') {
+                  navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+                }
               } else {
                 console.warn("[AuthContext] SIGNED_IN: No appUser found. Forcing logout.");
                 await supabase.auth.signOut();
@@ -166,39 +170,82 @@ export const AuthProvider = ({ children }) => {
         subscription.unsubscribe();
       }
     };
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, location.state]);
 
   const handleLogin = useCallback(async (email, password) => {
     setLoadingUser(true);
-    console.log("[AuthContext] Login attempt for:", email);
+    console.log("[AuthContext] Direct Supabase login attempt for:", email);
     
     try {
-      const result = await apiCall('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email,
-          password,
-          subdomain: currentSubdomain,
-        }),
+      // Stap 1: Valideer het subdomein (ophalen mosque_id)
+      if (!currentSubdomain || currentSubdomain === 'register') {
+        throw new Error('Geen geldig subdomein gevonden voor login.');
+      }
+
+      // Stap 2: Haal mosque_id op voor validatie
+      const { data: mosque, error: mosqueError } = await supabase
+        .from('mosques')
+        .select('id')
+        .eq('subdomain', currentSubdomain.toLowerCase().trim())
+        .single();
+      
+      if (mosqueError || !mosque) {
+        throw new Error(`Moskee met subdomein '${currentSubdomain}' niet gevonden.`);
+      }
+
+      // Stap 3: Doe de Supabase Auth login
+      const { data: { user: supabaseAuthUser, session }, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password: password
       });
 
-      console.log("[AuthContext] Login API result:", result);
-
-      if (result.success && result.user) {
-        setLoadingUser(false);
-        navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
-        return true;
-      } else {
-        throw new Error(result.error || 'Ongeldige inloggegevens of serverfout.');
+      if (signInError) {
+        if (signInError.message === 'Invalid login credentials') {
+          throw new Error('Ongeldige combinatie van email/wachtwoord.');
+        }
+        throw new Error(`Authenticatiefout: ${signInError.message}`);
       }
+
+      if (!supabaseAuthUser || !session) {
+        throw new Error('Ongeldige inlogpoging, geen gebruiker of sessie ontvangen.');
+      }
+
+      // Stap 4: Valideer dat de app user bij de juiste moskee hoort
+      const { data: appUser, error: appUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', supabaseAuthUser.id)
+        .eq('mosque_id', mosque.id)
+        .single();
+
+      if (appUserError || !appUser) {
+        // Als app user niet gevonden of niet van deze moskee, log uit
+        await supabase.auth.signOut();
+        throw new Error('Gebruiker gevonden in authenticatiesysteem, maar niet in applicatiedatabase voor deze moskee of gegevens inconsistent.');
+      }
+
+      // Stap 5: Update last_login timestamp
+      await supabase
+        .from('users')
+        .update({ last_login: new Date() })
+        .eq('id', appUser.id);
+
+      console.log("[AuthContext] Direct Supabase login successful for:", appUser.email);
+      
+      // De onAuthStateChange listener zal automatisch getriggerd worden
+      // en de currentUser instellen + navigatie doen
+      
+      setLoadingUser(false);
+      return true;
+
     } catch (error) {
-      console.error('AuthContext login error:', error);
+      console.error('AuthContext direct Supabase login error:', error);
       setCurrentUser(null);
       localStorage.removeItem(`currentUser_${currentSubdomain}`);
       setLoadingUser(false);
       throw error;
     }
-  }, [currentSubdomain, navigate, location.state]);
+  }, [currentSubdomain]);
 
   const handleLogout = useCallback(async () => {
     setLoadingUser(true);
