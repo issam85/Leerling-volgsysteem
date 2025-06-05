@@ -25,8 +25,30 @@ export const DataProvider = ({ children }) => {
   const isDataInitialized = useRef(false);
   const lastLoadedSubdomain = useRef(null);
   const lastLoadedUserId = useRef(null);
+  const loadingTimeoutRef = useRef(null);
 
   console.log("🔍 [DataContext] Render - currentUser:", !!currentUser, "loadingUser:", loadingUser, "subdomain:", currentSubdomain);
+
+  // Emergency loading timeout - force stop loading after 15 seconds
+  useEffect(() => {
+    if (realData.loading) {
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.warn("[DataContext] EMERGENCY TIMEOUT: Forcing loading to stop after 15 seconds");
+        setRealData(prev => ({ ...prev, loading: false, error: "Data loading timeout - probeer opnieuw" }));
+      }, 15000);
+    } else {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [realData.loading]);
 
   const fetchMosqueDataBySubdomain = useCallback(async (subdomain) => {
     if (!subdomain || subdomain === 'register') return null;
@@ -141,31 +163,24 @@ export const DataProvider = ({ children }) => {
       return;
     }
     
-    console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}, Mosque: ${mosqueForDataLoading.name}`);
+    console.log(`[DataContext] loadParentInitialData: Loading MINIMAL data for parent ID: ${currentUser.id}`);
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
-      // For parents, we only need students (their children) and basic mosque info
-      const [studentsRes, paymentsRes] = await Promise.all([
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/payments`),
-      ]);
-      
+      // For parents, ONLY load their own children - no payments API call to prevent loops
+      const studentsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`);
       const allStudents = studentsRes || [];
-      const allPayments = paymentsRes || [];
       
       // Filter to only their children
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
-      const parentPayments = allPayments.filter(p => String(p.parent_id) === String(currentUser.id));
-      
       console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
 
       setRealData(prev => ({
         ...prev,
         students: parentChildren, // Only their children
-        payments: parentPayments, // Only their payments
+        payments: [], // Empty for now - can be loaded separately if needed
         users: [currentUser], // Only themselves
-        classes: [], // Don't need all classes for parents
+        classes: [], // Empty for parents
         teacherAssignedClasses: [],
         loading: false,
         error: null,
@@ -337,8 +352,11 @@ export const DataProvider = ({ children }) => {
         console.log("[DataContext] User is TEACHER. Loading teacher initial data.");
         loadTeacherInitialData(realData.mosque);
       } else if (currentUser.role === 'parent') {
-        console.log("[DataContext] User is PARENT. Loading parent initial data.");
-        loadParentInitialData(realData.mosque);
+        console.log("[DataContext] User is PARENT. Loading MINIMAL parent data.");
+        // Extra timeout for parent loading to prevent race conditions
+        setTimeout(() => {
+          loadParentInitialData(realData.mosque);
+        }, 100);
       } else {
         console.warn("[DataContext] Unknown user role or no role, stopping data load.");
         setRealData(prev => ({ ...prev, loading: false }));
