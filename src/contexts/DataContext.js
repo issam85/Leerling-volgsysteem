@@ -8,6 +8,7 @@ const DataContext = createContext(null);
 export const DataProvider = ({ children }) => {
   const { currentUser, currentSubdomain, loadingUser } = useAuth();
   
+  // ENIGE useState declaratie - met attendanceStats toegevoegd
   const [realData, setRealData] = useState({
     users: [],
     classes: [],
@@ -17,6 +18,7 @@ export const DataProvider = ({ children }) => {
     teacherAssignedClasses: [],
     currentClassLessons: [],
     currentLessonAttendance: [],
+    attendanceStats: {}, // NIEUW: absentie statistieken per leerling
     loading: false, // Start false to prevent initial loops
     error: null,
   });
@@ -157,79 +159,64 @@ export const DataProvider = ({ children }) => {
   }, [currentUser]);
 
   const loadParentInitialData = useCallback(async (mosqueForDataLoading) => {
-  if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
-    console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
-    setRealData(prev => ({ ...prev, loading: false }));
-    return;
-  }
-  
-  console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}`);
-  setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
-
-  try {
-    // Voor ouders laden we students, classes, users EN absentie statistieken
-    const [studentsRes, classesRes, usersRes] = await Promise.all([
-      apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
-      apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
-      apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`)
-    ]);
-    
-    const allStudents = studentsRes || [];
-    const allClasses = classesRes || [];
-    const allUsers = usersRes || [];
-    
-    // Filter alleen hun eigen kinderen
-    const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
-    console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
-
-    // Haal absentie statistieken op voor elk kind
-    let attendanceStats = {};
-    if (parentChildren.length > 0) {
-      try {
-        const childIds = parentChildren.map(child => child.id);
-        const statsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students/attendance-stats`, {
-          method: 'POST',
-          body: JSON.stringify({ student_ids: childIds })
-        });
-        attendanceStats = statsRes || {};
-        console.log(`[DataContext] loadParentInitialData: Loaded attendance stats for ${Object.keys(attendanceStats).length} children`);
-      } catch (error) {
-        console.error('[DataContext] Error loading attendance stats:', error);
-        // Niet fataal - ga door zonder statistieken
-      }
+    if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
+      console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
+      setRealData(prev => ({ ...prev, loading: false }));
+      return;
     }
+    
+    console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}`);
+    setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
-    setRealData(prev => ({
-      ...prev,
-      students: parentChildren, // Alleen hun kinderen
-      payments: [], // Leeg voor nu - kan later apart geladen worden
-      users: allUsers, // Alle users (zodat leraarsnamen getoond kunnen worden)
-      classes: allClasses, // Alle klassen (zodat klasnamen getoond kunnen worden)
-      attendanceStats: attendanceStats, // Absentie statistieken per kind
-      teacherAssignedClasses: [],
-      loading: false,
-      error: null,
-    }));
-  } catch (error) {
-    console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
-    setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
-  }
-}, [currentUser]);
+    try {
+      // Voor ouders laden we students, classes, users EN absentie statistieken
+      const [studentsRes, classesRes, usersRes] = await Promise.all([
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`)
+      ]);
+      
+      const allStudents = studentsRes || [];
+      const allClasses = classesRes || [];
+      const allUsers = usersRes || [];
+      
+      // Filter alleen hun eigen kinderen
+      const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
+      console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
 
-// En update je initialState om attendanceStats toe te voegen:
-const [realData, setRealData] = useState({
-  users: [],
-  classes: [],
-  students: [],
-  payments: [],
-  mosque: null,
-  teacherAssignedClasses: [],
-  currentClassLessons: [],
-  currentLessonAttendance: [],
-  attendanceStats: {}, // NIEUW: absentie statistieken per leerling
-  loading: false,
-  error: null,
-});
+      // Haal absentie statistieken op voor elk kind
+      let attendanceStats = {};
+      if (parentChildren.length > 0) {
+        try {
+          const childIds = parentChildren.map(child => child.id);
+          const statsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students/attendance-stats`, {
+            method: 'POST',
+            body: JSON.stringify({ student_ids: childIds })
+          });
+          attendanceStats = statsRes || {};
+          console.log(`[DataContext] loadParentInitialData: Loaded attendance stats for ${Object.keys(attendanceStats).length} children`);
+        } catch (error) {
+          console.error('[DataContext] Error loading attendance stats:', error);
+          // Niet fataal - ga door zonder statistieken
+        }
+      }
+
+      setRealData(prev => ({
+        ...prev,
+        students: parentChildren, // Alleen hun kinderen
+        payments: [], // Leeg voor nu - kan later apart geladen worden
+        users: allUsers, // Alle users (zodat leraarsnamen getoond kunnen worden)
+        classes: allClasses, // Alle klassen (zodat klasnamen getoond kunnen worden)
+        attendanceStats: attendanceStats, // Absentie statistieken per kind
+        teacherAssignedClasses: [],
+        loading: false,
+        error: null,
+      }));
+    } catch (error) {
+      console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
+      setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
+    }
+  }, [currentUser]);
 
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
     if (!currentUser || !realData.mosque?.id || !classId) return [];
@@ -342,8 +329,8 @@ const [realData, setRealData] = useState({
     if (currentSubdomain === 'register') {
       setRealData({ 
         users: [], classes: [], students: [], payments: [], mosque: null, 
-        teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [], 
-        loading: false, error: null 
+        teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
+        attendanceStats: {}, loading: false, error: null 
       });
       lastLoadedSubdomain.current = currentSubdomain;
       return;
@@ -392,7 +379,7 @@ const [realData, setRealData] = useState({
         console.log("[DataContext] User is TEACHER. Loading teacher initial data.");
         loadTeacherInitialData(realData.mosque);
       } else if (currentUser.role === 'parent') {
-        console.log("[DataContext] User is PARENT. Loading MINIMAL parent data.");
+        console.log("[DataContext] User is PARENT. Loading parent data with attendance stats.");
         // Extra timeout for parent loading to prevent race conditions
         setTimeout(() => {
           loadParentInitialData(realData.mosque);
@@ -407,7 +394,7 @@ const [realData, setRealData] = useState({
       setRealData({
         users: [], classes: [], students: [], payments: [], mosque: null,
         teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
-        loading: false, error: null,
+        attendanceStats: {}, loading: false, error: null,
       });
     }
   }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]);
@@ -442,7 +429,7 @@ const [realData, setRealData] = useState({
              mosque: mosqueObject,
              users: [], classes: [], students: [], payments: [],
              teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
-             loading: false 
+             attendanceStats: {}, loading: false 
             }));
         }
       } else {
