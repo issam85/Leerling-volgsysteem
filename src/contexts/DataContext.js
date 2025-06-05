@@ -1,5 +1,5 @@
-// src/contexts/DataContext.js - COMPLETE VERSION met alle functies
-import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+// src/contexts/DataContext.js - VOLLEDIGE VERSIE met loop fixes
+import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -17,9 +17,14 @@ export const DataProvider = ({ children }) => {
     teacherAssignedClasses: [],
     currentClassLessons: [],
     currentLessonAttendance: [],
-    loading: true,
+    loading: false, // Start false to prevent initial loops
     error: null,
   });
+
+  // Refs to prevent infinite loops
+  const isDataInitialized = useRef(false);
+  const lastLoadedSubdomain = useRef(null);
+  const lastLoadedUserId = useRef(null);
 
   console.log("🔍 [DataContext] Render - currentUser:", !!currentUser, "loadingUser:", loadingUser, "subdomain:", currentSubdomain);
 
@@ -232,32 +237,36 @@ export const DataProvider = ({ children }) => {
       }
   }, []);
 
-  // Mosque fetch effect
+  // Mosque fetch effect - with loop prevention
   useEffect(() => {
     console.log("[DataContext] Mosque Fetch useEffect. LoadingUser:", loadingUser, "Subdomain:", currentSubdomain);
     
+    // Prevent running if auth is still loading
     if (loadingUser) {
-      setRealData(prev => ({ ...prev, loading: true, error: null }));
       return;
     }
     
+    // Handle register subdomain
     if (currentSubdomain === 'register') {
       setRealData({ 
         users: [], classes: [], students: [], payments: [], mosque: null, 
         teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [], 
         loading: false, error: null 
       });
+      lastLoadedSubdomain.current = currentSubdomain;
       return;
     }
 
-    if (!realData.mosque || realData.mosque.subdomain !== currentSubdomain) {
+    // Only fetch if subdomain changed and we don't have data for this subdomain
+    if (lastLoadedSubdomain.current !== currentSubdomain || !realData.mosque || realData.mosque.subdomain !== currentSubdomain) {
       console.log(`[DataContext] Mosque data needs refresh for ${currentSubdomain}. Fetching...`);
       setRealData(prev => ({ ...prev, loading: true, error: null, mosque: null }));
+      lastLoadedSubdomain.current = currentSubdomain;
       
       fetchMosqueDataBySubdomain(currentSubdomain)
         .then(mosqueObject => {
           if (mosqueObject) {
-            setRealData(prev => ({ ...prev, mosque: mosqueObject, error: null }));
+            setRealData(prev => ({ ...prev, mosque: mosqueObject, loading: false, error: null }));
           } else {
             throw new Error(`Moskee voor subdomein '${currentSubdomain}' kon niet worden geladen.`);
           }
@@ -266,40 +275,40 @@ export const DataProvider = ({ children }) => {
           console.error("[DataContext] Error in fetchMosqueDataBySubdomain promise chain:", err);
           setRealData(prev => ({ ...prev, mosque: null, loading: false, error: err.message }));
         });
-    } else if (!currentUser && !loadingUser) {
-        setRealData(prev => ({ ...prev, loading: false }));
     }
-  }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain, currentUser, realData.mosque]);
+  }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain]); // Removed realData.mosque from deps
 
-  // Role-based data loading effect
+  // Role-based data loading effect - with loop prevention
   useEffect(() => {
-    console.log("[DataContext] Role-based Data Load useEffect. currentUser:", !!currentUser, "Role:", currentUser?.role, "realData.mosque:", !!realData.mosque?.id, "LoadingUser:", loadingUser);
+    console.log("[DataContext] Role-based Data Load useEffect. currentUser:", !!currentUser, "Role:", currentUser?.role, "mosque:", !!realData.mosque?.id, "LoadingUser:", loadingUser);
     
+    // Prevent running if auth is still loading or no mosque
     if (loadingUser || !realData.mosque || !realData.mosque.id) {
-        if (realData.mosque && !currentUser && !loadingUser) {
-             setRealData(prev => ({...prev, loading: false}));
-        }
-        return;
+      return;
     }
 
-    if (currentUser) {
-        setRealData(prev => ({ ...prev, loading: true }));
-        
-        if (currentUser.role === 'admin') {
-            console.log("[DataContext] User is ADMIN. Loading admin detailed data.");
-            loadAdminDetailedData(realData.mosque);
-        } else if (currentUser.role === 'teacher') {
-            console.log("[DataContext] User is TEACHER. Loading teacher initial data.");
-            loadTeacherInitialData(realData.mosque);
-        } else if (currentUser.role === 'parent') {
-            console.log("[DataContext] User is PARENT. Loading general data for parent view.");
-            loadAdminDetailedData(realData.mosque);
-        } else {
-            console.warn("[DataContext] Unknown user role or no role, stopping data load.");
-            setRealData(prev => ({ ...prev, loading: false }));
-        }
-    } else {
-      console.log("[DataContext] No currentUser (e.g. after logout). Resetting non-mosque data.");
+    // Only load if user changed or not yet loaded for this user
+    if (currentUser && lastLoadedUserId.current !== currentUser.id) {
+      console.log(`[DataContext] Loading data for new user: ${currentUser.id} (role: ${currentUser.role})`);
+      setRealData(prev => ({ ...prev, loading: true }));
+      lastLoadedUserId.current = currentUser.id;
+      
+      if (currentUser.role === 'admin') {
+        console.log("[DataContext] User is ADMIN. Loading admin detailed data.");
+        loadAdminDetailedData(realData.mosque);
+      } else if (currentUser.role === 'teacher') {
+        console.log("[DataContext] User is TEACHER. Loading teacher initial data.");
+        loadTeacherInitialData(realData.mosque);
+      } else if (currentUser.role === 'parent') {
+        console.log("[DataContext] User is PARENT. Loading general data for parent view.");
+        loadAdminDetailedData(realData.mosque);
+      } else {
+        console.warn("[DataContext] Unknown user role or no role, stopping data load.");
+        setRealData(prev => ({ ...prev, loading: false }));
+      }
+    } else if (!currentUser && lastLoadedUserId.current !== null) {
+      console.log("[DataContext] No currentUser (e.g. after logout). Resetting data.");
+      lastLoadedUserId.current = null;
       setRealData(prev => ({
           ...prev,
           users: [], classes: [], students: [], payments: [],
@@ -307,7 +316,7 @@ export const DataProvider = ({ children }) => {
           loading: false, error: null,
       }));
     }
-  }, [currentUser, realData.mosque, loadingUser, loadAdminDetailedData, loadTeacherInitialData]);
+  }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData]); // Controlled dependencies
 
   const refreshAllData = useCallback(async () => {
     console.log("[DataContext] RefreshAllData called.");
