@@ -235,13 +235,15 @@ export const AuthProvider = ({ children }) => {
               console.log("[AuthContext] Setting user from SIGNED_IN:", appUser.name, appUser.role);
               setCurrentUser(appUser);
               localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
-              setLoadingUser(false);
+              setLoadingUser(false); // FORCE loading to stop
               
-              // Navigate alleen als we op login pagina zijn
-              if (window.location.pathname === '/login') {
-                console.log("[AuthContext] Navigating from login to dashboard");
-                navigate('/dashboard', { replace: true });
-              }
+              // FORCE navigation na korte delay
+              setTimeout(() => {
+                if (window.location.pathname === '/login') {
+                  console.log("[AuthContext] FORCING navigation from login to dashboard");
+                  window.location.href = '/dashboard'; // Hard navigation instead of react-router
+                }
+              }, 100);
             } else {
               console.warn("[AuthContext] No app user found in SIGNED_IN");
               smartResetAuth('no_app_user');

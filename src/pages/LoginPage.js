@@ -22,9 +22,23 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (currentUser && !loadingUser) {
+      console.log("[LoginPage] User found, navigating to dashboard:", currentUser.role);
       navigate(from, { replace: true });
     }
   }, [currentUser, loadingUser, navigate, from]);
+
+  // EXTRA: Force navigation if user exists maar we nog op login zijn
+  useEffect(() => {
+    if (currentUser) {
+      console.log("[LoginPage] FORCE CHECK: User exists, forcing navigation");
+      setTimeout(() => {
+        if (window.location.pathname === '/login') {
+          console.log("[LoginPage] FORCE NAVIGATION to dashboard");
+          window.location.href = '/dashboard';
+        }
+      }, 500);
+    }
+  }, [currentUser]);
 
   // Timer voor emergency reset knop
   useEffect(() => {
