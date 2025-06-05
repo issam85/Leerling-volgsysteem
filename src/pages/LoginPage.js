@@ -1,4 +1,4 @@
-// src/pages/LoginPage.js
+// src/pages/LoginPage.js - Met Emergency Reset functionaliteit
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,8 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain } = useAuth();
+  const [showEmergencyReset, setShowEmergencyReset] = useState(false);
+  const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, forceResetAuth } = useAuth();
   const { realData } = useData(); 
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,9 +26,29 @@ const LoginPage = () => {
     }
   }, [currentUser, loadingUser, navigate, from]);
 
+  // Timer voor emergency reset knop
+  useEffect(() => {
+    let timer;
+    if (loadingUser) {
+      // Toon reset knop na 8 seconden laden
+      timer = setTimeout(() => {
+        setShowEmergencyReset(true);
+      }, 8000);
+    } else {
+      setShowEmergencyReset(false);
+    }
+    
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [loadingUser]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setShowEmergencyReset(false); // Reset emergency button
     try {
       await login(email, password);
     } catch (err) {
@@ -35,8 +56,57 @@ const LoginPage = () => {
     }
   };
 
+  const handleEmergencyReset = () => {
+    console.log("[LoginPage] Emergency reset triggered by user");
+    setError('');
+    setShowEmergencyReset(false);
+    
+    if (forceResetAuth) {
+      forceResetAuth();
+    }
+    
+    // Extra hard reset - reload pagina na korte delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
   if (loadingUser && !currentUser) { 
-    return <LoadingSpinner message="Authenticatie controleren..." />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-teal-50 to-sky-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-md text-center">
+          <LoadingSpinner message="Gebruikerssessie controleren..." />
+          
+          {/* Emergency Reset Section - alleen na 8 seconden */}
+          {showEmergencyReset && (
+            <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800 mb-3">
+                ⚠️ Inloggen duurt langer dan verwacht
+              </p>
+              <p className="text-xs text-yellow-700 mb-4">
+                Als deze pagina blijft laden, kunt u proberen de sessie te resetten.
+              </p>
+              <Button
+                onClick={handleEmergencyReset}
+                variant="ghost"
+                className="text-yellow-700 hover:text-yellow-900 border border-yellow-300 hover:border-yellow-400 bg-yellow-100 hover:bg-yellow-200 text-sm py-2 px-4"
+              >
+                🔄 Reset inlogstatus
+              </Button>
+            </div>
+          )}
+          
+          {/* Debug info in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs text-gray-600">
+              <p>Loading: {loadingUser ? 'true' : 'false'}</p>
+              <p>Current User: {currentUser ? 'exists' : 'null'}</p>
+              <p>Subdomain: {currentSubdomain}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   const isRegisterSubdomain = currentSubdomain === 'register';
@@ -97,6 +167,17 @@ const LoginPage = () => {
             {loadingUser ? 'Bezig met inloggen...' : 'Inloggen'}
           </Button>
         </form>
+
+        {/* Manual Emergency Reset - altijd beschikbaar onderaan */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={handleEmergencyReset}
+            className="text-xs text-gray-400 hover:text-gray-600 underline"
+            title="Reset alle inlogsessies en probeer opnieuw"
+          >
+            Problemen met inloggen? Klik hier om te resetten
+          </button>
+        </div>
 
         <div className="mt-6 text-center text-sm text-gray-600 space-y-1">
           <p>Nieuwe gebruiker? Uw beheerder maakt een account voor u aan.</p>
