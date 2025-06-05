@@ -117,9 +117,9 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
                 console.log("[AuthContext] SIGNED_IN: currentUser set:", appUser);
                 
-                // Navigeer naar dashboard na succesvolle login
-                if (location.pathname === '/login') {
-                  navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+                // Navigeer naar dashboard alleen als we op login pagina zijn
+                if (window.location.pathname === '/login') {
+                  navigate('/dashboard', { replace: true });
                 }
               } else {
                 console.warn("[AuthContext] SIGNED_IN: No appUser found. Forcing logout.");
@@ -170,7 +170,7 @@ export const AuthProvider = ({ children }) => {
         subscription.unsubscribe();
       }
     };
-  }, [navigate, location.pathname, location.state]);
+  }, [navigate, location.pathname]);
 
   const handleLogin = useCallback(async (email, password) => {
     setLoadingUser(true);
