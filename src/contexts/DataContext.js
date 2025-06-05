@@ -157,39 +157,46 @@ export const DataProvider = ({ children }) => {
   }, [currentUser]);
 
   const loadParentInitialData = useCallback(async (mosqueForDataLoading) => {
-    if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
-      console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
-      setRealData(prev => ({ ...prev, loading: false }));
-      return;
-    }
+  if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
+    console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
+    setRealData(prev => ({ ...prev, loading: false }));
+    return;
+  }
+  
+  console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}`);
+  setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
+
+  try {
+    // Voor ouders laden we students, classes EN users (voor leraarsnamen)
+    const [studentsRes, classesRes, usersRes] = await Promise.all([
+      apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
+      apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
+      apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`)
+    ]);
     
-    console.log(`[DataContext] loadParentInitialData: Loading MINIMAL data for parent ID: ${currentUser.id}`);
-    setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
+    const allStudents = studentsRes || [];
+    const allClasses = classesRes || [];
+    const allUsers = usersRes || [];
+    
+    // Filter alleen hun eigen kinderen
+    const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
+    console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
 
-    try {
-      // For parents, ONLY load their own children - no payments API call to prevent loops
-      const studentsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`);
-      const allStudents = studentsRes || [];
-      
-      // Filter to only their children
-      const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
-      console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
-
-      setRealData(prev => ({
-        ...prev,
-        students: parentChildren, // Only their children
-        payments: [], // Empty for now - can be loaded separately if needed
-        users: [currentUser], // Only themselves
-        classes: [], // Empty for parents
-        teacherAssignedClasses: [],
-        loading: false,
-        error: null,
-      }));
-    } catch (error) {
-      console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
-      setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
-    }
-  }, [currentUser]);
+    setRealData(prev => ({
+      ...prev,
+      students: parentChildren, // Alleen hun kinderen
+      payments: [], // Leeg voor nu - kan later apart geladen worden
+      users: allUsers, // Alle users (zodat leraarsnamen getoond kunnen worden)
+      classes: allClasses, // Alle klassen (zodat klasnamen getoond kunnen worden)
+      teacherAssignedClasses: [],
+      loading: false,
+      error: null,
+    }));
+  } catch (error) {
+    console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
+    setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
+  }
+}, [currentUser]);
 
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
     if (!currentUser || !realData.mosque?.id || !classId) return [];
