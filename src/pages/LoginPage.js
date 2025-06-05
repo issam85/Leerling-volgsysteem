@@ -54,7 +54,16 @@ const LoginPage = () => {
     try {
       console.log("[LoginPage] Starting login process...");
       await login(email, password);
-      console.log("[LoginPage] Login successful");
+      console.log("[LoginPage] Login successful - setting backup navigation");
+      
+      // Backup navigation na 1 seconde als auth listener faalt
+      setTimeout(() => {
+        if (window.location.pathname === '/login') {
+          console.log("[LoginPage] BACKUP navigation to dashboard");
+          navigate('/dashboard', { replace: true });
+        }
+      }, 1000);
+      
     } catch (err) {
       setError(err.message || 'Inloggen mislukt. Controleer uw gegevens.');
     }

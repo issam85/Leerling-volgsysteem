@@ -172,8 +172,8 @@ export const AuthProvider = ({ children }) => {
         const activeSubdomain = getSubdomainFromHostname(window.location.hostname);
 
         try {
-          if (event === 'SIGNED_IN' && session?.user) {
-            console.log("[AuthContext] SIGNED_IN event");
+          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+            console.log("[AuthContext] AUTH EVENT with session:", event);
             
             const { data: appUser, error: appUserError } = await supabase
               .from('users')
@@ -182,15 +182,17 @@ export const AuthProvider = ({ children }) => {
               .single();
 
             if (appUser) {
-              console.log("[AuthContext] Setting user from SIGNED_IN:", appUser.name, appUser.role);
+              console.log("[AuthContext] Setting user from", event + ":", appUser.name, appUser.role);
               setCurrentUser(appUser);
               localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
               setLoadingUser(false);
               
-              // Simple navigation
+              // Navigation voor beide events
               if (window.location.pathname === '/login') {
-                console.log("[AuthContext] Navigating to dashboard");
-                navigate('/dashboard', { replace: true });
+                console.log("[AuthContext] Navigating to dashboard from", event);
+                setTimeout(() => {
+                  navigate('/dashboard', { replace: true });
+                }, 100);
               }
             } else {
               console.warn("[AuthContext] No app user found");
