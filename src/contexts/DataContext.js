@@ -179,48 +179,44 @@ export const DataProvider = ({ children }) => {
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
     if (!currentUser || !realData.mosque?.id || !classId) return [];
     console.log(`[DataContext] fetchLessonsForClass: Fetching for class ${classId}, mosque ${realData.mosque.id}`);
-    setRealData(prev => ({...prev, loading: true}));
     
     try {
       const lessons = await apiCall(`/api/mosques/${realData.mosque.id}/classes/${classId}/lessons?startDate=${startDate}&endDate=${endDate}`);
-      setRealData(prev => ({ ...prev, currentClassLessons: lessons || [], loading: false }));
+      setRealData(prev => ({ ...prev, currentClassLessons: lessons || [] }));
       return lessons || [];
     } catch (error) {
       console.error("[DataContext] Error fetching lessons:", error);
-      setRealData(prev => ({ ...prev, currentClassLessons: [], error: error.message, loading: false }));
+      setRealData(prev => ({ ...prev, currentClassLessons: [], error: error.message }));
       return [];
     }
-  }, [currentUser, realData.mosque?.id]);
+  }, [currentUser, realData.mosque?.id]); // Removed loading state changes
 
   const fetchLessonDetailsForAttendance = useCallback(async (lessonId) => {
       if(!lessonId) return null;
-      setRealData(prev => ({...prev, loading: true}));
       
       try {
           const lessonDetails = await apiCall(`/api/lessen/${lessonId}/details-for-attendance`);
-          setRealData(prev => ({...prev, loading: false}));
           return lessonDetails;
       } catch (error) {
           console.error("[DataContext] Error fetching lesson details for attendance:", error);
-          setRealData(prev => ({ ...prev, error: error.message, loading: false }));
+          setRealData(prev => ({ ...prev, error: error.message }));
           return null;
       }
-  }, []);
+  }, []); // No dependencies to prevent loops
 
   const fetchAttendanceForLesson = useCallback(async (lessonId) => {
     if (!lessonId) return [];
-    setRealData(prev => ({...prev, loading: true}));
     
     try {
       const attendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
-      setRealData(prev => ({ ...prev, currentLessonAttendance: attendance || [], loading: false }));
+      setRealData(prev => ({ ...prev, currentLessonAttendance: attendance || [] }));
       return attendance || [];
     } catch (error) {
       console.error("[DataContext] Error fetching attendance for lesson:", error);
-       setRealData(prev => ({ ...prev, currentLessonAttendance: [], error: error.message, loading: false }));
+       setRealData(prev => ({ ...prev, currentLessonAttendance: [], error: error.message }));
       return [];
     }
-  }, []);
+  }, []); // No dependencies to prevent loops
 
   const saveAttendanceForLesson = useCallback(async (lessonId, attendancePayload) => {
     if (!lessonId || !attendancePayload || !currentUser?.id) return false;

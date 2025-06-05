@@ -1,5 +1,5 @@
-// src/pages/TeacherClassAttendancePage.js
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/TeacherClassAttendancePage.js - FIXED VERSION
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -26,37 +26,61 @@ const TeacherClassAttendancePage = () => {
         fetchAttendanceForLesson,
         saveAttendanceForLesson,
         createLesson,
-        fetchLessonsForClass, // Om te checken of een les al bestaat
+        fetchLessonsForClass,
     } = useData();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [currentLesson, setCurrentLesson] = useState(null); // { id, les_datum, klas: { id, name, students: [...] } }
-    const [attendanceRecords, setAttendanceRecords] = useState({}); // { studentId: { status, notes_absentie } }
+    const [currentLesson, setCurrentLesson] = useState(null);
+    const [attendanceRecords, setAttendanceRecords] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [pageError, setPageError] = useState('');
     const [pageMessage, setPageMessage] = useState('');
 
-    const { mosque, classes } = realData;
+    // Refs to prevent loops
+    const lastLoadedDate = useRef(null);
+    const lastLoadedClassId = useRef(null);
+    const isLoadingRef = useRef(false);
+
+    const { mosque, classes, students } = realData;
     const currentClassDetails = classes.find(c => c.id === classId);
 
-    // Functie om de les en absenties te laden voor de geselecteerde datum
+    // Simplified function without heavy dependencies
     const loadLessonAndAttendanceForDate = useCallback(async (dateToLoad) => {
-        if (!mosque?.id || !classId || !currentUser?.id) return;
+        // Prevent multiple concurrent calls
+        if (isLoadingRef.current) {
+            console.log("[Attendance] Already loading, skipping");
+            return;
+        }
+
+        if (!mosque?.id || !classId || !currentUser?.id) {
+            console.log("[Attendance] Missing prerequisites");
+            return;
+        }
+
+        const dateStr = dateToLoad.toISOString().split('T')[0];
+        
+        // Prevent reloading same data
+        if (lastLoadedDate.current === dateStr && lastLoadedClassId.current === classId) {
+            console.log("[Attendance] Already loaded this date/class, skipping");
+            return;
+        }
+
+        isLoadingRef.current = true;
         setIsLoading(true);
         setPageError('');
         setPageMessage('');
         setCurrentLesson(null);
         setAttendanceRecords({});
 
-        const dateStr = dateToLoad.toISOString().split('T')[0];
-
         try {
-            // 1. Check of er al een les bestaat voor deze klas & datum
+            console.log(`[Attendance] Loading lesson for ${dateStr}, class ${classId}`);
+            
+            // 1. Check if lesson exists for this class & date
             const existingLessons = await fetchLessonsForClass(classId, dateStr, dateStr);
             let lessonForDate = existingLessons.find(l => l.les_datum === dateStr && !l.is_geannuleerd);
 
             if (lessonForDate) {
-                // 2. Les bestaat, haal details en bestaande absenties op
+                // 2. Lesson exists, get details and existing attendance
                 const lessonDetails = await fetchLessonDetailsForAttendance(lessonForDate.id);
                 if (lessonDetails && lessonDetails.klas && lessonDetails.klas.students) {
                     setCurrentLesson(lessonDetails);
@@ -65,7 +89,7 @@ const TeacherClassAttendancePage = () => {
                     lessonDetails.klas.students.forEach(student => {
                         const record = existingAttendance.find(att => att.leerling_id === student.id);
                         attMap[student.id] = {
-                            status: record?.status || 'aanwezig', // Default 'aanwezig'
+                            status: record?.status || 'aanwezig',
                             notities_absentie: record?.notities_absentie || '',
                         };
                     });
@@ -74,50 +98,80 @@ const TeacherClassAttendancePage = () => {
                     setPageError("Kon lesdetails of leerlingen niet laden.");
                 }
             } else {
-                // Les bestaat nog niet voor deze datum. UI toont knop om les aan te maken.
-                console.log(`Geen les gevonden voor ${dateStr}. Leraar kan er een aanmaken.`);
-                setCurrentLesson(null); // Zorgt ervoor dat "Start Les" knop getoond wordt
-                 // Initialize attendance for all students of the class with default 'aanwezig'
-                if (currentClassDetails) {
-                    const studentsInClass = realData.students.filter(s => s.class_id === classId && s.active);
-                    const initialAttMap = {};
-                    studentsInClass.forEach(student => {
-                        initialAttMap[student.id] = { status: 'aanwezig', notities_absentie: '' };
-                    });
-                    setAttendanceRecords(initialAttMap);
-                }
+                // No lesson exists yet for this date
+                console.log(`[Attendance] No lesson found for ${dateStr}`);
+                setCurrentLesson(null);
+                
+                // Initialize attendance for all students with default 'aanwezig'
+                // Use current students data (snapshot at time of loading)
+                const currentStudents = students || [];
+                const studentsInClass = currentStudents.filter(s => s.class_id === classId && s.active);
+                const initialAttMap = {};
+                studentsInClass.forEach(student => {
+                    initialAttMap[student.id] = { status: 'aanwezig', notities_absentie: '' };
+                });
+                setAttendanceRecords(initialAttMap);
             }
+
+            // Update refs to prevent reloading
+            lastLoadedDate.current = dateStr;
+            lastLoadedClassId.current = classId;
+
         } catch (err) {
-            console.error("Fout bij laden les/absenties:", err);
+            console.error("[Attendance] Error loading lesson/attendance:", err);
             setPageError(err.message || "Er is een fout opgetreden.");
         } finally {
             setIsLoading(false);
+            isLoadingRef.current = false;
         }
-    }, [mosque?.id, classId, currentUser?.id, fetchLessonsForClass, fetchLessonDetailsForAttendance, fetchAttendanceForLesson, currentClassDetails, realData.students]);
+    }, [mosque?.id, classId, currentUser?.id]); // Removed heavy dependencies
 
+    // Effect with proper guards
     useEffect(() => {
+        // Only load if we have the necessary data and it's a new date/class combo
+        if (!mosque?.id || !classId || !currentUser?.id) {
+            return;
+        }
+
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        
+        // Skip if already loaded this combination
+        if (lastLoadedDate.current === dateStr && lastLoadedClassId.current === classId) {
+            return;
+        }
+
+        // Skip if already loading
+        if (isLoadingRef.current) {
+            return;
+        }
+
+        console.log(`[Attendance] Effect triggered for ${dateStr}, class ${classId}`);
         loadLessonAndAttendanceForDate(selectedDate);
-    }, [selectedDate, classId, loadLessonAndAttendanceForDate]); // loadLessonAndAttendanceForDate is nu een dependency
+    }, [selectedDate, classId, mosque?.id, currentUser?.id, loadLessonAndAttendanceForDate]);
 
     const handleCreateAndLoadLesson = async () => {
-        if (!mosque?.id || !classId) return;
+        if (!mosque?.id || !classId || isLoadingRef.current) return;
+        
         setIsLoading(true);
         setPageError('');
         const dateStr = selectedDate.toISOString().split('T')[0];
         const lessonPayload = {
             les_datum: dateStr,
-            // onderwerp: `Les op ${selectedDate.toLocaleDateString()}`, // Optioneel
         };
+        
         try {
             const newLesson = await createLesson(mosque.id, classId, lessonPayload);
             if (newLesson && newLesson.id) {
                 setPageMessage("Nieuwe les succesvol aangemaakt. U kunt nu absenties registreren.");
-                await loadLessonAndAttendanceForDate(selectedDate); // Herlaad alles voor de nieuwe les
+                // Reset refs to force reload
+                lastLoadedDate.current = null;
+                lastLoadedClassId.current = null;
+                await loadLessonAndAttendanceForDate(selectedDate);
             } else {
                 throw new Error("Kon nieuwe les niet aanmaken.");
             }
         } catch (err) {
-            console.error("Fout bij aanmaken les:", err);
+            console.error("[Attendance] Error creating lesson:", err);
             setPageError(err.message || "Fout bij aanmaken les.");
         } finally {
             setIsLoading(false);
@@ -128,7 +182,7 @@ const TeacherClassAttendancePage = () => {
         setAttendanceRecords(prev => ({
             ...prev,
             [studentId]: {
-                ...(prev[studentId] || { status: 'aanwezig', notities_absentie: '' }), // Zorg dat studentId key bestaat
+                ...(prev[studentId] || { status: 'aanwezig', notities_absentie: '' }),
                 [field]: value,
             },
         }));
@@ -139,6 +193,7 @@ const TeacherClassAttendancePage = () => {
             setPageError("Geen actieve les geselecteerd om absenties voor op te slaan.");
             return;
         }
+        
         setIsLoading(true);
         setPageError('');
         setPageMessage('');
@@ -157,7 +212,7 @@ const TeacherClassAttendancePage = () => {
                 setPageError('Opslaan van absenties mislukt.');
             }
         } catch (err) {
-            console.error("Fout bij opslaan absenties (submit):", err);
+            console.error("[Attendance] Error saving attendance:", err);
             setPageError(err.message || "Fout bij opslaan absenties.");
         } finally {
             setIsLoading(false);
@@ -165,11 +220,20 @@ const TeacherClassAttendancePage = () => {
     };
 
     if (!currentClassDetails && !isLoading) {
-        return <div className="card text-red-600 p-4"><AlertCircle className="inline mr-2"/>Klas niet gevonden. <Button onClick={() => navigate('/teacher/my-classes')}>Terug naar mijn klassen</Button></div>;
+        return (
+            <div className="card text-red-600 p-4">
+                <AlertCircle className="inline mr-2"/>
+                Klas niet gevonden. 
+                <Button onClick={() => navigate('/teacher/my-classes')}>
+                    Terug naar mijn klassen
+                </Button>
+            </div>
+        );
     }
     
-    const studentsToList = currentLesson?.klas?.students || (currentClassDetails ? realData.students.filter(s => s.class_id === classId && s.active) : []);
-
+    // Use lesson students if available, otherwise current class students
+    const studentsToList = currentLesson?.klas?.students || 
+                          (currentClassDetails ? students.filter(s => s.class_id === classId && s.active) : []);
 
     return (
         <div className="space-y-6">
@@ -179,25 +243,40 @@ const TeacherClassAttendancePage = () => {
                     <CalendarDays size={20} className="text-gray-600" />
                     <DatePicker
                         selected={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
+                        onChange={(date) => {
+                            // Reset refs when date changes
+                            lastLoadedDate.current = null;
+                            setSelectedDate(date);
+                        }}
                         dateFormat="dd/MM/yyyy"
                         className="input-field py-2 px-3 w-auto"
-                        filterDate={(date) => { // Optioneel: filter alleen weekenddagen
+                        filterDate={(date) => {
                             const day = date.getDay();
-                            return day === 0 || day === 6; // Zondag of Zaterdag
+                            return day === 0 || day === 6; // Sunday or Saturday
                         }}
                     />
                 </div>
             </div>
 
-            {pageError && <div className="card text-red-600 bg-red-50 border-red-200 p-3 text-sm"><AlertCircle className="inline mr-2"/>{pageError}</div>}
-            {pageMessage && <div className="card text-green-600 bg-green-50 border-green-200 p-3 text-sm">{pageMessage}</div>}
+            {pageError && (
+                <div className="card text-red-600 bg-red-50 border-red-200 p-3 text-sm">
+                    <AlertCircle className="inline mr-2"/>{pageError}
+                </div>
+            )}
+            
+            {pageMessage && (
+                <div className="card text-green-600 bg-green-50 border-green-200 p-3 text-sm">
+                    {pageMessage}
+                </div>
+            )}
 
             {isLoading && <LoadingSpinner message="Lesgegevens laden..." />}
 
             {!isLoading && !currentLesson && selectedDate && (
                 <div className="card text-center p-6">
-                    <p className="text-gray-700 mb-4">Er is nog geen les geregistreerd voor {selectedDate.toLocaleDateString('nl-NL')} voor deze klas.</p>
+                    <p className="text-gray-700 mb-4">
+                        Er is nog geen les geregistreerd voor {selectedDate.toLocaleDateString('nl-NL')} voor deze klas.
+                    </p>
                     <Button onClick={handleCreateAndLoadLesson} variant="primary" disabled={isLoading}>
                         Start Les & Registreer Absenties
                     </Button>
@@ -206,8 +285,12 @@ const TeacherClassAttendancePage = () => {
 
             {!isLoading && currentLesson && studentsToList.length > 0 && (
                 <div className="card">
-                    <h3 className="text-lg font-semibold mb-1">Leerlingenlijst voor les op {new Date(currentLesson.les_datum).toLocaleDateString('nl-NL')}:</h3>
-                    <p className="text-xs text-gray-500 mb-4">Pas de status aan en voeg eventueel notities toe. Standaard staat iedereen op 'Aanwezig'.</p>
+                    <h3 className="text-lg font-semibold mb-1">
+                        Leerlingenlijst voor les op {new Date(currentLesson.les_datum).toLocaleDateString('nl-NL')}:
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-4">
+                        Pas de status aan en voeg eventueel notities toe. Standaard staat iedereen op 'Aanwezig'.
+                    </p>
                     <div className="space-y-3">
                         {studentsToList.map(student => (
                             <div key={student.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-center p-3 border rounded-lg hover:bg-gray-50">
@@ -243,7 +326,8 @@ const TeacherClassAttendancePage = () => {
                     </div>
                 </div>
             )}
-             {!isLoading && currentLesson && studentsToList.length === 0 && (
+            
+            {!isLoading && currentLesson && studentsToList.length === 0 && (
                 <div className="card text-center p-6">
                     <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-700">Er zijn geen actieve leerlingen in deze klas.</p>
