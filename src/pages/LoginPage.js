@@ -63,25 +63,49 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     setShowEmergencyReset(false); // Reset emergency button
+    
     try {
-      await login(email, password);
+      console.log("[LoginPage] Starting login process...");
+      const loginSuccess = await login(email, password);
+      
+      if (loginSuccess) {
+        console.log("[LoginPage] Login successful, forcing immediate navigation");
+        // IMMEDIATE navigation after successful login
+        setTimeout(() => {
+          console.log("[LoginPage] Executing forced navigation to dashboard");
+          window.location.href = '/dashboard';
+        }, 200); // Very short delay to ensure auth state is set
+      }
     } catch (err) {
       setError(err.message || 'Inloggen mislukt. Controleer uw gegevens.');
     }
   };
 
   const handleEmergencyReset = () => {
-    console.log("[LoginPage] Emergency reset triggered by user");
+    console.log("[LoginPage] Emergency reset triggered by user - USER SWITCHING CLEANUP");
     setError('');
     setShowEmergencyReset(false);
+    
+    // EXTENSIVE cleanup voor user switching
+    console.log("[LoginPage] Performing extensive cleanup for user switching");
+    
+    // Clear ALL localStorage (not just auth)
+    localStorage.clear();
+    
+    // Clear session storage
+    sessionStorage.clear();
+    
+    // Reset form
+    setEmail('');
+    setPassword('');
     
     if (hardResetAuth) {
       hardResetAuth();
     }
     
-    // NUCLEAR OPTION: Gewoon pagina herladen
-    console.log("[LoginPage] Nuclear option: reloading page");
-    window.location.reload();
+    // NUCLEAR OPTION: Reload with cache clear
+    console.log("[LoginPage] Nuclear option: hard reload with cache clear");
+    window.location.reload(true);
   };
 
   // EXTRA: Auto-reload na 6 seconden loading
@@ -110,14 +134,17 @@ const LoginPage = () => {
           {/* ALTIJD ZICHTBARE reset knop tijdens loading */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 mb-3">
-              💡 Laden duurt lang?
+              💡 Laden duurt lang? Schakel je tussen gebruikers?
+            </p>
+            <p className="text-xs text-blue-700 mb-3">
+              Bij het wisselen tussen verschillende gebruikersrollen kan een reset helpen.
             </p>
             <Button
               onClick={handleEmergencyReset}
               variant="ghost"
               className="text-blue-700 hover:text-blue-900 border border-blue-300 hover:border-blue-400 bg-blue-100 hover:bg-blue-200 text-sm py-2 px-4"
             >
-              🔄 Reset en probeer opnieuw
+              🔄 Reset voor gebruikerswissel
             </Button>
           </div>
           

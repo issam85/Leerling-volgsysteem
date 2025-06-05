@@ -296,10 +296,21 @@ export const AuthProvider = ({ children }) => {
   const handleLogin = useCallback(async (email, password) => {
     console.log("[AuthContext] Login attempt for:", email);
     
-    // Set login in progress flag
+    // CLEANUP voor user switching - clear alles voordat we beginnen
+    console.log("[AuthContext] Pre-login cleanup for user switching");
+    setCurrentUser(null);
+    setLoadingUser(true);
+    
+    // Clear localStorage van vorige user
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Set flags
     loginInProgress.current = true;
     isLoggingOut.current = false;
-    setLoadingUser(true);
     
     // Clear emergency timeout tijdens login
     if (emergencyTimeoutRef.current) {
@@ -367,13 +378,19 @@ export const AuthProvider = ({ children }) => {
 
       console.log("[AuthContext] Login completed successfully for:", appUser.name, appUser.role);
       
-      // Auth listener will handle the rest
+      // IMMEDIATE state setting - don't wait for auth listener
+      setCurrentUser(appUser);
+      localStorage.setItem(`currentUser_${currentSubdomain}`, JSON.stringify(appUser));
+      setLoadingUser(false);
+      loginInProgress.current = false;
+      
       return true;
 
     } catch (error) {
       console.error('Login error:', error);
       loginInProgress.current = false;
       setLoadingUser(false);
+      setCurrentUser(null);
       throw error;
     }
   }, [currentSubdomain]);
