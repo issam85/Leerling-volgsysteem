@@ -220,7 +220,6 @@ export const DataProvider = ({ children }) => {
 
   const saveAttendanceForLesson = useCallback(async (lessonId, attendancePayload) => {
     if (!lessonId || !attendancePayload || !currentUser?.id) return false;
-    setRealData(prev => ({...prev, loading: true}));
     
     const payloadWithTeacher = attendancePayload.map(att => ({
         ...att,
@@ -234,20 +233,25 @@ export const DataProvider = ({ children }) => {
       });
       
       if (result.success) {
-        await fetchAttendanceForLesson(lessonId);
+        // Refresh attendance data after save
+        try {
+          const attendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
+          setRealData(prev => ({ ...prev, currentLessonAttendance: attendance || [] }));
+        } catch (fetchError) {
+          console.warn("[DataContext] Could not refresh attendance after save:", fetchError);
+        }
         return true;
       }
       throw new Error(result.error || "Opslaan van absenties mislukt.");
     } catch (error) {
       console.error("[DataContext] Error saving attendance:", error);
-      setRealData(prev => ({...prev, error: error.message, loading: false}));
+      setRealData(prev => ({...prev, error: error.message }));
       return false;
     }
-  }, [currentUser?.id, fetchAttendanceForLesson]);
+  }, [currentUser?.id]); // Removed fetchAttendanceForLesson dependency
 
   const createLesson = useCallback(async (mosqueId, classId, lessonData) => {
       if (!mosqueId || !classId || !lessonData) return null;
-      setRealData(prev => ({...prev, loading: true}));
       
       try {
           const result = await apiCall(`/api/mosques/${mosqueId}/classes/${classId}/lessons`, {
@@ -256,13 +260,12 @@ export const DataProvider = ({ children }) => {
           });
           
           if (result.success && result.data) {
-              setRealData(prev => ({...prev, loading: false}));
               return result.data;
           }
           throw new Error(result.error || "Kon les niet aanmaken.");
       } catch (error) {
           console.error("[DataContext] Error creating lesson:", error);
-          setRealData(prev => ({...prev, error: error.message, loading: false}));
+          setRealData(prev => ({...prev, error: error.message }));
           return null;
       }
   }, []);
