@@ -88,7 +88,47 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  const loadTeacherInitialData = useCallback(async (mosqueForDataLoading) => {
+  const loadParentInitialData = useCallback(async (mosqueForDataLoading) => {
+    if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
+      console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
+      setRealData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+    
+    console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}, Mosque: ${mosqueForDataLoading.name}`);
+    setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
+
+    try {
+      // For parents, we only need students (their children) and basic mosque info
+      const [studentsRes, paymentsRes] = await Promise.all([
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/payments`),
+      ]);
+      
+      const allStudents = studentsRes || [];
+      const allPayments = paymentsRes || [];
+      
+      // Filter to only their children
+      const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
+      const parentPayments = allPayments.filter(p => String(p.parent_id) === String(currentUser.id));
+      
+      console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
+
+      setRealData(prev => ({
+        ...prev,
+        students: parentChildren, // Only their children
+        payments: parentPayments, // Only their payments
+        users: [currentUser], // Only themselves
+        classes: [], // Don't need all classes for parents
+        teacherAssignedClasses: [],
+        loading: false,
+        error: null,
+      }));
+    } catch (error) {
+      console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
+      setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
+    }
+  }, [currentUser]);
     if (!currentUser || currentUser.role !== 'teacher' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
       console.log("[DataContext] loadTeacherInitialData: Pre-conditions not met for teacher. Skipping.");
       setRealData(prev => ({ 
@@ -133,6 +173,48 @@ export const DataProvider = ({ children }) => {
       setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van leraar gegevens." }));
     }
   }, [currentUser]); // Simplified dependencies - removed realData dependencies
+
+  const loadParentInitialData = useCallback(async (mosqueForDataLoading) => {
+    if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
+      console.log("[DataContext] loadParentInitialData: Pre-conditions not met for parent. Skipping.");
+      setRealData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+    
+    console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}, Mosque: ${mosqueForDataLoading.name}`);
+    setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
+
+    try {
+      // For parents, we only need students (their children) and basic mosque info
+      const [studentsRes, paymentsRes] = await Promise.all([
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
+        apiCall(`/api/mosques/${mosqueForDataLoading.id}/payments`),
+      ]);
+      
+      const allStudents = studentsRes || [];
+      const allPayments = paymentsRes || [];
+      
+      // Filter to only their children
+      const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
+      const parentPayments = allPayments.filter(p => String(p.parent_id) === String(currentUser.id));
+      
+      console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
+
+      setRealData(prev => ({
+        ...prev,
+        students: parentChildren, // Only their children
+        payments: parentPayments, // Only their payments
+        users: [currentUser], // Only themselves
+        classes: [], // Don't need all classes for parents
+        teacherAssignedClasses: [],
+        loading: false,
+        error: null,
+      }));
+    } catch (error) {
+      console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
+      setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
+    }
+  }, [currentUser]);
 
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
     if (!currentUser || !realData.mosque?.id || !classId) return [];
@@ -292,8 +374,8 @@ export const DataProvider = ({ children }) => {
         console.log("[DataContext] User is TEACHER. Loading teacher initial data.");
         loadTeacherInitialData(realData.mosque);
       } else if (currentUser.role === 'parent') {
-        console.log("[DataContext] User is PARENT. Loading general data for parent view.");
-        loadAdminDetailedData(realData.mosque);
+        console.log("[DataContext] User is PARENT. Loading parent initial data.");
+        loadParentInitialData(realData.mosque);
       } else {
         console.warn("[DataContext] Unknown user role or no role, stopping data load.");
         setRealData(prev => ({ ...prev, loading: false }));
@@ -307,7 +389,7 @@ export const DataProvider = ({ children }) => {
         loading: false, error: null,
       });
     }
-  }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData]); // Controlled dependencies
+  }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]); // Added loadParentInitialData
 
   const refreshAllData = useCallback(async () => {
     console.log("[DataContext] RefreshAllData called.");
@@ -329,7 +411,7 @@ export const DataProvider = ({ children }) => {
           } else if (currentUser.role === 'teacher') {
             await loadTeacherInitialData(mosqueObject);
           } else if (currentUser.role === 'parent') {
-            await loadAdminDetailedData(mosqueObject);
+            await loadParentInitialData(mosqueObject);
           } else {
              setRealData(prev => ({ ...prev, loading: false }));
           }
@@ -349,7 +431,7 @@ export const DataProvider = ({ children }) => {
       console.error("[DataContext] Error during refreshAllData:", error);
       setRealData(prev => ({ ...prev, loading: false, error: error.message }));
     }
-  }, [loadingUser, currentSubdomain, currentUser, fetchMosqueDataBySubdomain, loadAdminDetailedData, loadTeacherInitialData]);
+  }, [loadingUser, currentSubdomain, currentUser, fetchMosqueDataBySubdomain, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]);
 
   const value = {
     realData,
