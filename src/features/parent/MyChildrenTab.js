@@ -249,7 +249,7 @@ const MyChildrenTab = () => {
                       }`}
                     >
                       <BookMarked size={14} className="mr-1" />
-                      Qor'aan Voortgang
+                      {showingQuranProgress ? 'Verberg Voortgang' : 'Qor'aan Voortgang'}
                     </button>
                     
                     <button
