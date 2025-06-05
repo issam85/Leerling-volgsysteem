@@ -27,27 +27,14 @@ const LoginPage = () => {
     }
   }, [currentUser, loadingUser, navigate, from]);
 
-  // EXTRA: Force navigation if user exists maar we nog op login zijn
-  useEffect(() => {
-    if (currentUser) {
-      console.log("[LoginPage] FORCE CHECK: User exists, forcing navigation");
-      setTimeout(() => {
-        if (window.location.pathname === '/login') {
-          console.log("[LoginPage] FORCE NAVIGATION to dashboard");
-          window.location.href = '/dashboard';
-        }
-      }, 500);
-    }
-  }, [currentUser]);
-
   // Timer voor emergency reset knop
   useEffect(() => {
     let timer;
     if (loadingUser) {
-      // Toon reset knop na 2 seconden laden (nog sneller)
+      // Toon reset knop na 3 seconden laden
       timer = setTimeout(() => {
         setShowEmergencyReset(true);
-      }, 2000);
+      }, 3000);
     } else {
       setShowEmergencyReset(false);
     }
@@ -62,60 +49,40 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setShowEmergencyReset(false); // Reset emergency button
+    setShowEmergencyReset(false);
     
     try {
       console.log("[LoginPage] Starting login process...");
-      const loginSuccess = await login(email, password);
-      
-      if (loginSuccess) {
-        console.log("[LoginPage] Login successful, forcing immediate navigation");
-        // IMMEDIATE navigation after successful login
-        setTimeout(() => {
-          console.log("[LoginPage] Executing forced navigation to dashboard");
-          window.location.href = '/dashboard';
-        }, 200); // Very short delay to ensure auth state is set
-      }
+      await login(email, password);
+      console.log("[LoginPage] Login successful");
     } catch (err) {
       setError(err.message || 'Inloggen mislukt. Controleer uw gegevens.');
     }
   };
 
   const handleEmergencyReset = () => {
-    console.log("[LoginPage] Emergency reset triggered by user - USER SWITCHING CLEANUP");
+    console.log("[LoginPage] Emergency reset triggered by user");
     setError('');
     setShowEmergencyReset(false);
-    
-    // EXTENSIVE cleanup voor user switching
-    console.log("[LoginPage] Performing extensive cleanup for user switching");
-    
-    // Clear ALL localStorage (not just auth)
-    localStorage.clear();
-    
-    // Clear session storage
-    sessionStorage.clear();
-    
-    // Reset form
-    setEmail('');
-    setPassword('');
     
     if (hardResetAuth) {
       hardResetAuth();
     }
     
-    // NUCLEAR OPTION: Reload with cache clear
-    console.log("[LoginPage] Nuclear option: hard reload with cache clear");
-    window.location.reload(true);
+    // Simple page reload
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
   };
 
-  // EXTRA: Auto-reload na 6 seconden loading
+  // EXTRA: Auto-reload na 8 seconden loading (conservative)
   useEffect(() => {
     let autoReloadTimer;
     if (loadingUser) {
       autoReloadTimer = setTimeout(() => {
-        console.warn("[LoginPage] AUTO-RELOAD after 6 seconds of loading");
+        console.warn("[LoginPage] AUTO-RELOAD after 8 seconds of loading");
         window.location.reload();
-      }, 6000);
+      }, 8000); // Terug naar 8 seconden
     }
     
     return () => {
@@ -134,35 +101,29 @@ const LoginPage = () => {
           {/* ALTIJD ZICHTBARE reset knop tijdens loading */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 mb-3">
-              💡 Laden duurt lang? Schakel je tussen gebruikers?
-            </p>
-            <p className="text-xs text-blue-700 mb-3">
-              Bij het wisselen tussen verschillende gebruikersrollen kan een reset helpen.
+              💡 Laden duurt lang?
             </p>
             <Button
               onClick={handleEmergencyReset}
               variant="ghost"
               className="text-blue-700 hover:text-blue-900 border border-blue-300 hover:border-blue-400 bg-blue-100 hover:bg-blue-200 text-sm py-2 px-4"
             >
-              🔄 Reset voor gebruikerswissel
+              🔄 Reset en probeer opnieuw
             </Button>
           </div>
           
-          {/* Extra urgente reset knop na 4 seconden */}
+          {/* Extra urgente reset knop na 3 seconden */}
           {showEmergencyReset && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800 mb-3">
-                🚨 Nog steeds aan het laden?
-              </p>
-              <p className="text-xs text-red-700 mb-4">
-                Er lijkt een probleem te zijn. Klik hieronder voor een volledige reset.
+            <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-sm text-orange-800 mb-3">
+                ⚠️ Nog steeds aan het laden?
               </p>
               <Button
                 onClick={handleEmergencyReset}
                 variant="ghost"
-                className="text-red-700 hover:text-red-900 border border-red-300 hover:border-red-400 bg-red-100 hover:bg-red-200 text-sm py-2 px-4 font-semibold"
+                className="text-orange-700 hover:text-orange-900 border border-orange-300 hover:border-orange-400 bg-orange-100 hover:bg-orange-200 text-sm py-2 px-4"
               >
-                🔥 Geforceerde reset
+                🔄 Reset inlogstatus
               </Button>
             </div>
           )}

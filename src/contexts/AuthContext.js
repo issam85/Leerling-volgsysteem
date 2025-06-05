@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.js - GEBALANCEERDE FIX
+// src/contexts/AuthContext.js - SIMPELE WERKENDE VERSIE
 import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -30,11 +30,10 @@ export const AuthProvider = ({ children }) => {
   const authListenerRef = useRef(null);
   const isLoggingOut = useRef(false);
   const emergencyTimeoutRef = useRef(null);
-  const loginInProgress = useRef(false); // NEW: Track login progress
 
-  // FUNCTIE: Smart reset (alleen als echt nodig)
-  const smartResetAuth = useCallback((reason = 'unknown') => {
-    console.log("[AuthContext] SMART RESET AUTH - Reason:", reason);
+  // FUNCTIE: Reset functie voor emergencies
+  const hardResetAuth = useCallback(() => {
+    console.log("[AuthContext] HARD RESET AUTH");
     
     // Stop alle timers
     if (emergencyTimeoutRef.current) {
@@ -42,48 +41,30 @@ export const AuthProvider = ({ children }) => {
       emergencyTimeoutRef.current = null;
     }
     
-    // Cleanup auth listener before reset
-    if (authListenerRef.current) {
-      try {
-        if (typeof authListenerRef.current.unsubscribe === 'function') {
-          authListenerRef.current.unsubscribe();
-        } else if (typeof authListenerRef.current === 'function') {
-          authListenerRef.current();
-        }
-      } catch (cleanupError) {
-        console.warn("[AuthContext] Auth listener cleanup error:", cleanupError);
-      }
-      authListenerRef.current = null;
-    }
-    
     // Reset flags
     isLoggingOut.current = false;
-    loginInProgress.current = false;
     
     // Clear state
     setCurrentUser(null);
     setLoadingUser(false);
     
-    // Clear only auth-related localStorage, not everything
+    // Clear auth localStorage
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
         localStorage.removeItem(key);
       }
     });
     
-    // Force sign out van Supabase (in background)
-    supabase.auth.signOut().catch(e => console.warn("Signout error during reset:", e));
-    
-    console.log("[AuthContext] Smart reset complete");
+    console.log("[AuthContext] Hard reset complete");
   }, []);
 
-  // TIMEOUT ALLEEN VOOR INITIAL LOADING, NIET TIJDENS LOGIN
+  // EMERGENCY TIMEOUT - alleen voor initial load
   useEffect(() => {
-    if (loadingUser && !loginInProgress.current) {
+    if (loadingUser) {
       emergencyTimeoutRef.current = setTimeout(() => {
-        console.warn("[AuthContext] EMERGENCY TIMEOUT - 4 seconds for initial load");
-        smartResetAuth('emergency_timeout');
-      }, 4000); // Verder verlaagd naar 4 seconden
+        console.warn("[AuthContext] EMERGENCY TIMEOUT - 6 seconds");
+        hardResetAuth();
+      }, 6000);
     } else {
       if (emergencyTimeoutRef.current) {
         clearTimeout(emergencyTimeoutRef.current);
@@ -97,9 +78,9 @@ export const AuthProvider = ({ children }) => {
         emergencyTimeoutRef.current = null;
       }
     };
-  }, [loadingUser, smartResetAuth]);
+  }, [loadingUser, hardResetAuth]);
 
-  // INITIAL SETUP - meer defensief
+  // INITIAL SETUP
   useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
@@ -118,7 +99,7 @@ export const AuthProvider = ({ children }) => {
       setCurrentSubdomain(detectedSubdomain);
     }
 
-    // SAFE session check
+    // Simple session check
     const checkInitialSession = async () => {
       try {
         console.log("[AuthContext] Checking initial session...");
@@ -128,76 +109,53 @@ export const AuthProvider = ({ children }) => {
           return;
         }
         
-        // Session check met timeout - GUARANTEED om loading te stoppen
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 3000) // Verlaagd naar 3 seconden
-        );
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        try {
-          const result = await Promise.race([sessionPromise, timeoutPromise]);
-          const { data: { session }, error } = result;
-          
-          if (error) {
-            console.warn("[AuthContext] Session error:", error);
-            return; // Will hit finally block
-          }
-          
-          if (session?.user && !isLoggingOut.current) {
-            console.log("[AuthContext] Session found, getting app user...");
-            
-            try {
-              const { data: appUser, error: appUserError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-              if (appUserError) throw appUserError;
-              
-              if (appUser && !isLoggingOut.current) {
-                setCurrentUser(appUser);
-                localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
-                console.log("[AuthContext] Initial user set:", appUser.name, appUser.role);
-              } else {
-                console.warn("[AuthContext] No app user found for session user");
-                await supabase.auth.signOut();
-              }
-            } catch (dbError) {
-              console.error("[AuthContext] Error fetching app user:", dbError);
-              await supabase.auth.signOut();
-            }
-          } else {
-            console.log("[AuthContext] No initial session found");
-          }
-        } catch (sessionError) {
-          console.warn("[AuthContext] Session check failed:", sessionError.message);
-          // Continue to finally block - will stop loading
+        if (error) {
+          console.warn("[AuthContext] Session error:", error);
+          setLoadingUser(false);
+          return;
         }
         
-      } catch (outerError) {
-        console.warn("[AuthContext] Outer session check error:", outerError.message);
+        if (session?.user && !isLoggingOut.current) {
+          console.log("[AuthContext] Session found, getting app user...");
+          
+          const { data: appUser, error: appUserError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (appUser && !isLoggingOut.current) {
+            setCurrentUser(appUser);
+            localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
+            console.log("[AuthContext] Initial user set:", appUser.name, appUser.role);
+          }
+        }
+        
+      } catch (sessionError) {
+        console.warn("[AuthContext] Session check failed:", sessionError.message);
       } finally {
-        // GUARANTEED loading stop - no matter what happens above
-        console.log("[AuthContext] Session check complete - stopping loading");
         if (!isLoggingOut.current) {
           setLoadingUser(false);
         }
       }
     };
     
-    // Kleine delay om race conditions te voorkomen
     setTimeout(checkInitialSession, 200);
   }, []);
 
-  // AUTH LISTENER - defensief met correcte cleanup
+  // AUTH LISTENER
   useEffect(() => {
     if (authListenerRef.current) {
-      // Nieuwe Supabase versie: auth listener returnt een functie, geen object
-      if (typeof authListenerRef.current === 'function') {
-        authListenerRef.current(); // Call the function to unsubscribe
-      } else if (authListenerRef.current.unsubscribe) {
-        authListenerRef.current.unsubscribe(); // Old way
+      try {
+        if (typeof authListenerRef.current.unsubscribe === 'function') {
+          authListenerRef.current.unsubscribe();
+        } else if (typeof authListenerRef.current === 'function') {
+          authListenerRef.current();
+        }
+      } catch (e) {
+        console.warn("[AuthContext] Cleanup error:", e);
       }
     }
 
@@ -205,11 +163,9 @@ export const AuthProvider = ({ children }) => {
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("[AuthContext] Auth event:", event, session ? 'with session' : 'no session');
+        console.log("[AuthContext] Auth event:", event);
         
-        // Skip events tijdens logout behalve SIGNED_OUT
         if (isLoggingOut.current && event !== 'SIGNED_OUT') {
-          console.log("[AuthContext] Skipping event during logout:", event);
           return;
         }
         
@@ -217,8 +173,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
           if (event === 'SIGNED_IN' && session?.user) {
-            console.log("[AuthContext] SIGNED_IN event - fetching app user");
-            loginInProgress.current = false; // Reset login progress
+            console.log("[AuthContext] SIGNED_IN event");
             
             const { data: appUser, error: appUserError } = await supabase
               .from('users')
@@ -226,104 +181,61 @@ export const AuthProvider = ({ children }) => {
               .eq('id', session.user.id)
               .single();
 
-            if (appUserError) {
-              console.error("[AuthContext] App user error:", appUserError);
-              throw appUserError;
-            }
-
             if (appUser) {
               console.log("[AuthContext] Setting user from SIGNED_IN:", appUser.name, appUser.role);
               setCurrentUser(appUser);
               localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
-              setLoadingUser(false); // FORCE loading to stop
+              setLoadingUser(false);
               
-              // FORCE navigation na korte delay
-              setTimeout(() => {
-                if (window.location.pathname === '/login') {
-                  console.log("[AuthContext] FORCING navigation from login to dashboard");
-                  window.location.href = '/dashboard'; // Hard navigation instead of react-router
-                }
-              }, 100);
+              // Simple navigation
+              if (window.location.pathname === '/login') {
+                console.log("[AuthContext] Navigating to dashboard");
+                navigate('/dashboard', { replace: true });
+              }
             } else {
-              console.warn("[AuthContext] No app user found in SIGNED_IN");
-              smartResetAuth('no_app_user');
+              console.warn("[AuthContext] No app user found");
+              hardResetAuth();
             }
           } else if (event === 'SIGNED_OUT') {
             console.log("[AuthContext] SIGNED_OUT event");
-            smartResetAuth('signed_out');
+            hardResetAuth();
             
-            // Navigate naar login alleen als niet al daar
             if (window.location.pathname !== '/login' && activeSubdomain !== 'register') {
               navigate('/login', { replace: true });
-            }
-          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-            console.log("[AuthContext] TOKEN_REFRESHED");
-            
-            const { data: appUser } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (appUser) {
-              setCurrentUser(appUser);
-              localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
             }
           }
         } catch (error) {
           console.error("[AuthContext] Error in auth state change:", error);
-          smartResetAuth('auth_error');
+          hardResetAuth();
         }
       }
     );
 
-    // Store the subscription for cleanup
     authListenerRef.current = subscription;
 
     return () => {
       if (authListenerRef.current) {
-        // New Supabase: subscription has unsubscribe method or is a function
-        if (typeof authListenerRef.current.unsubscribe === 'function') {
-          authListenerRef.current.unsubscribe();
-        } else if (typeof authListenerRef.current === 'function') {
-          authListenerRef.current();
+        try {
+          if (typeof authListenerRef.current.unsubscribe === 'function') {
+            authListenerRef.current.unsubscribe();
+          } else if (typeof authListenerRef.current === 'function') {
+            authListenerRef.current();
+          }
+        } catch (e) {
+          console.warn("[AuthContext] Cleanup error:", e);
         }
         authListenerRef.current = null;
       }
     };
-  }, [navigate, smartResetAuth]);
+  }, [navigate, hardResetAuth]);
 
   const handleLogin = useCallback(async (email, password) => {
     console.log("[AuthContext] Login attempt for:", email);
-    
-    // CLEANUP voor user switching - clear alles voordat we beginnen
-    console.log("[AuthContext] Pre-login cleanup for user switching");
-    setCurrentUser(null);
-    setLoadingUser(true);
-    
-    // Clear localStorage van vorige user
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    
-    // Set flags
-    loginInProgress.current = true;
-    isLoggingOut.current = false;
-    
-    // Clear emergency timeout tijdens login
-    if (emergencyTimeoutRef.current) {
-      clearTimeout(emergencyTimeoutRef.current);
-      emergencyTimeoutRef.current = null;
-    }
     
     try {
       if (!currentSubdomain || currentSubdomain === 'register') {
         throw new Error('Geen geldig subdomein gevonden voor login.');
       }
-
-      console.log("[AuthContext] Checking mosque for subdomain:", currentSubdomain);
 
       // Get mosque
       const { data: mosque, error: mosqueError } = await supabase
@@ -335,8 +247,6 @@ export const AuthProvider = ({ children }) => {
       if (mosqueError || !mosque) {
         throw new Error(`Moskee met subdomein '${currentSubdomain}' niet gevonden.`);
       }
-
-      console.log("[AuthContext] Mosque found, performing authentication...");
 
       // Login
       const { data: { user: supabaseAuthUser, session }, error: signInError } = await supabase.auth.signInWithPassword({
@@ -354,8 +264,6 @@ export const AuthProvider = ({ children }) => {
       if (!supabaseAuthUser || !session) {
         throw new Error('Ongeldige inlogpoging.');
       }
-
-      console.log("[AuthContext] Authentication successful, validating app user...");
 
       // Validate app user
       const { data: appUser, error: appUserError } = await supabase
@@ -378,19 +286,10 @@ export const AuthProvider = ({ children }) => {
 
       console.log("[AuthContext] Login completed successfully for:", appUser.name, appUser.role);
       
-      // IMMEDIATE state setting - don't wait for auth listener
-      setCurrentUser(appUser);
-      localStorage.setItem(`currentUser_${currentSubdomain}`, JSON.stringify(appUser));
-      setLoadingUser(false);
-      loginInProgress.current = false;
-      
       return true;
 
     } catch (error) {
       console.error('Login error:', error);
-      loginInProgress.current = false;
-      setLoadingUser(false);
-      setCurrentUser(null);
       throw error;
     }
   }, [currentSubdomain]);
@@ -398,9 +297,6 @@ export const AuthProvider = ({ children }) => {
   const handleLogout = useCallback(async () => {
     console.log("[AuthContext] Logout initiated");
     isLoggingOut.current = true;
-    loginInProgress.current = false;
-    
-    smartResetAuth('manual_logout');
     
     try {
       await supabase.auth.signOut();
@@ -408,12 +304,13 @@ export const AuthProvider = ({ children }) => {
       console.warn("Logout error:", error);
     }
     
+    hardResetAuth();
     navigate('/login', { replace: true });
     
     setTimeout(() => {
       isLoggingOut.current = false;
     }, 500);
-  }, [navigate, smartResetAuth]);
+  }, [navigate, hardResetAuth]);
 
   const switchSubdomain = useCallback((newSubdomain) => {
     const currentHostname = window.location.hostname;
@@ -435,11 +332,6 @@ export const AuthProvider = ({ children }) => {
     const port = window.location.port ? `:${window.location.port}` : '';
     window.location.href = `${window.location.protocol}//${newHost}${port}/`;
   }, []);
-
-  // Emergency reset for manual use
-  const hardResetAuth = useCallback(() => {
-    smartResetAuth('manual_hard_reset');
-  }, [smartResetAuth]);
 
   const value = {
     currentUser,
