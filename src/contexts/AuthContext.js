@@ -1,14 +1,14 @@
-// src/contexts/AuthContext.js - DEFINITIEVE FIX voor Supabase v2 met Direct Login
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+// src/contexts/AuthContext.js - FIXED VERSION met timeout en loop prevention
+import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // Importeer je Supabase client
+import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext(null);
 
 const getSubdomainFromHostname = (hostname) => {
   const parts = hostname.split('.');
   if (hostname === 'localhost' || hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-    return localStorage.getItem('currentSubdomainForDev') || 'al-hijra'; // Default voor dev
+    return localStorage.getItem('currentSubdomainForDev') || 'al-hijra';
   }
   if (parts.length >= 3 && parts[0] !== 'www') {
     if (['al-hijra', 'al-noor', 'register'].includes(parts[0])) {
@@ -24,8 +24,34 @@ export const AuthProvider = ({ children }) => {
   const [loadingUser, setLoadingUser] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Use refs to prevent infinite loops
+  const authListenerRef = useRef(null);
+  const isProcessingAuth = useRef(false);
+  const loadingTimeoutRef = useRef(null);
 
-  // Effect voor het instellen van het subdomein en de initiële sessie check
+  // Force stop loading after 10 seconds to prevent infinite loops
+  useEffect(() => {
+    if (loadingUser) {
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.warn("[AuthContext] Loading timeout reached, forcing stop");
+        setLoadingUser(false);
+      }, 10000);
+    } else {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [loadingUser]);
+
+  // Initial setup effect
   useEffect(() => {
     const detectedSubdomain = getSubdomainFromHostname(window.location.hostname);
     if (window.location.hostname === 'localhost') {
@@ -39,150 +65,176 @@ export const AuthProvider = ({ children }) => {
       setCurrentSubdomain(detectedSubdomain);
     }
 
-    // Check de initiële Supabase sessie
+    // Initial session check with timeout
     const checkInitialSession = async () => {
-        setLoadingUser(true);
-        try {
-          console.log("[AuthContext] Checking initial session...");
-          const { data: { session }, error } = await supabase.auth.getSession();
-          if (error) {
-            console.error("[AuthContext] Error getting session:", error);
-            setLoadingUser(false);
-            return;
-          }
-          
-          console.log("[AuthContext] Initial session:", session ? 'Found' : 'None');
-          if (session?.user) {
-              try {
-                  const { data: appUser, error } = await supabase
-                      .from('users')
-                      .select('*')
-                      .eq('id', session.user.id)
-                      .single();
-
-                  if (error) throw error;
-                  
-                  if (appUser) {
-                      setCurrentUser(appUser);
-                      localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
-                      console.log("[AuthContext] Initial appUser set:", appUser);
-                  } else {
-                      console.warn("[AuthContext] No matching appUser found. Logging out.");
-                      await supabase.auth.signOut();
-                      setCurrentUser(null);
-                      localStorage.removeItem(`currentUser_${detectedSubdomain}`);
-                  }
-              } catch (dbError) {
-                  console.error("[AuthContext] Error fetching appUser:", dbError);
-                  await supabase.auth.signOut();
-                  setCurrentUser(null);
-                  localStorage.removeItem(`currentUser_${detectedSubdomain}`);
-              }
-          }
-        } catch (sessionError) {
-          console.error("[AuthContext] Session check failed:", sessionError);
-        } finally {
+      if (isProcessingAuth.current) {
+        console.log("[AuthContext] Already processing auth, skipping initial check");
+        return;
+      }
+      
+      setLoadingUser(true);
+      isProcessingAuth.current = true;
+      
+      try {
+        console.log("[AuthContext] Checking initial session...");
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("[AuthContext] Error getting session:", error);
           setLoadingUser(false);
+          isProcessingAuth.current = false;
+          return;
         }
+        
+        console.log("[AuthContext] Initial session:", session ? 'Found' : 'None');
+        
+        if (session?.user) {
+          try {
+            const { data: appUser, error: appUserError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (appUserError) {
+              console.error("[AuthContext] Error fetching app user:", appUserError);
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              localStorage.removeItem(`currentUser_${detectedSubdomain}`);
+            } else if (appUser) {
+              setCurrentUser(appUser);
+              localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
+              console.log("[AuthContext] Initial appUser set:", appUser);
+            } else {
+              console.warn("[AuthContext] No matching appUser found. Logging out.");
+              await supabase.auth.signOut();
+              setCurrentUser(null);
+              localStorage.removeItem(`currentUser_${detectedSubdomain}`);
+            }
+          } catch (dbError) {
+            console.error("[AuthContext] Database error:", dbError);
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            localStorage.removeItem(`currentUser_${detectedSubdomain}`);
+          }
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (sessionError) {
+        console.error("[AuthContext] Session check failed:", sessionError);
+      } finally {
+        setLoadingUser(false);
+        isProcessingAuth.current = false;
+      }
     };
     
     checkInitialSession();
-  }, []);
+  }, []); // Empty dependency array
 
-  // Effect voor Supabase auth state listener - FIXED voor v2
+  // Auth state listener effect
   useEffect(() => {
-    console.log("[AuthContext] Setting up auth state listener...");
+    // Cleanup existing listener
+    if (authListenerRef.current) {
+      console.log("[AuthContext] Cleaning up existing auth listener");
+      authListenerRef.current.unsubscribe();
+    }
+
+    console.log("[AuthContext] Setting up new auth state listener...");
     
-    // Supabase v2 syntax - subscription object wordt direct geretourneerd
-    const subscription = supabase.auth.onAuthStateChange(
+    authListenerRef.current = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("[AuthContext] Auth state changed:", event, session ? 'Session exists' : 'No session');
+        console.log("[AuthContext] Auth state changed:", event);
+        
+        // Prevent processing multiple auth events simultaneously
+        if (isProcessingAuth.current) {
+          console.log("[AuthContext] Already processing auth event, skipping");
+          return;
+        }
+        
+        isProcessingAuth.current = true;
         setLoadingUser(true);
         const activeSubdomain = getSubdomainFromHostname(window.location.hostname);
 
         try {
           if (event === 'SIGNED_IN' && session?.user) {
-            console.log("[AuthContext] User signed in, fetching app user...");
-            try {
-              const { data: appUser, error: appUserError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
+            console.log("[AuthContext] Processing SIGNED_IN event");
+            
+            const { data: appUser, error: appUserError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-              if (appUserError) throw appUserError;
-
-              if (appUser) {
-                setCurrentUser(appUser);
-                localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
-                console.log("[AuthContext] SIGNED_IN: currentUser set:", appUser);
-                
-                // Navigeer naar dashboard alleen als we op login pagina zijn
-                if (window.location.pathname === '/login') {
-                  navigate('/dashboard', { replace: true });
-                }
-              } else {
-                console.warn("[AuthContext] SIGNED_IN: No appUser found. Forcing logout.");
-                await supabase.auth.signOut();
-              }
-            } catch (error) {
-              console.error("[AuthContext] SIGNED_IN: Error fetching appUser:", error);
+            if (appUserError || !appUser) {
+              console.error("[AuthContext] SIGNED_IN: Error fetching appUser:", appUserError);
               await supabase.auth.signOut();
               setCurrentUser(null);
               localStorage.removeItem(`currentUser_${activeSubdomain}`);
+            } else {
+              setCurrentUser(appUser);
+              localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
+              console.log("[AuthContext] SIGNED_IN: currentUser set:", appUser);
+              
+              // Navigate only if currently on login page
+              if (window.location.pathname === '/login') {
+                navigate('/dashboard', { replace: true });
+              }
             }
           } else if (event === 'SIGNED_OUT') {
-            console.log("[AuthContext] User signed out");
+            console.log("[AuthContext] Processing SIGNED_OUT event");
             setCurrentUser(null);
             localStorage.removeItem(`currentUser_${activeSubdomain}`);
-            if (location.pathname !== '/login' && activeSubdomain !== 'register') {
+            
+            if (window.location.pathname !== '/login' && activeSubdomain !== 'register') {
               navigate('/login', { replace: true });
             }
           } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-            console.log("[AuthContext] Token refreshed");
-            try {
-              const { data: appUser } = await supabase
-                  .from('users')
-                  .select('*')
-                  .eq('id', session.user.id)
-                  .single();
-              if (appUser) {
-                  setCurrentUser(appUser);
-                  localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
-                  console.log("[AuthContext] TOKEN_REFRESHED: currentUser updated.");
-              }
-            } catch (error) {
-                console.error("[AuthContext] TOKEN_REFRESHED: Error updating appUser:", error);
+            console.log("[AuthContext] Processing TOKEN_REFRESHED event");
+            
+            const { data: appUser } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            if (appUser) {
+              setCurrentUser(appUser);
+              localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
             }
           }
         } catch (error) {
           console.error("[AuthContext] Error in auth state change handler:", error);
         } finally {
           setLoadingUser(false);
+          isProcessingAuth.current = false;
         }
       }
     );
 
-    // Cleanup - FIXED voor v2: direct unsubscribe op subscription
+    // Cleanup function
     return () => {
-      console.log("[AuthContext] Cleaning up auth listener...");
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
+      if (authListenerRef.current) {
+        console.log("[AuthContext] Cleaning up auth listener...");
+        authListenerRef.current.unsubscribe();
+        authListenerRef.current = null;
       }
     };
-  }, [navigate, location.pathname]);
+  }, []); // Empty dependency array to prevent re-registration
 
   const handleLogin = useCallback(async (email, password) => {
+    if (isProcessingAuth.current) {
+      throw new Error('Er wordt al een login verwerkt, wacht even...');
+    }
+    
     setLoadingUser(true);
     console.log("[AuthContext] Direct Supabase login attempt for:", email);
     
     try {
-      // Stap 1: Valideer het subdomein (ophalen mosque_id)
       if (!currentSubdomain || currentSubdomain === 'register') {
         throw new Error('Geen geldig subdomein gevonden voor login.');
       }
 
-      // Stap 2: Haal mosque_id op voor validatie
+      // Get mosque for validation
       const { data: mosque, error: mosqueError } = await supabase
         .from('mosques')
         .select('id')
@@ -193,7 +245,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(`Moskee met subdomein '${currentSubdomain}' niet gevonden.`);
       }
 
-      // Stap 3: Doe de Supabase Auth login
+      // Perform login
       const { data: { user: supabaseAuthUser, session }, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
         password: password
@@ -210,7 +262,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Ongeldige inlogpoging, geen gebruiker of sessie ontvangen.');
       }
 
-      // Stap 4: Valideer dat de app user bij de juiste moskee hoort
+      // Validate app user belongs to correct mosque
       const { data: appUser, error: appUserError } = await supabase
         .from('users')
         .select('*')
@@ -219,12 +271,11 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (appUserError || !appUser) {
-        // Als app user niet gevonden of niet van deze moskee, log uit
         await supabase.auth.signOut();
         throw new Error('Gebruiker gevonden in authenticatiesysteem, maar niet in applicatiedatabase voor deze moskee of gegevens inconsistent.');
       }
 
-      // Stap 5: Update last_login timestamp
+      // Update last login
       await supabase
         .from('users')
         .update({ last_login: new Date() })
@@ -232,10 +283,7 @@ export const AuthProvider = ({ children }) => {
 
       console.log("[AuthContext] Direct Supabase login successful for:", appUser.email);
       
-      // De onAuthStateChange listener zal automatisch getriggerd worden
-      // en de currentUser instellen + navigatie doen
-      
-      setLoadingUser(false);
+      // Auth state change listener will handle the rest
       return true;
 
     } catch (error) {
