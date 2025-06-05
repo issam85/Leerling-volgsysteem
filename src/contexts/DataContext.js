@@ -1,4 +1,4 @@
-// src/contexts/DataContext.js - VOLLEDIGE VERSIE met syntax fix
+// src/contexts/DataContext.js - GEFIXTE VERSIE met verbeterde timeout en reset logica
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -28,16 +28,59 @@ export const DataProvider = ({ children }) => {
   const lastLoadedSubdomain = useRef(null);
   const lastLoadedUserId = useRef(null);
   const loadingTimeoutRef = useRef(null);
+  const forceResetTimeoutRef = useRef(null);
 
-  console.log("🔍 [DataContext] Render - currentUser:", !!currentUser, "loadingUser:", loadingUser, "subdomain:", currentSubdomain);
+  console.log("🔍 [DataContext] Render - currentUser:", !!currentUser, "loadingUser:", loadingUser, "subdomain:", currentSubdomain, "loading:", realData.loading);
 
-  // Emergency loading timeout - force stop loading after 15 seconds
+  // FORCE RESET FUNCTIE - om uit loading loops te komen
+  const forceResetDataContext = useCallback(() => {
+    console.warn("[DataContext] 🚨 FORCE RESET - Clearing all data and loading states");
+    
+    // Clear alle timeouts
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+    if (forceResetTimeoutRef.current) {
+      clearTimeout(forceResetTimeoutRef.current);
+      forceResetTimeoutRef.current = null;
+    }
+    
+    // Reset alle refs
+    isDataInitialized.current = false;
+    lastLoadedSubdomain.current = null;
+    lastLoadedUserId.current = null;
+    
+    // Reset state
+    setRealData({
+      users: [],
+      classes: [],
+      students: [],
+      payments: [],
+      mosque: null,
+      teacherAssignedClasses: [],
+      currentClassLessons: [],
+      currentLessonAttendance: [],
+      attendanceStats: {},
+      loading: false,
+      error: null,
+    });
+    
+    console.log("[DataContext] ✅ Force reset completed");
+  }, []);
+
+  // Emergency loading timeout - force stop loading after 10 seconds (verlaagd van 15)
   useEffect(() => {
     if (realData.loading) {
+      console.log("[DataContext] ⏰ Starting emergency timeout (10 seconds)");
       loadingTimeoutRef.current = setTimeout(() => {
-        console.warn("[DataContext] EMERGENCY TIMEOUT: Forcing loading to stop after 15 seconds");
-        setRealData(prev => ({ ...prev, loading: false, error: "Data loading timeout - probeer opnieuw" }));
-      }, 15000);
+        console.warn("[DataContext] 🚨 EMERGENCY TIMEOUT: Forcing loading to stop after 10 seconds");
+        setRealData(prev => ({ 
+          ...prev, 
+          loading: false, 
+          error: "Data loading timeout - probeer opnieuw of herlaad de pagina" 
+        }));
+      }, 10000);
     } else {
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
@@ -51,6 +94,27 @@ export const DataProvider = ({ children }) => {
       }
     };
   }, [realData.loading]);
+
+  // WATCH FOR STUCK LOADING - als we 15 seconden in loading blijven, force reset
+  useEffect(() => {
+    if (realData.loading) {
+      forceResetTimeoutRef.current = setTimeout(() => {
+        console.error("[DataContext] 🚨 STUCK LOADING DETECTED - Force resetting after 15 seconds");
+        forceResetDataContext();
+      }, 15000);
+    } else {
+      if (forceResetTimeoutRef.current) {
+        clearTimeout(forceResetTimeoutRef.current);
+        forceResetTimeoutRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (forceResetTimeoutRef.current) {
+        clearTimeout(forceResetTimeoutRef.current);
+      }
+    };
+  }, [realData.loading, forceResetDataContext]);
 
   const fetchMosqueDataBySubdomain = useCallback(async (subdomain) => {
     if (!subdomain || subdomain === 'register') return null;
@@ -80,7 +144,7 @@ export const DataProvider = ({ children }) => {
       return;
     }
     
-    console.log(`[DataContext] loadAdminDetailedData: Loading for mosque ID: ${mosqueForDataLoading.id}`);
+    console.log(`[DataContext] 👑 Loading ADMIN data for mosque: ${mosqueForDataLoading.name}`);
     setRealData(prev => ({ 
         ...prev, 
         mosque: mosqueForDataLoading, 
@@ -97,6 +161,7 @@ export const DataProvider = ({ children }) => {
         apiCall(`/api/mosques/${mosqueId}/payments`),
       ]);
       
+      console.log(`[DataContext] ✅ Admin data loaded successfully for ${mosqueForDataLoading.name}`);
       setRealData(prev => ({
         ...prev,
         users: usersRes || [],
@@ -107,7 +172,7 @@ export const DataProvider = ({ children }) => {
         error: null,
       }));
     } catch (error) {
-      console.error('[DataContext] loadAdminDetailedData: Error loading detailed data:', error);
+      console.error('[DataContext] ❌ Error loading admin data:', error);
       setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van admin gegevens." }));
     }
   }, [currentUser]);
@@ -125,7 +190,7 @@ export const DataProvider = ({ children }) => {
       return;
     }
     
-    console.log(`[DataContext] loadTeacherInitialData: Loading data for teacher ID: ${currentUser.id}, Mosque: ${mosqueForDataLoading.name}`);
+    console.log(`[DataContext] 🧑‍🏫 Loading TEACHER data for: ${currentUser.name} at ${mosqueForDataLoading.name}`);
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
@@ -141,7 +206,7 @@ export const DataProvider = ({ children }) => {
       const allUsers = usersRes || [];
       
       const assignedClasses = allClasses.filter(c => String(c.teacher_id) === String(currentUser.id) && c.active);
-      console.log(`[DataContext] loadTeacherInitialData: Filtered ${assignedClasses.length} assigned classes for teacher ${currentUser.name}. Total classes in mosque: ${allClasses.length}`);
+      console.log(`[DataContext] ✅ Teacher data loaded: ${assignedClasses.length} assigned classes`);
 
       setRealData(prev => ({
         ...prev,
@@ -153,7 +218,7 @@ export const DataProvider = ({ children }) => {
         error: null,
       }));
     } catch (error) {
-      console.error('[DataContext] loadTeacherInitialData: Error loading teacher data:', error);
+      console.error('[DataContext] ❌ Error loading teacher data:', error);
       setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van leraar gegevens." }));
     }
   }, [currentUser]);
@@ -165,11 +230,12 @@ export const DataProvider = ({ children }) => {
       return;
     }
     
-    console.log(`[DataContext] loadParentInitialData: Loading data for parent ID: ${currentUser.id}`);
+    console.log(`[DataContext] 👨‍👩‍👧‍👦 Loading PARENT data for: ${currentUser.name} at ${mosqueForDataLoading.name}`);
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
       // Voor ouders laden we students, classes, users EN absentie statistieken
+      console.log(`[DataContext] 📡 Fetching parent data from API...`);
       const [studentsRes, classesRes, usersRes] = await Promise.all([
         apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
         apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
@@ -180,27 +246,31 @@ export const DataProvider = ({ children }) => {
       const allClasses = classesRes || [];
       const allUsers = usersRes || [];
       
+      console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}`);
+      
       // Filter alleen hun eigen kinderen
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
-      console.log(`[DataContext] loadParentInitialData: Found ${parentChildren.length} children for parent ${currentUser.name}`);
+      console.log(`[DataContext] 👶 Found ${parentChildren.length} children for parent ${currentUser.name} (parent_id: ${currentUser.id})`);
 
       // Haal absentie statistieken op voor elk kind
       let attendanceStats = {};
       if (parentChildren.length > 0) {
         try {
+          console.log(`[DataContext] 📈 Loading attendance stats for children...`);
           const childIds = parentChildren.map(child => child.id);
           const statsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students/attendance-stats`, {
             method: 'POST',
             body: JSON.stringify({ student_ids: childIds })
           });
           attendanceStats = statsRes || {};
-          console.log(`[DataContext] loadParentInitialData: Loaded attendance stats for ${Object.keys(attendanceStats).length} children`);
+          console.log(`[DataContext] ✅ Loaded attendance stats for ${Object.keys(attendanceStats).length} children`);
         } catch (error) {
-          console.error('[DataContext] Error loading attendance stats:', error);
+          console.error('[DataContext] ⚠️ Error loading attendance stats (non-fatal):', error);
           // Niet fataal - ga door zonder statistieken
         }
       }
 
+      console.log(`[DataContext] ✅ Parent data loaded successfully for ${currentUser.name}`);
       setRealData(prev => ({
         ...prev,
         students: parentChildren, // Alleen hun kinderen
@@ -213,8 +283,12 @@ export const DataProvider = ({ children }) => {
         error: null,
       }));
     } catch (error) {
-      console.error('[DataContext] loadParentInitialData: Error loading parent data:', error);
-      setRealData(prev => ({ ...prev, loading: false, error: error.message || "Fout bij laden van ouder gegevens." }));
+      console.error('[DataContext] ❌ Error loading parent data:', error);
+      setRealData(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: error.message || "Fout bij laden van ouder gegevens." 
+      }));
     }
   }, [currentUser]);
 
@@ -231,7 +305,7 @@ export const DataProvider = ({ children }) => {
       setRealData(prev => ({ ...prev, currentClassLessons: [], error: error.message }));
       return [];
     }
-  }, [currentUser, realData.mosque?.id]); // Removed loading state changes
+  }, [currentUser, realData.mosque?.id]);
 
   const fetchLessonDetailsForAttendance = useCallback(async (lessonId) => {
       if(!lessonId) return null;
@@ -244,7 +318,7 @@ export const DataProvider = ({ children }) => {
           setRealData(prev => ({ ...prev, error: error.message }));
           return null;
       }
-  }, []); // No dependencies to prevent loops
+  }, []);
 
   const fetchAttendanceForLesson = useCallback(async (lessonId) => {
     if (!lessonId) return [];
@@ -258,7 +332,7 @@ export const DataProvider = ({ children }) => {
        setRealData(prev => ({ ...prev, currentLessonAttendance: [], error: error.message }));
       return [];
     }
-  }, []); // No dependencies to prevent loops
+  }, []);
 
   const saveAttendanceForLesson = useCallback(async (lessonId, attendancePayload) => {
     if (!lessonId || !attendancePayload || !currentUser?.id) return false;
@@ -318,15 +392,17 @@ export const DataProvider = ({ children }) => {
 
   // Mosque fetch effect - with loop prevention
   useEffect(() => {
-    console.log("[DataContext] Mosque Fetch useEffect. LoadingUser:", loadingUser, "Subdomain:", currentSubdomain);
+    console.log("[DataContext] 🏗️ Mosque Fetch useEffect. LoadingUser:", loadingUser, "Subdomain:", currentSubdomain);
     
     // Prevent running if auth is still loading
     if (loadingUser) {
+      console.log("[DataContext] ⏳ Auth still loading, skipping mosque fetch");
       return;
     }
     
     // Handle register subdomain
     if (currentSubdomain === 'register') {
+      console.log("[DataContext] 📝 Register subdomain detected, clearing data");
       setRealData({ 
         users: [], classes: [], students: [], payments: [], mosque: null, 
         teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
@@ -338,71 +414,76 @@ export const DataProvider = ({ children }) => {
 
     // Only fetch if subdomain changed and we don't have data for this subdomain
     if (lastLoadedSubdomain.current !== currentSubdomain || !realData.mosque || realData.mosque.subdomain !== currentSubdomain) {
-      console.log(`[DataContext] Mosque data needs refresh for ${currentSubdomain}. Fetching...`);
+      console.log(`[DataContext] 🔄 Mosque data needs refresh for ${currentSubdomain}. Fetching...`);
       setRealData(prev => ({ ...prev, loading: true, error: null, mosque: null }));
       lastLoadedSubdomain.current = currentSubdomain;
       
       fetchMosqueDataBySubdomain(currentSubdomain)
         .then(mosqueObject => {
           if (mosqueObject) {
+            console.log(`[DataContext] ✅ Mosque loaded: ${mosqueObject.name}`);
             setRealData(prev => ({ ...prev, mosque: mosqueObject, loading: false, error: null }));
           } else {
             throw new Error(`Moskee voor subdomein '${currentSubdomain}' kon niet worden geladen.`);
           }
         })
         .catch(err => {
-          console.error("[DataContext] Error in fetchMosqueDataBySubdomain promise chain:", err);
+          console.error("[DataContext] ❌ Error in fetchMosqueDataBySubdomain promise chain:", err);
           setRealData(prev => ({ ...prev, mosque: null, loading: false, error: err.message }));
         });
+    } else {
+      console.log("[DataContext] ✅ Mosque data already loaded for", currentSubdomain);
     }
-  }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain]);
+  }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain, realData.mosque?.subdomain]);
 
   // Role-based data loading effect - with loop prevention
   useEffect(() => {
-    console.log("[DataContext] Role-based Data Load useEffect. currentUser:", !!currentUser, "Role:", currentUser?.role, "mosque:", !!realData.mosque?.id, "LoadingUser:", loadingUser);
+    console.log("[DataContext] 👤 Role-based Data Load useEffect. currentUser:", !!currentUser, "Role:", currentUser?.role, "mosque:", !!realData.mosque?.id, "LoadingUser:", loadingUser);
     
     // Prevent running if auth is still loading or no mosque
     if (loadingUser || !realData.mosque || !realData.mosque.id) {
+      console.log("[DataContext] ⏳ Waiting for auth or mosque data...");
       return;
     }
 
     // Only load if user changed or not yet loaded for this user
     if (currentUser && lastLoadedUserId.current !== currentUser.id) {
-      console.log(`[DataContext] Loading data for new user: ${currentUser.id} (role: ${currentUser.role})`);
-      setRealData(prev => ({ ...prev, loading: true }));
+      console.log(`[DataContext] 🔄 Loading data for new user: ${currentUser.id} (role: ${currentUser.role})`);
       lastLoadedUserId.current = currentUser.id;
       
       if (currentUser.role === 'admin') {
-        console.log("[DataContext] User is ADMIN. Loading admin detailed data.");
+        console.log("[DataContext] 👑 User is ADMIN. Loading admin detailed data.");
         loadAdminDetailedData(realData.mosque);
       } else if (currentUser.role === 'teacher') {
-        console.log("[DataContext] User is TEACHER. Loading teacher initial data.");
+        console.log("[DataContext] 🧑‍🏫 User is TEACHER. Loading teacher initial data.");
         loadTeacherInitialData(realData.mosque);
       } else if (currentUser.role === 'parent') {
-        console.log("[DataContext] User is PARENT. Loading parent data with attendance stats.");
-        // Extra timeout for parent loading to prevent race conditions
+        console.log("[DataContext] 👨‍👩‍👧‍👦 User is PARENT. Loading parent data with attendance stats.");
+        // Extra timeout voor parent loading om race conditions te voorkomen
         setTimeout(() => {
           loadParentInitialData(realData.mosque);
         }, 100);
       } else {
-        console.warn("[DataContext] Unknown user role or no role, stopping data load.");
+        console.warn("[DataContext] ❓ Unknown user role or no role, stopping data load.");
         setRealData(prev => ({ ...prev, loading: false }));
       }
     } else if (!currentUser && lastLoadedUserId.current !== null) {
-      console.log("[DataContext] No currentUser (logout detected). Resetting data.");
+      console.log("[DataContext] 🚪 No currentUser (logout detected). Resetting data.");
       lastLoadedUserId.current = null;
       setRealData({
         users: [], classes: [], students: [], payments: [], mosque: null,
         teacherAssignedClasses: [], currentClassLessons: [], currentLessonAttendance: [],
         attendanceStats: {}, loading: false, error: null,
       });
+    } else {
+      console.log("[DataContext] ✅ User data already loaded or no user change");
     }
-  }, [currentUser, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]);
+  }, [currentUser?.id, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialData]);
 
   const refreshAllData = useCallback(async () => {
-    console.log("[DataContext] RefreshAllData called.");
+    console.log("[DataContext] 🔄 RefreshAllData called.");
     if (loadingUser || !currentSubdomain || currentSubdomain === 'register') {
-      console.log("[DataContext] RefreshAllData: Cannot refresh, auth loading, no subdomain or on register page.");
+      console.log("[DataContext] ❌ RefreshAllData: Cannot refresh, auth loading, no subdomain or on register page.");
       return;
     }
     
@@ -450,6 +531,7 @@ export const DataProvider = ({ children }) => {
     saveAttendanceForLesson,
     fetchLessonDetailsForAttendance,
     createLesson,
+    forceResetDataContext, // ✨ NIEUW: Force reset functie
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
