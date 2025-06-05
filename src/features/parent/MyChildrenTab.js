@@ -241,15 +241,18 @@ const MyChildrenTab = () => {
                   {/* Action buttons */}
                   <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
                     <button
-                      onClick={() => toggleQuranProgress(child.id)}
+                      onClick={() => {
+                        console.log('Knop geklikt! ShowingProgress:', showingQuranProgress);
+                        toggleQuranProgress(child.id);
+                      }}
                       className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                         showingQuranProgress 
-                          ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200' 
-                          : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                          ? 'text-white bg-red-500 hover:bg-red-600' 
+                          : 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200'
                       }`}
                     >
                       <BookMarked size={14} className="mr-1" />
-                      {showingQuranProgress ? 'Verberg Voortgang' : 'Qor'aan Voortgang'}
+                      {showingQuranProgress ? '✖️ Verberg Voortgang' : '📖 Toon Voortgang'}
                     </button>
                     
                     <button
