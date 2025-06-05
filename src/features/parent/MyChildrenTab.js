@@ -54,10 +54,18 @@ const MyChildrenTab = () => {
 
   // Helper functie om aanwezigheidspercentage te berekenen
   const calculateAttendancePercentage = (stats) => {
-    if (!stats) return 0;
+    if (!stats) return { percentage: 0, latePercentage: 0 };
     const total = stats.aanwezig + stats.afwezig_ongeoorloofd + stats.afwezig_geoorloofd + stats.te_laat;
-    if (total === 0) return 0;
-    return Math.round((stats.aanwezig / total) * 100);
+    if (total === 0) return { percentage: 0, latePercentage: 0 };
+    
+    // Aanwezig + te laat = totaal effectief aanwezig
+    const totalPresent = stats.aanwezig + stats.te_laat;
+    const attendancePercentage = Math.round((totalPresent / total) * 100);
+    
+    // Percentage van aanwezigheid dat te laat was
+    const latePercentage = totalPresent > 0 ? Math.round((stats.te_laat / totalPresent) * 100) : 0;
+    
+    return { percentage: attendancePercentage, latePercentage };
   };
 
   // Render attendancestatistieken component
@@ -77,7 +85,9 @@ const MyChildrenTab = () => {
     }
 
     const total = stats.aanwezig + stats.afwezig_ongeoorloofd + stats.afwezig_geoorloofd + stats.te_laat;
-    const attendancePercentage = calculateAttendancePercentage(stats);
+    const attendanceResult = calculateAttendancePercentage(stats);
+    const attendancePercentage = attendanceResult.percentage;
+    const latePercentage = attendanceResult.latePercentage;
     
     return (
       <div className="mt-4 pt-3 border-t border-gray-200">
@@ -96,6 +106,11 @@ const MyChildrenTab = () => {
             'text-red-700 bg-red-100'
           }`}>
             {attendancePercentage}%
+            {latePercentage > 0 && (
+              <span className="text-xs font-normal ml-1 opacity-75">
+                (waarvan {latePercentage}% te laat)
+              </span>
+            )}
           </span>
         </div>
 
@@ -137,7 +152,8 @@ const MyChildrenTab = () => {
         {/* Progress bar voor visuele weergave */}
         {total > 0 && (
           <div className="mt-3">
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-2 relative overflow-hidden">
+              {/* Totale aanwezigheid (inclusief te laat) */}
               <div 
                 className={`h-2 rounded-full transition-all duration-300 ${
                   attendancePercentage >= 90 ? 'bg-green-500' :
@@ -146,7 +162,23 @@ const MyChildrenTab = () => {
                 }`}
                 style={{ width: `${attendancePercentage}%` }}
               ></div>
+              {/* Overlay voor "te laat" percentage binnen de aanwezigheid */}
+              {latePercentage > 0 && (
+                <div 
+                  className="absolute top-0 right-0 h-2 bg-orange-400 bg-opacity-60"
+                  style={{ 
+                    width: `${(stats.te_laat / total) * 100}%`,
+                    right: `${100 - attendancePercentage}%`
+                  }}
+                  title={`${latePercentage}% van aanwezigheid was te laat`}
+                ></div>
+              )}
             </div>
+            {latePercentage > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Oranje gedeelte toont te laat percentage binnen aanwezigheid
+              </p>
+            )}
           </div>
         )}
       </div>
