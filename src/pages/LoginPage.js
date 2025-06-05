@@ -13,7 +13,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showEmergencyReset, setShowEmergencyReset] = useState(false);
-  const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, forceResetAuth } = useAuth();
+  const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, hardResetAuth } = useAuth();
   const { realData } = useData(); 
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,10 +30,10 @@ const LoginPage = () => {
   useEffect(() => {
     let timer;
     if (loadingUser) {
-      // Toon reset knop na 8 seconden laden
+      // Toon reset knop na 4 seconden laden (verlaagd van 8)
       timer = setTimeout(() => {
         setShowEmergencyReset(true);
-      }, 8000);
+      }, 4000);
     } else {
       setShowEmergencyReset(false);
     }
@@ -61,14 +61,14 @@ const LoginPage = () => {
     setError('');
     setShowEmergencyReset(false);
     
-    if (forceResetAuth) {
-      forceResetAuth();
+    if (hardResetAuth) {
+      hardResetAuth();
     }
     
     // Extra hard reset - reload pagina na korte delay
     setTimeout(() => {
       window.location.reload();
-    }, 500);
+    }, 200); // Sneller reload
   };
 
   if (loadingUser && !currentUser) { 
@@ -77,21 +77,35 @@ const LoginPage = () => {
         <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-md text-center">
           <LoadingSpinner message="Gebruikerssessie controleren..." />
           
-          {/* Emergency Reset Section - alleen na 8 seconden */}
+          {/* ALTIJD ZICHTBARE reset knop tijdens loading */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 mb-3">
+              💡 Laden duurt lang?
+            </p>
+            <Button
+              onClick={handleEmergencyReset}
+              variant="ghost"
+              className="text-blue-700 hover:text-blue-900 border border-blue-300 hover:border-blue-400 bg-blue-100 hover:bg-blue-200 text-sm py-2 px-4"
+            >
+              🔄 Reset en probeer opnieuw
+            </Button>
+          </div>
+          
+          {/* Extra urgente reset knop na 4 seconden */}
           {showEmergencyReset && (
-            <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800 mb-3">
-                ⚠️ Inloggen duurt langer dan verwacht
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800 mb-3">
+                🚨 Nog steeds aan het laden?
               </p>
-              <p className="text-xs text-yellow-700 mb-4">
-                Als deze pagina blijft laden, kunt u proberen de sessie te resetten.
+              <p className="text-xs text-red-700 mb-4">
+                Er lijkt een probleem te zijn. Klik hieronder voor een volledige reset.
               </p>
               <Button
                 onClick={handleEmergencyReset}
                 variant="ghost"
-                className="text-yellow-700 hover:text-yellow-900 border border-yellow-300 hover:border-yellow-400 bg-yellow-100 hover:bg-yellow-200 text-sm py-2 px-4"
+                className="text-red-700 hover:text-red-900 border border-red-300 hover:border-red-400 bg-red-100 hover:bg-red-200 text-sm py-2 px-4 font-semibold"
               >
-                🔄 Reset inlogstatus
+                🔥 Geforceerde reset
               </Button>
             </div>
           )}
