@@ -67,9 +67,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (loadingUser && !loginInProgress.current) {
       emergencyTimeoutRef.current = setTimeout(() => {
-        console.warn("[AuthContext] EMERGENCY TIMEOUT - 8 seconds for initial load");
+        console.warn("[AuthContext] EMERGENCY TIMEOUT - 4 seconds for initial load");
         smartResetAuth('emergency_timeout');
-      }, 8000); // Terug naar 8 seconden, maar alleen voor initial load
+      }, 4000); // Verder verlaagd naar 4 seconden
     } else {
       if (emergencyTimeoutRef.current) {
         clearTimeout(emergencyTimeoutRef.current);
@@ -114,52 +114,58 @@ export const AuthProvider = ({ children }) => {
           return;
         }
         
-        // Session check met timeout
+        // Session check met timeout - GUARANTEED om loading te stoppen
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
+          setTimeout(() => reject(new Error('Session timeout')), 3000) // Verlaagd naar 3 seconden
         );
         
-        const result = await Promise.race([sessionPromise, timeoutPromise]);
-        const { data: { session }, error } = result;
-        
-        if (error) {
-          console.warn("[AuthContext] Session error:", error);
-          setLoadingUser(false);
-          return;
-        }
-        
-        if (session?.user && !isLoggingOut.current) {
-          console.log("[AuthContext] Session found, getting app user...");
+        try {
+          const result = await Promise.race([sessionPromise, timeoutPromise]);
+          const { data: { session }, error } = result;
           
-          try {
-            const { data: appUser, error: appUserError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (appUserError) throw appUserError;
+          if (error) {
+            console.warn("[AuthContext] Session error:", error);
+            return; // Will hit finally block
+          }
+          
+          if (session?.user && !isLoggingOut.current) {
+            console.log("[AuthContext] Session found, getting app user...");
             
-            if (appUser && !isLoggingOut.current) {
-              setCurrentUser(appUser);
-              localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
-              console.log("[AuthContext] Initial user set:", appUser.name, appUser.role);
-            } else {
-              console.warn("[AuthContext] No app user found for session user");
+            try {
+              const { data: appUser, error: appUserError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+              if (appUserError) throw appUserError;
+              
+              if (appUser && !isLoggingOut.current) {
+                setCurrentUser(appUser);
+                localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
+                console.log("[AuthContext] Initial user set:", appUser.name, appUser.role);
+              } else {
+                console.warn("[AuthContext] No app user found for session user");
+                await supabase.auth.signOut();
+              }
+            } catch (dbError) {
+              console.error("[AuthContext] Error fetching app user:", dbError);
               await supabase.auth.signOut();
             }
-          } catch (dbError) {
-            console.error("[AuthContext] Error fetching app user:", dbError);
-            await supabase.auth.signOut();
+          } else {
+            console.log("[AuthContext] No initial session found");
           }
-        } else {
-          console.log("[AuthContext] No initial session found");
+        } catch (sessionError) {
+          console.warn("[AuthContext] Session check failed:", sessionError.message);
+          // Continue to finally block - will stop loading
         }
         
-      } catch (sessionError) {
-        console.warn("[AuthContext] Session check failed:", sessionError.message);
+      } catch (outerError) {
+        console.warn("[AuthContext] Outer session check error:", outerError.message);
       } finally {
+        // GUARANTEED loading stop - no matter what happens above
+        console.log("[AuthContext] Session check complete - stopping loading");
         if (!isLoggingOut.current) {
           setLoadingUser(false);
         }

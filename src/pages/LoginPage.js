@@ -30,10 +30,10 @@ const LoginPage = () => {
   useEffect(() => {
     let timer;
     if (loadingUser) {
-      // Toon reset knop na 4 seconden laden (verlaagd van 8)
+      // Toon reset knop na 2 seconden laden (nog sneller)
       timer = setTimeout(() => {
         setShowEmergencyReset(true);
-      }, 4000);
+      }, 2000);
     } else {
       setShowEmergencyReset(false);
     }
@@ -65,11 +65,27 @@ const LoginPage = () => {
       hardResetAuth();
     }
     
-    // Extra hard reset - reload pagina na korte delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 200); // Sneller reload
+    // NUCLEAR OPTION: Gewoon pagina herladen
+    console.log("[LoginPage] Nuclear option: reloading page");
+    window.location.reload();
   };
+
+  // EXTRA: Auto-reload na 6 seconden loading
+  useEffect(() => {
+    let autoReloadTimer;
+    if (loadingUser) {
+      autoReloadTimer = setTimeout(() => {
+        console.warn("[LoginPage] AUTO-RELOAD after 6 seconds of loading");
+        window.location.reload();
+      }, 6000);
+    }
+    
+    return () => {
+      if (autoReloadTimer) {
+        clearTimeout(autoReloadTimer);
+      }
+    };
+  }, [loadingUser]);
 
   if (loadingUser && !currentUser) { 
     return (
