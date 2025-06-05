@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.js - AGRESSIEVE FIX voor hanging login
+// src/contexts/AuthContext.js - GEBALANCEERDE FIX
 import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -30,10 +30,11 @@ export const AuthProvider = ({ children }) => {
   const authListenerRef = useRef(null);
   const isLoggingOut = useRef(false);
   const emergencyTimeoutRef = useRef(null);
+  const loginInProgress = useRef(false); // NEW: Track login progress
 
-  // NIEUWE FUNCTIE: Hard reset alles
-  const hardResetAuth = useCallback(() => {
-    console.log("[AuthContext] HARD RESET AUTH - Clearing everything");
+  // FUNCTIE: Smart reset (alleen als echt nodig)
+  const smartResetAuth = useCallback((reason = 'unknown') => {
+    console.log("[AuthContext] SMART RESET AUTH - Reason:", reason);
     
     // Stop alle timers
     if (emergencyTimeoutRef.current) {
@@ -41,30 +42,34 @@ export const AuthProvider = ({ children }) => {
       emergencyTimeoutRef.current = null;
     }
     
-    // Reset alle flags
+    // Reset flags
     isLoggingOut.current = false;
-    isInitialized.current = false;
+    loginInProgress.current = false;
     
     // Clear state
     setCurrentUser(null);
     setLoadingUser(false);
     
-    // Nuclear option: clear ALL localStorage
-    localStorage.clear();
+    // Clear only auth-related localStorage, not everything
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
     
-    // Force sign out van Supabase (in background, don't wait)
-    supabase.auth.signOut().catch(e => console.warn("Signout error during hard reset:", e));
+    // Force sign out van Supabase (in background)
+    supabase.auth.signOut().catch(e => console.warn("Signout error during reset:", e));
     
-    console.log("[AuthContext] Hard reset complete");
+    console.log("[AuthContext] Smart reset complete");
   }, []);
 
-  // SNELLE TIMEOUT - slechts 5 seconden
+  // TIMEOUT ALLEEN VOOR INITIAL LOADING, NIET TIJDENS LOGIN
   useEffect(() => {
-    if (loadingUser) {
+    if (loadingUser && !loginInProgress.current) {
       emergencyTimeoutRef.current = setTimeout(() => {
-        console.warn("[AuthContext] EMERGENCY TIMEOUT - 5 seconds");
-        hardResetAuth();
-      }, 5000); // VERLAAGD naar 5 seconden
+        console.warn("[AuthContext] EMERGENCY TIMEOUT - 8 seconds for initial load");
+        smartResetAuth('emergency_timeout');
+      }, 8000); // Terug naar 8 seconden, maar alleen voor initial load
     } else {
       if (emergencyTimeoutRef.current) {
         clearTimeout(emergencyTimeoutRef.current);
@@ -78,14 +83,14 @@ export const AuthProvider = ({ children }) => {
         emergencyTimeoutRef.current = null;
       }
     };
-  }, [loadingUser, hardResetAuth]);
+  }, [loadingUser, smartResetAuth]);
 
-  // VEREENVOUDIGDE INITIAL SETUP
+  // INITIAL SETUP - meer defensief
   useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    console.log("[AuthContext] Simple initialization...");
+    console.log("[AuthContext] Initialization...");
 
     const detectedSubdomain = getSubdomainFromHostname(window.location.hostname);
     if (window.location.hostname === 'localhost') {
@@ -99,24 +104,24 @@ export const AuthProvider = ({ children }) => {
       setCurrentSubdomain(detectedSubdomain);
     }
 
-    // SIMPLE session check - no complex logic
-    const quickSessionCheck = async () => {
+    // SAFE session check
+    const checkInitialSession = async () => {
       try {
-        console.log("[AuthContext] Quick session check...");
+        console.log("[AuthContext] Checking initial session...");
         
-        // Als we al aan het uitloggen zijn, skip
         if (isLoggingOut.current) {
           setLoadingUser(false);
           return;
         }
         
-        // Probeer session op te halen met timeout
+        // Session check met timeout
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 3000)
+          setTimeout(() => reject(new Error('Session timeout')), 5000)
         );
         
-        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
+        const result = await Promise.race([sessionPromise, timeoutPromise]);
+        const { data: { session }, error } = result;
         
         if (error) {
           console.warn("[AuthContext] Session error:", error);
@@ -127,18 +132,29 @@ export const AuthProvider = ({ children }) => {
         if (session?.user && !isLoggingOut.current) {
           console.log("[AuthContext] Session found, getting app user...");
           
-          // Simple app user fetch
-          const { data: appUser } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+          try {
+            const { data: appUser, error: appUserError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (appUserError) throw appUserError;
             
-          if (appUser && !isLoggingOut.current) {
-            setCurrentUser(appUser);
-            localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
-            console.log("[AuthContext] User set:", appUser.name);
+            if (appUser && !isLoggingOut.current) {
+              setCurrentUser(appUser);
+              localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
+              console.log("[AuthContext] Initial user set:", appUser.name, appUser.role);
+            } else {
+              console.warn("[AuthContext] No app user found for session user");
+              await supabase.auth.signOut();
+            }
+          } catch (dbError) {
+            console.error("[AuthContext] Error fetching app user:", dbError);
+            await supabase.auth.signOut();
           }
+        } else {
+          console.log("[AuthContext] No initial session found");
         }
         
       } catch (sessionError) {
@@ -150,60 +166,86 @@ export const AuthProvider = ({ children }) => {
       }
     };
     
-    // Gebruik setTimeout om race conditions te voorkomen
-    setTimeout(quickSessionCheck, 100);
+    // Kleine delay om race conditions te voorkomen
+    setTimeout(checkInitialSession, 200);
   }, []);
 
-  // VEREENVOUDIGDE AUTH LISTENER
+  // AUTH LISTENER - defensief
   useEffect(() => {
     if (authListenerRef.current) {
       authListenerRef.current.unsubscribe();
     }
 
-    console.log("[AuthContext] Setting up simple auth listener...");
+    console.log("[AuthContext] Setting up auth listener...");
     
     authListenerRef.current = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("[AuthContext] Auth event:", event);
+        console.log("[AuthContext] Auth event:", event, session ? 'with session' : 'no session');
         
+        // Skip events tijdens logout behalve SIGNED_OUT
         if (isLoggingOut.current && event !== 'SIGNED_OUT') {
+          console.log("[AuthContext] Skipping event during logout:", event);
           return;
         }
         
         const activeSubdomain = getSubdomainFromHostname(window.location.hostname);
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log("[AuthContext] SIGNED_IN event");
-          
-          try {
-            const { data: appUser } = await supabase
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log("[AuthContext] SIGNED_IN event - fetching app user");
+            loginInProgress.current = false; // Reset login progress
+            
+            const { data: appUser, error: appUserError } = await supabase
               .from('users')
               .select('*')
               .eq('id', session.user.id)
               .single();
 
+            if (appUserError) {
+              console.error("[AuthContext] App user error:", appUserError);
+              throw appUserError;
+            }
+
             if (appUser) {
+              console.log("[AuthContext] Setting user from SIGNED_IN:", appUser.name, appUser.role);
               setCurrentUser(appUser);
               localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
               setLoadingUser(false);
               
+              // Navigate alleen als we op login pagina zijn
               if (window.location.pathname === '/login') {
+                console.log("[AuthContext] Navigating from login to dashboard");
                 navigate('/dashboard', { replace: true });
               }
             } else {
-              hardResetAuth();
+              console.warn("[AuthContext] No app user found in SIGNED_IN");
+              smartResetAuth('no_app_user');
             }
-          } catch (error) {
-            console.error("[AuthContext] Error in SIGNED_IN:", error);
-            hardResetAuth();
+          } else if (event === 'SIGNED_OUT') {
+            console.log("[AuthContext] SIGNED_OUT event");
+            smartResetAuth('signed_out');
+            
+            // Navigate naar login alleen als niet al daar
+            if (window.location.pathname !== '/login' && activeSubdomain !== 'register') {
+              navigate('/login', { replace: true });
+            }
+          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+            console.log("[AuthContext] TOKEN_REFRESHED");
+            
+            const { data: appUser } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            if (appUser) {
+              setCurrentUser(appUser);
+              localStorage.setItem(`currentUser_${activeSubdomain}`, JSON.stringify(appUser));
+            }
           }
-        } else if (event === 'SIGNED_OUT') {
-          console.log("[AuthContext] SIGNED_OUT event");
-          hardResetAuth();
-          
-          if (window.location.pathname !== '/login' && activeSubdomain !== 'register') {
-            navigate('/login', { replace: true });
-          }
+        } catch (error) {
+          console.error("[AuthContext] Error in auth state change:", error);
+          smartResetAuth('auth_error');
         }
       }
     );
@@ -214,19 +256,28 @@ export const AuthProvider = ({ children }) => {
         authListenerRef.current = null;
       }
     };
-  }, [navigate, hardResetAuth]);
+  }, [navigate, smartResetAuth]);
 
   const handleLogin = useCallback(async (email, password) => {
     console.log("[AuthContext] Login attempt for:", email);
     
-    // Reset everything before login
+    // Set login in progress flag
+    loginInProgress.current = true;
     isLoggingOut.current = false;
     setLoadingUser(true);
+    
+    // Clear emergency timeout tijdens login
+    if (emergencyTimeoutRef.current) {
+      clearTimeout(emergencyTimeoutRef.current);
+      emergencyTimeoutRef.current = null;
+    }
     
     try {
       if (!currentSubdomain || currentSubdomain === 'register') {
         throw new Error('Geen geldig subdomein gevonden voor login.');
       }
+
+      console.log("[AuthContext] Checking mosque for subdomain:", currentSubdomain);
 
       // Get mosque
       const { data: mosque, error: mosqueError } = await supabase
@@ -238,6 +289,8 @@ export const AuthProvider = ({ children }) => {
       if (mosqueError || !mosque) {
         throw new Error(`Moskee met subdomein '${currentSubdomain}' niet gevonden.`);
       }
+
+      console.log("[AuthContext] Mosque found, performing authentication...");
 
       // Login
       const { data: { user: supabaseAuthUser, session }, error: signInError } = await supabase.auth.signInWithPassword({
@@ -255,6 +308,8 @@ export const AuthProvider = ({ children }) => {
       if (!supabaseAuthUser || !session) {
         throw new Error('Ongeldige inlogpoging.');
       }
+
+      console.log("[AuthContext] Authentication successful, validating app user...");
 
       // Validate app user
       const { data: appUser, error: appUserError } = await supabase
@@ -275,21 +330,25 @@ export const AuthProvider = ({ children }) => {
         .update({ last_login: new Date() })
         .eq('id', appUser.id);
 
-      console.log("[AuthContext] Login successful for:", appUser.name);
+      console.log("[AuthContext] Login completed successfully for:", appUser.name, appUser.role);
+      
+      // Auth listener will handle the rest
       return true;
 
     } catch (error) {
       console.error('Login error:', error);
-      hardResetAuth();
+      loginInProgress.current = false;
+      setLoadingUser(false);
       throw error;
     }
-  }, [currentSubdomain, hardResetAuth]);
+  }, [currentSubdomain]);
 
   const handleLogout = useCallback(async () => {
     console.log("[AuthContext] Logout initiated");
     isLoggingOut.current = true;
+    loginInProgress.current = false;
     
-    hardResetAuth();
+    smartResetAuth('manual_logout');
     
     try {
       await supabase.auth.signOut();
@@ -301,8 +360,8 @@ export const AuthProvider = ({ children }) => {
     
     setTimeout(() => {
       isLoggingOut.current = false;
-    }, 100);
-  }, [navigate, hardResetAuth]);
+    }, 500);
+  }, [navigate, smartResetAuth]);
 
   const switchSubdomain = useCallback((newSubdomain) => {
     const currentHostname = window.location.hostname;
@@ -324,6 +383,11 @@ export const AuthProvider = ({ children }) => {
     const port = window.location.port ? `:${window.location.port}` : '';
     window.location.href = `${window.location.protocol}//${newHost}${port}/`;
   }, []);
+
+  // Emergency reset for manual use
+  const hardResetAuth = useCallback(() => {
+    smartResetAuth('manual_hard_reset');
+  }, [smartResetAuth]);
 
   const value = {
     currentUser,
