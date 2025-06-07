@@ -1,9 +1,8 @@
-// src/pages/TeacherMyClassesPage.js - FINALE, ROBUUSTE VERSIE
+// src/pages/TeacherMyClassesPage.js - FINALE, VEREENVOUDIGDE EN CORRECTE VERSIE
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { useAuth } from '../contexts/AuthContext';
 import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
@@ -24,59 +23,38 @@ const TeacherMyClassesPage = () => {
   const navigate = useNavigate();
 
   const { realData } = useData();
-  const { currentUser } = useAuth();
-  // We gebruiken de masterlijsten uit de DataContext voor betrouwbaarheid
-  const { classes, students, loading: dataLoading, error } = realData;
+  // DE FIX: We gebruiken de data die de DataContext al voor ons heeft gefilterd.
+  const { teacherAssignedClasses, students, loading: dataLoading, error } = realData;
 
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showQuranProgressModal, setShowQuranProgressModal] = useState(false);
   const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
 
-  // State voor deze pagina specifiek
-  const [currentClass, setCurrentClass] = useState(null);
-  const [classStudents, setClassStudents] = useState([]);
-  const [isLoadingPage, setIsLoadingPage] = useState(true);
+  // LOGICA IS NU VEEL SIMPELER
+  // Zoek de klas in de lijst die gegarandeerd correct is voor deze docent.
+  const currentClass = classId && !dataLoading 
+    ? teacherAssignedClasses.find(c => String(c.id) === String(classId)) 
+    : null;
 
-  // --- HIER ZIT DE VERNIEUWDE EN ROBUUSTE LOGICA ---
-  useEffect(() => {
-    // Start altijd met een 'loading' staat wanneer de classId verandert
-    if (classId) {
-      setIsLoadingPage(true);
-    }
-    
-    // Alleen doorgaan als de basisdata uit de context geladen is en we een gebruiker hebben
-    if (classId && !dataLoading && classes.length > 0 && currentUser) {
-      const foundClass = classes.find(c => String(c.id) === String(classId));
-      
-      // Belangrijke veiligheidscheck: bestaat de klas en is de gebruiker de leraar?
-      if (foundClass && String(foundClass.teacher_id) === String(currentUser.id)) {
-        setCurrentClass(foundClass);
-        const studentsInClass = students.filter(s => String(s.class_id) === String(classId) && s.active);
-        setClassStudents(studentsInClass);
-      } else {
-        console.warn(`Toegang tot klas ${classId} mislukt. Klas niet gevonden of geen eigendom van docent.`);
-        setCurrentClass(null);
-        setClassStudents([]);
-      }
-      // Klaar met zoeken, stop de laadindicator voor deze pagina
-      setIsLoadingPage(false);
-    } else if (!classId) {
-        // Als er geen classId is, zijn we niet aan het laden en is er geen klas.
-        setIsLoadingPage(false);
-        setCurrentClass(null);
-        setClassStudents([]);
-    }
-    
-  }, [classId, dataLoading, classes, students, currentUser]); // Deze dependencies zijn cruciaal!
+  const classStudents = currentClass 
+    ? students.filter(s => String(s.class_id) === String(classId) && s.active) 
+    : [];
 
   const handleAddStudentClick = () => setShowAddStudentModal(true);
-  
   const handleShowQuranProgress = (student) => {
     setSelectedStudentForQuran(student);
     setShowQuranProgressModal(true);
   };
   
   // --- RENDER LOGICA ---
+
+  if (dataLoading) {
+    return <LoadingSpinner message="Gegevens laden..." />;
+  }
+  
+  if (error) {
+    return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout bij het laden van data: {error}</div>;
+  }
 
   // MASTER VIEW (als GEEN classId in URL staat)
   if (!classId) {
@@ -92,14 +70,6 @@ const TeacherMyClassesPage = () => {
   }
 
   // DETAIL VIEW (als classId in URL staat)
-  if (isLoadingPage) {
-    return <LoadingSpinner message="Klasdetails laden..." />;
-  }
-  
-  if (error) {
-    return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout bij het laden van data: {error}</div>;
-  }
-
   if (!currentClass) {
       return (
           <div className="card text-center p-6">
