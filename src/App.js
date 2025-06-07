@@ -20,11 +20,10 @@ import MyChildrenPage from './pages/MyChildrenPage';
 // Teacher Pages
 import TeacherMyClassesPage from './pages/TeacherMyClassesPage';
 import TeacherClassAttendancePage from './pages/TeacherClassAttendancePage';
-import TeacherSingleClassPage from './pages/TeacherSingleClassPage';
 
 import LoadingSpinner from './components/LoadingSpinner';
 
-// Helper component om routes te beschermen
+// Helper component om routes te beschermen (jouw bestaande, goede code)
 const ProtectedRoute = ({ children, adminOnly = false, teacherOnly = false, parentOnly = false }) => {
   const { currentUser, loadingUser } = useAuth();
   const location = useLocation();
@@ -51,18 +50,27 @@ const ProtectedRoute = ({ children, adminOnly = false, teacherOnly = false, pare
   return children;
 };
 
+// AANGEPASTE AppRoutes component
 const AppRoutes = () => {
   const { currentUser, loadingUser, currentSubdomain } = useAuth();
   const location = useLocation();
 
+  // Toon een algemene laadindicator zolang AuthContext nog bezig is met initialiseren
+  // en er nog geen subdomein is vastgesteld of als het nog niet duidelijk is of er een user is.
+  // Deze check is cruciaal om te wachten tot currentSubdomain een betrouwbare waarde heeft.
   if (loadingUser && (!currentSubdomain || currentSubdomain === '' )) { 
     return <LoadingSpinner message="Applicatie initialiseren..." />;
   }
 
+  // Logica voor het 'register' subdomein
   if (currentSubdomain === 'register') {
+    // Als we op het register subdomein zijn, maar nog niet op /register pad, redirect.
+    // Dit gebeurt nadat loadingUser false is, dus currentSubdomain is betrouwbaar.
     if (location.pathname !== '/register') {
+        // Zorg dat de state meegaat als die er was, anders geen state
         return <Navigate to="/register" state={location.state ? { from: location } : undefined} replace />;
     }
+    // Render alleen de registratie routes
     return (
       <Routes>
         <Route path="/register" element={<RegistrationPage />} />
@@ -71,10 +79,14 @@ const AppRoutes = () => {
     );
   }
 
+  // Vanaf hier zijn we NIET op het 'register' subdomein.
+  // Als AuthContext nog aan het laden is voor een niet-register subdomein (bijv. sessie checken), toon spinner.
   if (loadingUser) { 
       return <LoadingSpinner message="Gebruikerssessie controleren..." />;
   }
 
+  // Als we hier komen, is loadingUser false, en zijn we niet op 'register' subdomein.
+  // Alle volgende routes vereisen DataProvider.
   return (
     <DataProvider>
       {location.state?.unauthorizedAttempt && (
@@ -102,8 +114,6 @@ const AppRoutes = () => {
           </Route>
 
           <Route path="teacher" element={<ProtectedRoute teacherOnly={true}><Outlet /></ProtectedRoute>}>
-            {/* 🚨 BELANGRIJKE WIJZIGING: Specifiekere route EERST */}
-            <Route path="my-classes/:classId" element={<div style={{padding: '2rem', background: 'red', color: 'white'}}><h1>DIRECT HTML TEST</h1></div>} />
             <Route path="my-classes" element={<TeacherMyClassesPage />} />
             <Route path="class/:classId/attendance" element={<TeacherClassAttendancePage />} />
             <Route index element={<Navigate to="my-classes" replace />} /> 
