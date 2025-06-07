@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - VERBETERDE EN VOLLEDIGE VERSIE
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE, VOLLEDIGE EN CORRECTE VERSIE
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -34,31 +34,23 @@ const TeacherMyClassesPage = () => {
   const [currentClass, setCurrentClass] = useState(null);
   const [classStudents, setClassStudents] = useState([]);
 
-  // --- HIER ZIT DE VERBETERDE LOGICA ---
   useEffect(() => {
-    // Draai alleen als we een classId hebben en de basisdata geladen is.
     if (classId && classes.length > 0 && currentUser) {
-      // 1. Zoek de klas in de *algemene* lijst van klassen.
       const foundClass = classes.find(c => String(c.id) === String(classId));
       
-      // 2. BELANGRIJKE CHECK: Controleer of de klas bestaat én of de ingelogde docent de eigenaar is.
       if (foundClass && String(foundClass.teacher_id) === String(currentUser.id)) {
         setCurrentClass(foundClass);
-        // Filter de leerlingen die bij deze specifieke klas horen.
         const studentsInClass = students.filter(s => String(s.class_id) === String(classId) && s.active);
         setClassStudents(studentsInClass);
       } else {
-        // De klas is niet gevonden of de docent is niet de eigenaar.
-        console.warn(`Attempt to access class ${classId} failed. Class not found or not owned by teacher ${currentUser.id}.`);
         setCurrentClass(null);
         setClassStudents([]);
       }
     } else {
-      // Als er geen classId is, reset de state.
       setCurrentClass(null);
       setClassStudents([]);
     }
-  }, [classId, classes, students, currentUser]); // Draai opnieuw als een van deze verandert.
+  }, [classId, classes, students, currentUser]);
 
   const handleAddStudentClick = () => setShowAddStudentModal(true);
   
@@ -67,23 +59,27 @@ const TeacherMyClassesPage = () => {
     setShowQuranProgressModal(true);
   };
 
-  // --- RENDER LOGICA ---
-
-  if (loading) {
-    return <LoadingSpinner message="Gegevens laden..." />;
+  if (loading && !currentClass && classId) {
+    return <LoadingSpinner message="Klasdetails laden..." />;
+  }
+  if (loading && !classId) {
+    return <LoadingSpinner message="Klassenoverzicht laden..." />;
   }
 
   if (error) {
     return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout: {error}</div>;
   }
 
-  // --- DETAIL VIEW (als classId in URL staat) ---
+  // --- DETAIL VIEW ---
   if (classId) {
     if (!currentClass) {
         return (
             <div className="card text-center p-6">
-                <AlertCircle className="inline mr-2"/>
-                Klas niet gevonden of u heeft geen toegang tot deze klas.
+                <AlertCircle size={20} className="mx-auto mb-2 text-yellow-500" />
+                <h3 className="text-lg font-semibold">Klas niet gevonden</h3>
+                <p className="text-gray-600 mt-1">
+                    De geselecteerde klas kon niet worden gevonden of u heeft geen toegang.
+                </p>
                 <div className="mt-4">
                     <Button onClick={() => navigate('/teacher/my-classes')}>
                         <ChevronLeft size={16} className="mr-2"/> Terug naar overzicht
@@ -95,7 +91,7 @@ const TeacherMyClassesPage = () => {
     
     return (
         <div className="space-y-6">
-          <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="mb-4 text-gray-600 hover:text-gray-900">
+          <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="text-gray-600 hover:text-gray-900">
               <ChevronLeft size={16} className="mr-1.5"/> Alle Klassen
           </Button>
           <div className="card bg-gradient-to-r from-emerald-50 to-teal-50">
@@ -173,7 +169,7 @@ const TeacherMyClassesPage = () => {
       );
   }
 
-  // --- MASTER VIEW (als GEEN classId in URL staat) ---
+  // --- MASTER VIEW ---
   return (
     <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
       <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-emerald-400 mx-auto mb-4" />
