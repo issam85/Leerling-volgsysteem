@@ -1,9 +1,9 @@
-// src/components/Sidebar.js - FINALE, SIMPELE EN CORRECTE VERSIE
+// src/components/Sidebar.js - ALLERLAATSTE POGING: WACHTEN OP DATA
 
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext'; // BELANGRIJK: We gebruiken nu de DataContext!
+import { useData } from '../contexts/DataContext';
 import { 
   LayoutDashboard, Users, GraduationCap, UserCheck, Baby, 
   CreditCard, Settings, LogOut, BookMarked, Calendar, 
@@ -12,15 +12,14 @@ import {
 
 const Sidebar = () => {
   const { currentUser, logout } = useAuth();
-  const { realData } = useData(); // Haal de data uit de centrale DataContext
+  const { realData } = useData();
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isClassesMenuOpen, setIsClassesMenuOpen] = useState(false);
 
-  // DE OVERBODIGE API CALL IS VERWIJDERD.
-  // We gebruiken nu direct de data die DataContext al voor ons heeft voorbereid.
-  const teacherAssignedClasses = realData.teacherAssignedClasses || [];
+  // We halen de klassen en de laadstatus uit de DataContext
+  const { teacherAssignedClasses, loading: dataIsLoading } = realData;
 
   useEffect(() => {
     if (location.pathname.startsWith('/teacher/my-classes')) {
@@ -32,6 +31,7 @@ const Sidebar = () => {
 
   if (!currentUser) return null;
 
+  // De rest van je code blijft identiek, ik plak het hier voor de volledigheid.
   const getNavigationItems = () => {
     const baseItems = [{ to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' }];
     if (currentUser.role === 'admin') return [...baseItems, { to: '/admin/classes', icon: GraduationCap, label: 'Klassen' }, { to: '/admin/teachers', icon: UserCheck, label: 'Leraren' }, { to: '/admin/parents', icon: Users, label: 'Ouders' }, { to: '/admin/students', icon: Baby, label: 'Leerlingen' }, { to: '/admin/payments', icon: CreditCard, label: 'Betalingen' }, { to: '/admin/settings', icon: Settings, label: 'Instellingen' }];
@@ -68,12 +68,17 @@ const Sidebar = () => {
                   </button>
                   {isClassesMenuOpen && !isCollapsed && (
                     <div className="mt-1 pl-7 space-y-1">
-                      {teacherAssignedClasses.length > 0 ? teacherAssignedClasses.map(cls => (
-                        <NavLink key={cls.id} to={`/teacher/my-classes/${cls.id}`} className={({ isActive }) => `${baseLinkClasses} py-1.5 ${isActive ? activeLinkClasses + ' font-semibold' : inactiveLinkClasses}`}>
-                          {cls.name}
-                        </NavLink>
-                      )) : (
-                        <p className="px-2 py-1.5 text-xs text-gray-400">Geen klassen</p>
+                      {/* --- DE ENIGE ECHTE WIJZIGING IS HIER --- */}
+                      {dataIsLoading ? (
+                        <p className="px-2 py-1.5 text-xs text-gray-400">Klassen laden...</p>
+                      ) : teacherAssignedClasses.length > 0 ? (
+                        teacherAssignedClasses.map(cls => (
+                          <NavLink key={cls.id} to={`/teacher/my-classes/${cls.id}`} className={({ isActive }) => `${baseLinkClasses} py-1.5 ${isActive ? activeLinkClasses + ' font-semibold' : inactiveLinkClasses}`}>
+                            {cls.name}
+                          </NavLink>
+                        ))
+                      ) : (
+                        <p className="px-2 py-1.5 text-xs text-gray-400">Geen klassen gevonden</p>
                       )}
                     </div>
                   )}
