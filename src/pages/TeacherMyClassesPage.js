@@ -35,20 +35,21 @@ const TeacherMyClassesPage = () => {
   // State voor deze pagina specifiek
   const [currentClass, setCurrentClass] = useState(null);
   const [classStudents, setClassStudents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
 
   // --- HIER ZIT DE VERNIEUWDE EN ROBUUSTE LOGICA ---
   useEffect(() => {
-    // Start altijd met een 'loading' staat wanneer classId verandert
+    // Start altijd met een 'loading' staat wanneer de classId verandert
     if (classId) {
-      setIsLoading(true);
+      setIsLoadingPage(true);
     }
     
-    // Alleen doorgaan als de basisdata uit de context geladen is en we een gebruiker hebben
-    if (classId && !dataLoading && classes.length > 0 && currentUser) {
+    // Wacht expliciet tot de DataContext NIET meer aan het laden is.
+    // Dit is de belangrijkste fix.
+    if (!dataLoading && classId && currentUser && classes.length > 0) {
       const foundClass = classes.find(c => String(c.id) === String(classId));
       
-      // Belangrijke veiligheidscheck: bestaat de klas en is de gebruiker de leraar?
+      // Veiligheidscheck: bestaat de klas en is de gebruiker de leraar?
       if (foundClass && String(foundClass.teacher_id) === String(currentUser.id)) {
         setCurrentClass(foundClass);
         const studentsInClass = students.filter(s => String(s.class_id) === String(classId) && s.active);
@@ -59,15 +60,15 @@ const TeacherMyClassesPage = () => {
         setClassStudents([]);
       }
       // Klaar met zoeken, stop de laadindicator voor deze pagina
-      setIsLoading(false);
+      setIsLoadingPage(false);
     } else if (!classId) {
         // Als er geen classId is, zijn we niet aan het laden en is er geen klas.
-        setIsLoading(false);
+        setIsLoadingPage(false);
         setCurrentClass(null);
         setClassStudents([]);
     }
     
-  }, [classId, dataLoading, classes, students, currentUser]);
+  }, [classId, dataLoading, classes, students, currentUser]); // Deze dependencies zijn cruciaal!
 
   const handleAddStudentClick = () => setShowAddStudentModal(true);
   
@@ -78,7 +79,7 @@ const TeacherMyClassesPage = () => {
   
   // --- RENDER LOGICA ---
 
-  // --- MASTER VIEW (als GEEN classId in URL staat) ---
+  // MASTER VIEW (als GEEN classId in URL staat)
   if (!classId) {
     return (
       <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
@@ -91,8 +92,8 @@ const TeacherMyClassesPage = () => {
     );
   }
 
-  // --- DETAIL VIEW (als classId in URL staat) ---
-  if (isLoading) {
+  // DETAIL VIEW (als classId in URL staat)
+  if (isLoadingPage || dataLoading) {
     return <LoadingSpinner message="Klasdetails laden..." />;
   }
   
