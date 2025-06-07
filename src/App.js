@@ -102,9 +102,9 @@ const AppRoutes = () => {
           </Route>
 
           <Route path="teacher" element={<ProtectedRoute teacherOnly={true}><Outlet /></ProtectedRoute>}>
-            <Route path="my-classes" element={<TeacherMyClassesPage />} />
-            {/* 🆕 NIEUWE ROUTE VOOR INDIVIDUELE KLAS */}
+            {/* 🚨 BELANGRIJKE WIJZIGING: Specifiekere route EERST */}
             <Route path="my-classes/:classId" element={<div style={{padding: '2rem', background: 'red', color: 'white'}}><h1>DIRECT HTML TEST</h1></div>} />
+            <Route path="my-classes" element={<TeacherMyClassesPage />} />
             <Route path="class/:classId/attendance" element={<TeacherClassAttendancePage />} />
             <Route index element={<Navigate to="my-classes" replace />} /> 
           </Route>
