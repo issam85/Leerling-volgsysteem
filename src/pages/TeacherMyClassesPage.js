@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - DEFINITIEVE, VOLLEDIGE EN CORRECTE VERSIE
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE, ROBUUSTE VERSIE
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -25,6 +25,7 @@ const TeacherMyClassesPage = () => {
 
   const { realData } = useData();
   const { currentUser } = useAuth();
+  // We gebruiken de masterlijsten uit de DataContext
   const { classes, students, loading, error } = realData;
 
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -34,23 +35,31 @@ const TeacherMyClassesPage = () => {
   const [currentClass, setCurrentClass] = useState(null);
   const [classStudents, setClassStudents] = useState([]);
 
+  // --- HIER ZIT DE VERBETERDE EN ROBUUSTE LOGICA ---
   useEffect(() => {
+    // Draai deze logica alleen als we een classId hebben en de basisdata geladen is.
     if (classId && classes.length > 0 && currentUser) {
+      // 1. Zoek de klas in de *algemene* lijst van alle klassen.
       const foundClass = classes.find(c => String(c.id) === String(classId));
       
+      // 2. BELANGRIJKE VEILIGHEIDSCHECK: Controleer of de klas bestaat ÉN of de ingelogde docent de eigenaar is.
       if (foundClass && String(foundClass.teacher_id) === String(currentUser.id)) {
         setCurrentClass(foundClass);
+        // 3. Filter de leerlingen die bij deze specifieke, gevalideerde klas horen.
         const studentsInClass = students.filter(s => String(s.class_id) === String(classId) && s.active);
         setClassStudents(studentsInClass);
       } else {
+        // De klas is niet gevonden of de docent is niet de eigenaar.
+        console.warn(`Toegang tot klas ${classId} mislukt. Klas niet gevonden of geen eigendom van docent ${currentUser.id}.`);
         setCurrentClass(null);
         setClassStudents([]);
       }
     } else {
+      // Als er geen classId is, of als de data nog niet klaar is, reset de state.
       setCurrentClass(null);
       setClassStudents([]);
     }
-  }, [classId, classes, students, currentUser]);
+  }, [classId, classes, students, currentUser]); // Draai opnieuw als een van deze verandert.
 
   const handleAddStudentClick = () => setShowAddStudentModal(true);
   
@@ -59,9 +68,6 @@ const TeacherMyClassesPage = () => {
     setShowQuranProgressModal(true);
   };
 
-  if (loading && !currentClass && classId) {
-    return <LoadingSpinner message="Klasdetails laden..." />;
-  }
   if (loading && !classId) {
     return <LoadingSpinner message="Klassenoverzicht laden..." />;
   }
@@ -70,8 +76,13 @@ const TeacherMyClassesPage = () => {
     return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout: {error}</div>;
   }
 
-  // --- DETAIL VIEW ---
+  // --- DETAIL VIEW (als classId in URL staat) ---
   if (classId) {
+    // Terwijl de useEffect hierboven nog zoekt, toon een laadscherm.
+    if (loading) {
+        return <LoadingSpinner message="Klasdetails laden..." />
+    }
+    // Als na het laden de klas nog steeds niet gevonden/gezet is, toon een foutmelding.
     if (!currentClass) {
         return (
             <div className="card text-center p-6">
@@ -89,6 +100,7 @@ const TeacherMyClassesPage = () => {
         );
     }
     
+    // De klas is succesvol gevonden, toon de details.
     return (
         <div className="space-y-6">
           <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="text-gray-600 hover:text-gray-900">
@@ -169,7 +181,7 @@ const TeacherMyClassesPage = () => {
       );
   }
 
-  // --- MASTER VIEW ---
+  // --- MASTER VIEW (als GEEN classId in URL staat) ---
   return (
     <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
       <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-emerald-400 mx-auto mb-4" />
