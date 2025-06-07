@@ -1,71 +1,171 @@
-// src/pages/TeacherMyClassesPage.js - DE "NAKTE WAARHEID" DEBUG-VERSIE
+// src/pages/TeacherMyClassesPage.js - FINALE EN MEEST ROBUUSTE VERSIE
 
-import React from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Button from '../components/Button';
+import AddStudentModal from '../features/teacher/AddStudentModal';
+import QuranProgressTracker from '../features/teacher/QuranProgressTracker';
+import { 
+  BookOpen, 
+  Users, 
+  AlertCircle, 
+  UserPlus,
+  BookMarked,
+  Calendar,
+  ChevronLeft
+} from 'lucide-react';
 
 const TeacherMyClassesPage = () => {
   const { classId } = useParams();
+  const navigate = useNavigate();
+
   const { realData } = useData();
   const { currentUser } = useAuth();
-  const { classes, students, loading: dataLoading } = realData;
+  const { classes, students, loading: dataLoading, error } = realData;
 
-  // Stop met renderen en toon een laadscherm zolang de basisdata er niet is.
-  if (dataLoading || !currentUser) {
-    return <LoadingSpinner message="Wachten op data en gebruiker..." />;
+  // State voor de modals (dit is gebruikersinteractie en blijft lokaal)
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showQuranProgressModal, setShowQuranProgressModal] = useState(false);
+  const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
+
+  // --- LOGICA WORDT NU DIRECT IN DE RENDER-FUNCTIE UITGEVOERD ---
+  // Dit voorkomt alle timingproblemen met useEffect.
+
+  // Toon een laadscherm zolang de DataContext nog bezig is. Dit is de hoofd-gatekeeper.
+  if (dataLoading) {
+    return <LoadingSpinner message="Klasgegevens laden..." />;
+  }
+  
+  // Toon een foutmelding als de DataContext een fout heeft.
+  if (error) {
+    return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout bij het laden van data: {error}</div>;
+  }
+  
+  // Als we GEEN classId in de URL hebben, toon de welkomstpagina.
+  if (!classId) {
+    return (
+      <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+        <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-emerald-400 mx-auto mb-4" />
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Welkom bij Mijn Klassen</h2>
+        <p className="mt-2 text-base text-gray-600 max-w-lg mx-auto">
+          Selecteer een van uw klassen in het menu aan de linkerkant om de details te bekijken.
+        </p>
+      </div>
+    );
   }
 
-  // Probeer de klas te vinden.
-  const foundClass = classId ? classes.find(c => String(c.id) === String(classId)) : null;
+  // Als we WEL een classId hebben, voer de zoek- en autorisatielogica uit.
+  const currentClass = classes.find(c => String(c.id) === String(classId));
+  const isAuthorized = currentClass && String(currentClass.teacher_id) === String(currentUser?.id);
+  const classStudents = isAuthorized ? students.filter(s => String(s.class_id) === String(classId) && s.active) : [];
 
+  const handleAddStudentClick = () => setShowAddStudentModal(true);
+  const handleShowQuranProgress = (student) => {
+    setSelectedStudentForQuran(student);
+    setShowQuranProgressModal(true);
+  };
+
+  // Als na het laden de klas niet gevonden of geautoriseerd is, toon een foutmelding.
+  if (!isAuthorized) {
+      return (
+          <div className="card text-center p-6">
+              <AlertCircle size={24} className="mx-auto mb-3 text-yellow-500" />
+              <h3 className="text-lg font-semibold">Klas niet gevonden</h3>
+              <p className="text-gray-600 mt-1">
+                  De geselecteerde klas kon niet worden gevonden of u heeft geen toegang.
+              </p>
+              <div className="mt-4">
+                  <Button onClick={() => navigate('/teacher/my-classes')}>
+                      <ChevronLeft size={16} className="mr-2"/> Terug naar overzicht
+                  </Button>
+              </div>
+          </div>
+      );
+  }
+  
+  // Als alles goed is, toon de klasdetails.
   return (
-    <div style={{ padding: '2rem', fontFamily: 'monospace', fontSize: '14px', background: '#f5f5f5' }}>
-      <h1 style={{ fontSize: '24px', borderBottom: '2px solid black', marginBottom: '1rem' }}>
-        🕵️‍♂️ Debug Pagina voor Mijn Klassen
-      </h1>
-
-      <div style={{ marginBottom: '1.5rem', background: 'white', padding: '1rem' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '0.5rem' }}>1. Basis Informatie</h2>
-        <p><strong>URL Klas ID (classId):</strong> {classId || "Geen (je bent op de overzichtspagina)"}</p>
-        <p><strong>Ingelogde Docent ID:</strong> {currentUser?.id || "Geen gebruiker gevonden"}</p>
-      </div>
-
-      <div style={{ marginBottom: '1.5rem', background: 'white', padding: '1rem' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '0.5rem' }}>2. Data uit DataContext</h2>
-        <p><strong>Aantal klassen geladen:</strong> {classes.length}</p>
-        <p><strong>Aantal leerlingen geladen:</strong> {students.length}</p>
-      </div>
-
-      <div style={{ marginBottom: '1.5rem', background: 'white', padding: '1rem' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '0.5rem' }}>3. De Zoektocht</h2>
-        <p><strong>Gevonden Klas (foundClass):</strong></p>
-        <pre style={{ background: '#eee', padding: '0.5rem', borderRadius: '4px', whiteSpace: 'pre-wrap' }}>
-          {foundClass ? JSON.stringify(foundClass, null, 2) : "NULL (Klas niet gevonden met de ID hierboven)"}
-        </pre>
-      </div>
-      
-      {foundClass && (
-        <div style={{ background: 'lightgreen', padding: '1rem', border: '2px solid green' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '0.5rem' }}>✅ CONCLUSIE: KLAS GEVONDEN!</h2>
-            <p>De pagina zou nu de details moeten tonen. Als dat niet gebeurt, zit het probleem in de render-logica na de zoektocht.</p>
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="text-gray-600 hover:text-gray-900">
+            <ChevronLeft size={16} className="mr-1.5"/> Alle Klassen
+        </Button>
+        <div className="card bg-gradient-to-r from-emerald-50 to-teal-50">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div className="flex-1">
+                  <h2 className="page-title !mb-1">{currentClass.name}</h2>
+                  <p className="text-gray-600 line-clamp-2 mt-1">{currentClass.description || "Geen omschrijving."}</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 self-start sm:self-center">
+                  <Button onClick={handleAddStudentClick} variant="outline" className="bg-white">
+                      <UserPlus size={16} className="mr-2" /> Leerling Toevoegen
+                  </Button>
+                  <Button as={Link} to={`/teacher/class/${classId}/attendance`}>
+                      <Calendar size={16} className="mr-2" /> Absenties
+                  </Button>
+              </div>
+          </div>
         </div>
-      )}
 
-      {!foundClass && classId && (
-        <div style={{ background: 'lightcoral', padding: '1rem', border: '2px solid red' }}>
-            <h2 style={{ fontSize: '18px', marginBottom: '0.5rem' }}>❌ CONCLUSIE: KLAS NIET GEVONDEN!</h2>
-            <p>Dit is de kern van het probleem. De `classId` uit de URL kon niet worden gevonden in de lijst met klassen uit de `DataContext`.</p>
-            <p><strong>Mogelijke oorzaken:</strong></p>
-            <ul>
-                <li>- Een timingprobleem (deze pagina laadt voordat DataContext klaar is).</li>
-                <li>- Een onzichtbaar verschil tussen de ID's (bijv. spaties, type-verschil).</li>
-            </ul>
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+              <Users size={20} className="mr-3 text-emerald-600"/>
+              Leerlingen in deze klas ({classStudents.length})
+          </h3>
+          {classStudents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {classStudents.map(student => (
+                <div key={student.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                  <h4 className="font-semibold text-gray-800">{student.name}</h4>
+                  {student.date_of_birth && (
+                    <p className="text-sm text-gray-500 mb-3">
+                      Geboren: {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                    </p>
+                  )}
+                  <Button 
+                      onClick={() => handleShowQuranProgress(student)} 
+                      variant="primary" 
+                      size="sm"
+                      fullWidth
+                  >
+                      <BookMarked size={14} className="mr-2" /> Qor'aan Voortgang
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-5">Er zijn nog geen actieve leerlingen in deze klas.</p>
+          )}
         </div>
-      )}
-    </div>
-  );
+
+        {showAddStudentModal && currentClass && (
+          <AddStudentModal
+            isOpen={showAddStudentModal}
+            onClose={() => setShowAddStudentModal(false)}
+            classId={currentClass.id}
+            className={currentClass.name}
+          />
+        )}
+        
+        {showQuranProgressModal && selectedStudentForQuran && (
+          <Modal 
+            isOpen={showQuranProgressModal} 
+            onClose={() => setShowQuranProgressModal(false)}
+            title={`Qor'aan Voortgang: ${selectedStudentForQuran.name}`}
+            size="2xl"
+          >
+            <QuranProgressTracker
+              studentId={selectedStudentForQuran.id}
+              studentName={selectedStudentForQuran.name}
+              classId={selectedStudentForQuran.class_id}
+            />
+          </Modal>
+        )}
+      </div>
+    );
 };
 
 export default TeacherMyClassesPage;
