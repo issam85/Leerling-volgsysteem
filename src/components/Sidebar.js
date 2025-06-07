@@ -1,4 +1,4 @@
-// src/components/Sidebar.js - VOLLEDIGE EN DEFINITIEVE VERSIE
+// src/components/Sidebar.js - FINALE VERSIE MET CACHE-BUSTER FIX
 
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
@@ -25,39 +25,33 @@ const Sidebar = () => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // State voor het klassenmenu van de docent
   const [teacherClasses, setTeacherClasses] = useState([]);
   const [isClassesMenuOpen, setIsClassesMenuOpen] = useState(false);
 
-  // Effect om de klassen van de docent op te halen
   useEffect(() => {
     const fetchTeacherClasses = async () => {
-      // Draai deze code alleen als de gebruiker een docent is
       if (currentUser?.role === 'teacher') {
         try {
-          // Haal de klassen op van de backend.
-          // LET OP: Pas de URL '/api/teacher/classes' eventueel aan als je backend een ander endpoint gebruikt.
-          const response = await apiCall('/api/teacher/classes');
+          // DE FIX: Voeg een unieke parameter toe om de cache te omzeilen
+          const response = await apiCall(`/api/teacher/classes?cacheBuster=${Date.now()}`);
           
-          // Robuuste check om de .map() error te voorkomen
           if (Array.isArray(response)) {
             setTeacherClasses(response);
-          } else if (response && Array.isArray(response.classes)) { // Veelvoorkomend patroon: { classes: [...] }
+          } else if (response && Array.isArray(response.classes)) {
             setTeacherClasses(response.classes);
           } else {
             console.warn("API voor klassen gaf geen array terug:", response);
-            setTeacherClasses([]); // Zet naar lege array om crashes te voorkomen
+            setTeacherClasses([]);
           }
         } catch (error) {
           console.error('Fout bij het ophalen van de docentklassen:', error);
-          setTeacherClasses([]); // Zet altijd naar een lege array bij een fout
+          setTeacherClasses([]);
         }
       }
     };
     fetchTeacherClasses();
-  }, [currentUser]); // Draai opnieuw als de gebruiker verandert
+  }, [currentUser]); 
 
-  // Effect om het menu open te houden als we op een klassenpagina zijn
   useEffect(() => {
     if (location.pathname.startsWith('/teacher/my-classes')) {
       setIsClassesMenuOpen(true);
@@ -75,7 +69,6 @@ const Sidebar = () => {
 
   if (!currentUser) return null;
 
-  // Navigatie-items per rol (jouw bestaande, goede logica)
   const getNavigationItems = () => {
     const baseItems = [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' }
@@ -113,7 +106,6 @@ const Sidebar = () => {
 
   const navigationItems = getNavigationItems();
 
-  // CSS classes voor de links
   const baseLinkClasses = 'flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors group';
   const activeLinkClasses = 'bg-emerald-100 text-emerald-700';
   const inactiveLinkClasses = 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
@@ -157,7 +149,6 @@ const Sidebar = () => {
         <div className="px-2 space-y-1">
           {navigationItems.map((item) => {
             
-            // Speciale logica voor het docentenmenu "Mijn Klassen"
             if (item.label === 'Mijn Klassen' && currentUser.role === 'teacher') {
               const isMenuActive = location.pathname.startsWith('/teacher/my-classes');
               return (
@@ -189,7 +180,6 @@ const Sidebar = () => {
               );
             }
 
-            // Standaard render voor alle andere items
             return (
               <NavLink
                 key={item.to}
