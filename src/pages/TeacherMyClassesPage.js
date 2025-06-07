@@ -25,41 +25,49 @@ const TeacherMyClassesPage = () => {
 
   const { realData } = useData();
   const { currentUser } = useAuth();
-  // We gebruiken de masterlijsten uit de DataContext
-  const { classes, students, loading, error } = realData;
+  // We gebruiken de masterlijsten uit de DataContext voor betrouwbaarheid
+  const { classes, students, loading: dataLoading, error } = realData;
 
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showQuranProgressModal, setShowQuranProgressModal] = useState(false);
   const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
 
+  // State voor deze pagina specifiek
   const [currentClass, setCurrentClass] = useState(null);
   const [classStudents, setClassStudents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // --- HIER ZIT DE VERBETERDE EN ROBUUSTE LOGICA ---
+  // --- HIER ZIT DE VERNIEUWDE EN ROBUUSTE LOGICA ---
   useEffect(() => {
-    // Draai deze logica alleen als we een classId hebben en de basisdata geladen is.
-    if (classId && classes.length > 0 && currentUser) {
-      // 1. Zoek de klas in de *algemene* lijst van alle klassen.
+    // Start altijd met een 'loading' staat wanneer classId verandert
+    if (classId) {
+      setIsLoading(true);
+    }
+    
+    // Alleen doorgaan als de basisdata uit de context geladen is en we een gebruiker hebben
+    if (classId && !dataLoading && classes.length > 0 && currentUser) {
       const foundClass = classes.find(c => String(c.id) === String(classId));
       
-      // 2. BELANGRIJKE VEILIGHEIDSCHECK: Controleer of de klas bestaat ÉN of de ingelogde docent de eigenaar is.
+      // Belangrijke veiligheidscheck: bestaat de klas en is de gebruiker de leraar?
       if (foundClass && String(foundClass.teacher_id) === String(currentUser.id)) {
         setCurrentClass(foundClass);
-        // 3. Filter de leerlingen die bij deze specifieke, gevalideerde klas horen.
         const studentsInClass = students.filter(s => String(s.class_id) === String(classId) && s.active);
         setClassStudents(studentsInClass);
       } else {
-        // De klas is niet gevonden of de docent is niet de eigenaar.
-        console.warn(`Toegang tot klas ${classId} mislukt. Klas niet gevonden of geen eigendom van docent ${currentUser.id}.`);
+        console.warn(`Toegang tot klas ${classId} mislukt. Klas niet gevonden of geen eigendom van docent.`);
         setCurrentClass(null);
         setClassStudents([]);
       }
-    } else {
-      // Als er geen classId is, of als de data nog niet klaar is, reset de state.
-      setCurrentClass(null);
-      setClassStudents([]);
+      // Klaar met zoeken, stop de laadindicator voor deze pagina
+      setIsLoading(false);
+    } else if (!classId) {
+        // Als er geen classId is, zijn we niet aan het laden en is er geen klas.
+        setIsLoading(false);
+        setCurrentClass(null);
+        setClassStudents([]);
     }
-  }, [classId, classes, students, currentUser]); // Draai opnieuw als een van deze verandert.
+    
+  }, [classId, dataLoading, classes, students, currentUser]);
 
   const handleAddStudentClick = () => setShowAddStudentModal(true);
   
@@ -67,130 +75,126 @@ const TeacherMyClassesPage = () => {
     setSelectedStudentForQuran(student);
     setShowQuranProgressModal(true);
   };
+  
+  // --- RENDER LOGICA ---
 
-  if (loading && !classId) {
-    return <LoadingSpinner message="Klassenoverzicht laden..." />;
-  }
-
-  if (error) {
-    return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout: {error}</div>;
+  // --- MASTER VIEW (als GEEN classId in URL staat) ---
+  if (!classId) {
+    return (
+      <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+        <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-emerald-400 mx-auto mb-4" />
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Welkom bij Mijn Klassen</h2>
+        <p className="mt-2 text-base text-gray-600 max-w-lg mx-auto">
+          Selecteer een van uw klassen in het menu aan de linkerkant om de details te bekijken.
+        </p>
+      </div>
+    );
   }
 
   // --- DETAIL VIEW (als classId in URL staat) ---
-  if (classId) {
-    // Terwijl de useEffect hierboven nog zoekt, toon een laadscherm.
-    if (loading) {
-        return <LoadingSpinner message="Klasdetails laden..." />
-    }
-    // Als na het laden de klas nog steeds niet gevonden/gezet is, toon een foutmelding.
-    if (!currentClass) {
-        return (
-            <div className="card text-center p-6">
-                <AlertCircle size={20} className="mx-auto mb-2 text-yellow-500" />
-                <h3 className="text-lg font-semibold">Klas niet gevonden</h3>
-                <p className="text-gray-600 mt-1">
-                    De geselecteerde klas kon niet worden gevonden of u heeft geen toegang.
-                </p>
-                <div className="mt-4">
-                    <Button onClick={() => navigate('/teacher/my-classes')}>
-                        <ChevronLeft size={16} className="mr-2"/> Terug naar overzicht
-                    </Button>
-                </div>
-            </div>
-        );
-    }
-    
-    // De klas is succesvol gevonden, toon de details.
-    return (
-        <div className="space-y-6">
-          <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="text-gray-600 hover:text-gray-900">
-              <ChevronLeft size={16} className="mr-1.5"/> Alle Klassen
-          </Button>
-          <div className="card bg-gradient-to-r from-emerald-50 to-teal-50">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div className="flex-1">
-                    <h2 className="page-title !mb-1">{currentClass.name}</h2>
-                    <p className="text-gray-600 line-clamp-2 mt-1">{currentClass.description || "Geen omschrijving."}</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 self-start sm:self-center">
-                    <Button onClick={handleAddStudentClick} variant="outline" className="bg-white">
-                        <UserPlus size={16} className="mr-2" /> Leerling Toevoegen
-                    </Button>
-                    <Button as={Link} to={`/teacher/class/${classId}/attendance`}>
-                        <Calendar size={16} className="mr-2" /> Absenties
-                    </Button>
-                </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                <Users size={20} className="mr-3 text-emerald-600"/>
-                Leerlingen in deze klas ({classStudents.length})
-            </h3>
-            {classStudents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {classStudents.map(student => (
-                  <div key={student.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
-                    <h4 className="font-semibold text-gray-800">{student.name}</h4>
-                    {student.date_of_birth && (
-                      <p className="text-sm text-gray-500 mb-3">
-                        Geboren: {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
-                      </p>
-                    )}
-                    <Button 
-                        onClick={() => handleShowQuranProgress(student)} 
-                        variant="primary" 
-                        size="sm"
-                        fullWidth
-                    >
-                        <BookMarked size={14} className="mr-2" /> Qor'aan Voortgang
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-5">Er zijn nog geen actieve leerlingen in deze klas.</p>
-            )}
-          </div>
-
-          {showAddStudentModal && currentClass && (
-            <AddStudentModal
-              isOpen={showAddStudentModal}
-              onClose={() => setShowAddStudentModal(false)}
-              classId={currentClass.id}
-              className={currentClass.name}
-            />
-          )}
-          
-          {showQuranProgressModal && selectedStudentForQuran && (
-            <Modal 
-              isOpen={showQuranProgressModal} 
-              onClose={() => setShowQuranProgressModal(false)}
-              title={`Qor'aan Voortgang: ${selectedStudentForQuran.name}`}
-              size="2xl"
-            >
-              <QuranProgressTracker
-                studentId={selectedStudentForQuran.id}
-                studentName={selectedStudentForQuran.name}
-                classId={selectedStudentForQuran.class_id}
-              />
-            </Modal>
-          )}
-        </div>
-      );
+  if (isLoading) {
+    return <LoadingSpinner message="Klasdetails laden..." />;
+  }
+  
+  if (error) {
+    return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout bij het laden van data: {error}</div>;
   }
 
-  // --- MASTER VIEW (als GEEN classId in URL staat) ---
+  if (!currentClass) {
+      return (
+          <div className="card text-center p-6">
+              <AlertCircle size={24} className="mx-auto mb-3 text-yellow-500" />
+              <h3 className="text-lg font-semibold">Klas niet gevonden</h3>
+              <p className="text-gray-600 mt-1">
+                  De geselecteerde klas kon niet worden gevonden of u heeft geen toegang.
+              </p>
+              <div className="mt-4">
+                  <Button onClick={() => navigate('/teacher/my-classes')}>
+                      <ChevronLeft size={16} className="mr-2"/> Terug naar overzicht
+                  </Button>
+              </div>
+          </div>
+      );
+  }
+  
   return (
-    <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-      <BookOpen className="w-16 h-16 sm:w-20 sm:h-20 text-emerald-400 mx-auto mb-4" />
-      <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Welkom bij Mijn Klassen</h2>
-      <p className="mt-2 text-base text-gray-600 max-w-lg mx-auto">
-        Selecteer een van uw klassen in het menu aan de linkerkant om de details te bekijken.
-      </p>
-    </div>
-  );
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="text-gray-600 hover:text-gray-900">
+            <ChevronLeft size={16} className="mr-1.5"/> Alle Klassen
+        </Button>
+        <div className="card bg-gradient-to-r from-emerald-50 to-teal-50">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div className="flex-1">
+                  <h2 className="page-title !mb-1">{currentClass.name}</h2>
+                  <p className="text-gray-600 line-clamp-2 mt-1">{currentClass.description || "Geen omschrijving."}</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 self-start sm:self-center">
+                  <Button onClick={handleAddStudentClick} variant="outline" className="bg-white">
+                      <UserPlus size={16} className="mr-2" /> Leerling Toevoegen
+                  </Button>
+                  <Button as={Link} to={`/teacher/class/${classId}/attendance`}>
+                      <Calendar size={16} className="mr-2" /> Absenties
+                  </Button>
+              </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+              <Users size={20} className="mr-3 text-emerald-600"/>
+              Leerlingen in deze klas ({classStudents.length})
+          </h3>
+          {classStudents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {classStudents.map(student => (
+                <div key={student.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                  <h4 className="font-semibold text-gray-800">{student.name}</h4>
+                  {student.date_of_birth && (
+                    <p className="text-sm text-gray-500 mb-3">
+                      Geboren: {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                    </p>
+                  )}
+                  <Button 
+                      onClick={() => handleShowQuranProgress(student)} 
+                      variant="primary" 
+                      size="sm"
+                      fullWidth
+                  >
+                      <BookMarked size={14} className="mr-2" /> Qor'aan Voortgang
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-5">Er zijn nog geen actieve leerlingen in deze klas.</p>
+          )}
+        </div>
+
+        {showAddStudentModal && currentClass && (
+          <AddStudentModal
+            isOpen={showAddStudentModal}
+            onClose={() => setShowAddStudentModal(false)}
+            classId={currentClass.id}
+            className={currentClass.name}
+          />
+        )}
+        
+        {showQuranProgressModal && selectedStudentForQuran && (
+          <Modal 
+            isOpen={showQuranProgressModal} 
+            onClose={() => setShowQuranProgressModal(false)}
+            title={`Qor'aan Voortgang: ${selectedStudentForQuran.name}`}
+            size="2xl"
+          >
+            <QuranProgressTracker
+              studentId={selectedStudentForQuran.id}
+              studentName={selectedStudentForQuran.name}
+              classId={selectedStudentForQuran.class_id}
+            />
+          </Modal>
+        )}
+      </div>
+    );
 };
 
 export default TeacherMyClassesPage;
