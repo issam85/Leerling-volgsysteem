@@ -5,18 +5,9 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext'; // BELANGRIJK: We gebruiken nu de DataContext!
 import { 
-  LayoutDashboard, 
-  Users, 
-  GraduationCap, 
-  UserCheck, 
-  Baby, 
-  CreditCard, 
-  Settings, 
-  LogOut,
-  BookMarked,
-  Calendar,
-  ChevronDown,
-  ChevronRight
+  LayoutDashboard, Users, GraduationCap, UserCheck, Baby, 
+  CreditCard, Settings, LogOut, BookMarked, Calendar, 
+  ChevronDown, ChevronRight
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -27,71 +18,42 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isClassesMenuOpen, setIsClassesMenuOpen] = useState(false);
 
-  // DE OVERBODIGE API CALL IS VERWIJDERD. We gebruiken nu direct de data.
-  // De DataContext zorgt al voor het laden van teacherAssignedClasses.
+  // DE OVERBODIGE API CALL IS VERWIJDERD.
+  // We gebruiken nu direct de data die DataContext al voor ons heeft voorbereid.
   const teacherAssignedClasses = realData.teacherAssignedClasses || [];
 
-  // Effect om het menu open te houden als we op een klassenpagina zijn
   useEffect(() => {
     if (location.pathname.startsWith('/teacher/my-classes')) {
       setIsClassesMenuOpen(true);
     }
   }, [location.pathname]);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
+  const handleLogout = async () => { await logout(); };
 
   if (!currentUser) return null;
 
-  // Jouw bestaande, goede logica voor navigatie-items
   const getNavigationItems = () => {
-    const baseItems = [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' }
-    ];
-    if (currentUser.role === 'admin') {
-      return [ ...baseItems, { to: '/admin/classes', icon: GraduationCap, label: 'Klassen' }, { to: '/admin/teachers', icon: UserCheck, label: 'Leraren' }, { to: '/admin/parents', icon: Users, label: 'Ouders' }, { to: '/admin/students', icon: Baby, label: 'Leerlingen' }, { to: '/admin/payments', icon: CreditCard, label: 'Betalingen' }, { to: '/admin/settings', icon: Settings, label: 'Instellingen' } ];
-    }
-    if (currentUser.role === 'teacher') {
-      return [ ...baseItems, { to: '/teacher/my-classes', icon: GraduationCap, label: 'Mijn Klassen' } ];
-    }
-    if (currentUser.role === 'parent') {
-      return [ ...baseItems, { to: '/parent/my-children', icon: Baby, label: 'Mijn Kinderen' }, { to: '/parent/attendance', icon: Calendar, label: 'Absenties', description: 'Aanwezigheid overzicht' }, { to: '/parent/quran-progress', icon: BookMarked, label: 'Qor\'aan Voortgang', description: 'Memorisatie overzicht' } ];
-    }
+    const baseItems = [{ to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' }];
+    if (currentUser.role === 'admin') return [...baseItems, { to: '/admin/classes', icon: GraduationCap, label: 'Klassen' }, { to: '/admin/teachers', icon: UserCheck, label: 'Leraren' }, { to: '/admin/parents', icon: Users, label: 'Ouders' }, { to: '/admin/students', icon: Baby, label: 'Leerlingen' }, { to: '/admin/payments', icon: CreditCard, label: 'Betalingen' }, { to: '/admin/settings', icon: Settings, label: 'Instellingen' }];
+    if (currentUser.role === 'teacher') return [...baseItems, { to: '/teacher/my-classes', icon: GraduationCap, label: 'Mijn Klassen' }];
+    if (currentUser.role === 'parent') return [...baseItems, { to: '/parent/my-children', icon: Baby, label: 'Mijn Kinderen' }, { to: '/parent/attendance', icon: Calendar, label: 'Absenties' }, { to: '/parent/quran-progress', icon: BookMarked, label: 'Qor\'aan Voortgang' }];
     return baseItems;
   };
 
   const navigationItems = getNavigationItems();
-
   const baseLinkClasses = 'flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors group';
   const activeLinkClasses = 'bg-emerald-100 text-emerald-700';
   const inactiveLinkClasses = 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
 
   return (
     <div className={`bg-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} flex flex-col h-screen`}>
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           {!isCollapsed && ( <div> <h2 className="text-lg font-semibold text-emerald-700">MijnLVS</h2> <p className="text-xs text-gray-500 capitalize">{currentUser.role}</p> </div> )}
-          <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 rounded-md hover:bg-gray-100 transition-colors">
-            {isCollapsed ? <ChevronRight size={20} className="text-gray-600" /> : <ChevronDown size={20} className="text-gray-600" />}
-          </button>
+          <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 rounded-md hover:bg-gray-100"> {isCollapsed ? <ChevronRight size={20} /> : <ChevronDown size={20} />} </button>
         </div>
       </div>
-
-      {!isCollapsed && (
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center"> <span className="text-white text-sm font-medium"> {currentUser.name?.charAt(0)?.toUpperCase() || 'U'} </span> </div>
-            <div className="flex-1 min-w-0"> <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p> <p className="text-xs text-gray-500 truncate">{currentUser.email}</p> </div>
-          </div>
-        </div>
-      )}
-
+      {!isCollapsed && ( <div className="p-4 border-b bg-gray-50"> <div className="flex items-center space-x-3"> <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center"> <span className="text-white text-sm font-medium">{currentUser.name?.charAt(0)?.toUpperCase() || 'U'}</span> </div> <div className="flex-1 min-w-0"> <p className="font-medium truncate">{currentUser.name}</p> <p className="text-xs text-gray-500 truncate">{currentUser.email}</p> </div> </div> </div> )}
       <nav className="flex-1 overflow-y-auto py-4">
         <div className="px-2 space-y-1">
           {navigationItems.map((item) => {
@@ -99,7 +61,7 @@ const Sidebar = () => {
               const isMenuActive = location.pathname.startsWith('/teacher/my-classes');
               return (
                 <div key="teacher-classes-menu">
-                  <button onClick={() => setIsClassesMenuOpen(!isClassesMenuOpen)} className={`${baseLinkClasses} w-full text-left ${isMenuActive ? 'text-emerald-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                  <button onClick={() => setIsClassesMenuOpen(!isClassesMenuOpen)} className={`${baseLinkClasses} w-full text-left ${isMenuActive ? 'text-emerald-700 font-semibold' : inactiveLinkClasses}`}>
                     <item.icon className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} size={20} />
                     {!isCollapsed && <span className="flex-1">{item.label}</span>}
                     {!isCollapsed && (isClassesMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
@@ -118,19 +80,17 @@ const Sidebar = () => {
                 </div>
               );
             }
-
             return (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses + ' border-r-2 border-emerald-600' : inactiveLinkClasses}`} title={isCollapsed ? item.label : ''}>
                 <item.icon className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} size={20} />
-                {!isCollapsed && ( <div className="flex-1"> <div>{item.label}</div> {item.description && ( <div className="text-xs text-gray-500 group-hover:text-gray-600">{item.description}</div> )} </div> )}
+                {!isCollapsed && <div className="flex-1">{item.label}</div>}
               </NavLink>
             );
           })}
         </div>
       </nav>
-
-      <div className="border-t border-gray-200 p-2">
-        <button onClick={handleLogout} className="flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors" title={isCollapsed ? 'Uitloggen' : ''}>
+      <div className="border-t p-2">
+        <button onClick={handleLogout} className="flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-100" title={isCollapsed ? 'Uitloggen' : ''}>
           <LogOut className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} size={20} />
           {!isCollapsed && 'Uitloggen'}
         </button>
