@@ -1,26 +1,28 @@
-// src/App.js
+// src/App.js - DEFINITIEVE, VOLLEDIGE VERSIE
+
 import React from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 
+// Pagina's en Layouts
 import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import RegistrationPage from './pages/RegistrationPage';
 import DashboardPage from './pages/DashboardPage';
-// Admin Pages
+// Admin Pagina's
 import ClassesPage from './pages/ClassesPage';
 import TeachersPage from './pages/TeachersPage';
 import ParentsPage from './pages/ParentsPage';
 import StudentsPage from './pages/StudentsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SettingsPage from './pages/SettingsPage';
-// Parent Pages
+// Ouder Pagina's
 import MyChildrenPage from './pages/MyChildrenPage';
-// Teacher Pages
+// Leraar Pagina's
 import TeacherMyClassesPage from './pages/TeacherMyClassesPage';
 import TeacherClassAttendancePage from './pages/TeacherClassAttendancePage';
-
+// Componenten
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Helper component om routes te beschermen (jouw bestaande, goede code)
@@ -50,27 +52,21 @@ const ProtectedRoute = ({ children, adminOnly = false, teacherOnly = false, pare
   return children;
 };
 
-// AANGEPASTE AppRoutes component
+// De hoofd-routeringscomponent
 const AppRoutes = () => {
   const { currentUser, loadingUser, currentSubdomain } = useAuth();
   const location = useLocation();
 
-  // Toon een algemene laadindicator zolang AuthContext nog bezig is met initialiseren
-  // en er nog geen subdomein is vastgesteld of als het nog niet duidelijk is of er een user is.
-  // Deze check is cruciaal om te wachten tot currentSubdomain een betrouwbare waarde heeft.
+  // Wacht tot de AuthContext is geïnitialiseerd
   if (loadingUser && (!currentSubdomain || currentSubdomain === '' )) { 
     return <LoadingSpinner message="Applicatie initialiseren..." />;
   }
 
-  // Logica voor het 'register' subdomein
+  // Toon alleen de registratiepagina op het 'register' subdomein
   if (currentSubdomain === 'register') {
-    // Als we op het register subdomein zijn, maar nog niet op /register pad, redirect.
-    // Dit gebeurt nadat loadingUser false is, dus currentSubdomain is betrouwbaar.
     if (location.pathname !== '/register') {
-        // Zorg dat de state meegaat als die er was, anders geen state
         return <Navigate to="/register" state={location.state ? { from: location } : undefined} replace />;
     }
-    // Render alleen de registratie routes
     return (
       <Routes>
         <Route path="/register" element={<RegistrationPage />} />
@@ -79,14 +75,12 @@ const AppRoutes = () => {
     );
   }
 
-  // Vanaf hier zijn we NIET op het 'register' subdomein.
-  // Als AuthContext nog aan het laden is voor een niet-register subdomein (bijv. sessie checken), toon spinner.
+  // Wacht op de gebruikerssessie voor alle andere subdomeinen
   if (loadingUser) { 
       return <LoadingSpinner message="Gebruikerssessie controleren..." />;
   }
 
-  // Als we hier komen, is loadingUser false, en zijn we niet op 'register' subdomein.
-  // Alle volgende routes vereisen DataProvider.
+  // Routes voor ingelogde gebruikers (met DataProvider)
   return (
     <DataProvider>
       {location.state?.unauthorizedAttempt && (
@@ -99,10 +93,12 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<Navigate to="/login" replace />} /> 
 
+        {/* Routes binnen de MainLayout (met Sidebar) */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
 
+          {/* Admin Routes */}
           <Route path="admin" element={<ProtectedRoute adminOnly={true}><Outlet /></ProtectedRoute>}>
             <Route path="classes" element={<ClassesPage />} />
             <Route path="teachers" element={<TeachersPage />} />
@@ -113,24 +109,37 @@ const AppRoutes = () => {
             <Route index element={<Navigate to="/dashboard" replace />} />
           </Route>
 
+          {/* ===== HIER IS DE AANGEPASTE LERAAR ROUTE ===== */}
           <Route path="teacher" element={<ProtectedRoute teacherOnly={true}><Outlet /></ProtectedRoute>}>
+            
+            {/* Deze route vangt de algemene pagina op (geen klas geselecteerd) */}
             <Route path="my-classes" element={<TeacherMyClassesPage />} />
+            
+            {/* Deze NIEUWE route vangt een specifieke klas op met een ID */}
+            <Route path="my-classes/:classId" element={<TeacherMyClassesPage />} />
+            
+            {/* Je bestaande route voor absenties (deze is al perfect) */}
             <Route path="class/:classId/attendance" element={<TeacherClassAttendancePage />} />
+            
+            {/* Redirect van /teacher naar /teacher/my-classes */}
             <Route index element={<Navigate to="my-classes" replace />} /> 
           </Route>
 
+          {/* Ouder Routes */}
           <Route path="parent" element={<ProtectedRoute parentOnly={true}><Outlet /></ProtectedRoute>}>
             <Route path="my-children" element={<MyChildrenPage />} />
             <Route index element={<Navigate to="my-children" replace />} />
           </Route>
         </Route>
 
+        {/* Fallback route voor alle andere paden */}
         <Route path="*" element={ currentUser ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace /> } />
       </Routes>
     </DataProvider>
   );
 };
 
+// Het hoofd App component
 function App() {
   return (
     <AuthProvider>
