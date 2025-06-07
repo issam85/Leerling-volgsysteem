@@ -1,6 +1,6 @@
-// src/pages/TeacherMyClassesPage.js - FINALE, VEREENVOUDIGDE EN CORRECTE VERSIE
+// src/pages/TeacherMyClassesPage.js - FINALE, DIRECTE EN ROBUUSTE VERSIE
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import Modal from '../components/Modal';
@@ -21,42 +21,28 @@ import {
 const TeacherMyClassesPage = () => {
   const { classId } = useParams();
   const navigate = useNavigate();
-
   const { realData } = useData();
-  // DE FIX: We gebruiken de data die de DataContext al voor ons heeft gefilterd.
   const { teacherAssignedClasses, students, loading: dataLoading, error } = realData;
 
+  // State voor de modals, dit blijft lokaal
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showQuranProgressModal, setShowQuranProgressModal] = useState(false);
   const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
 
-  // LOGICA IS NU VEEL SIMPELER
-  // Zoek de klas in de lijst die gegarandeerd correct is voor deze docent.
-  const currentClass = classId && !dataLoading 
-    ? teacherAssignedClasses.find(c => String(c.id) === String(classId)) 
-    : null;
+  // --- LOGICA WORDT NU DIRECT IN DE RENDER-FUNCTIE UITGEVOERD ---
+  // Dit voorkomt alle timingproblemen en is de meest betrouwbare methode.
 
-  const classStudents = currentClass 
-    ? students.filter(s => String(s.class_id) === String(classId) && s.active) 
-    : [];
-
-  const handleAddStudentClick = () => setShowAddStudentModal(true);
-  const handleShowQuranProgress = (student) => {
-    setSelectedStudentForQuran(student);
-    setShowQuranProgressModal(true);
-  };
-  
-  // --- RENDER LOGICA ---
-
+  // Toon een laadscherm zolang de DataContext nog bezig is. Dit is de belangrijkste controle.
   if (dataLoading) {
     return <LoadingSpinner message="Gegevens laden..." />;
   }
   
+  // Toon een foutmelding als de DataContext een fout heeft.
   if (error) {
     return <div className="card text-red-600"><AlertCircle className="inline mr-2"/>Fout bij het laden van data: {error}</div>;
   }
-
-  // MASTER VIEW (als GEEN classId in URL staat)
+  
+  // Als er geen classId in de URL is, toon de welkomstpagina.
   if (!classId) {
     return (
       <div className="text-center p-6 sm:p-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
@@ -69,14 +55,26 @@ const TeacherMyClassesPage = () => {
     );
   }
 
-  // DETAIL VIEW (als classId in URL staat)
+  // Als er WEL een classId is, voer de zoekactie direct uit.
+  // We gebruiken de `teacherAssignedClasses` lijst die de Sidebar ook gebruikt, voor 100% consistentie.
+  const currentClass = teacherAssignedClasses.find(c => String(c.id) === String(classId));
+  const classStudents = currentClass ? students.filter(s => String(s.class_id) === String(classId) && s.active) : [];
+
+  // Modal handlers
+  const handleAddStudentClick = () => setShowAddStudentModal(true);
+  const handleShowQuranProgress = (student) => {
+    setSelectedStudentForQuran(student);
+    setShowQuranProgressModal(true);
+  };
+
+  // Als na het laden de klas niet gevonden kan worden in de lijst.
   if (!currentClass) {
       return (
           <div className="card text-center p-6">
               <AlertCircle size={24} className="mx-auto mb-3 text-yellow-500" />
               <h3 className="text-lg font-semibold">Klas niet gevonden</h3>
               <p className="text-gray-600 mt-1">
-                  De geselecteerde klas kon niet worden gevonden of u heeft geen toegang.
+                  De geselecteerde klas kon niet worden gevonden of de data is nog aan het synchroniseren.
               </p>
               <div className="mt-4">
                   <Button onClick={() => navigate('/teacher/my-classes')}>
@@ -87,6 +85,7 @@ const TeacherMyClassesPage = () => {
       );
   }
   
+  // Als alles goed is, toon de klasdetails.
   return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate('/teacher/my-classes')} className="text-gray-600 hover:text-gray-900">
