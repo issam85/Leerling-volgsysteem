@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET RAPPORT-INTEGRATIE
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET RAPPORT-INTEGRATIE EN isEditable FIX
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -568,7 +568,7 @@ const TeacherMyClassesPage = () => {
         </div>
       )}
 
-      {/* NIEUWE RAPPORT MODAL */}
+      {/* NIEUWE RAPPORT MODAL MET isEditable FIX */}
       {showReportModal && selectedStudentForReport && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-start p-4 overflow-y-auto">
           <div className="bg-gray-100 rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col my-8">
@@ -600,6 +600,7 @@ const TeacherMyClassesPage = () => {
                 student={selectedStudentForReport}
                 studentClass={currentClass}
                 teacher={users.find(u => String(u.id) === String(currentClass.teacher_id))}
+                isEditable={String(currentUser.id) === String(currentClass.teacher_id)}
               />
             </div>
           </div>

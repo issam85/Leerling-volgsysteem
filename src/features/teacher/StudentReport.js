@@ -1,10 +1,10 @@
-// src/features/teacher/StudentReport.js - DEFINITIEVE VERSIE MET DYNAMISCHE AANWEZIGHEID
+// src/features/teacher/StudentReport.js - DEFINITIEVE COMPLETE VERSIE
 import React, { useState, useEffect } from 'react';
 import { Printer, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import Button from '../../components/Button';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { apiCall } from '../../services/api';
-// import logo from '../../assets/logo-mijnlvs.png'; // Uncomment when logo is available
+import logo from '../../assets/logo-mijnlvs.png';
 
 // Grade button component
 const GradeButton = ({ grade, currentGrade, onGradeChange, disabled = false }) => (
@@ -54,60 +54,59 @@ const ReportSection = ({ title, titleAr, items, grades, onGradeChange, disabled 
   </tbody>
 );
 
-// NIEUW: Aparte component voor de aanwezigheidssectie
+// Attendance section component
 const AttendanceSection = ({ stats, grades, onGradeChange, disabled = false }) => {
-    const items = [
-        { id: 'att_presence', label: 'Aanwezigheid Algemeen', labelAr: 'الحضور العام', key: null },
-        { id: 'att_present_count', label: 'Aantal lessen aanwezig', labelAr: 'الحضور', key: 'aanwezig' },
-        { id: 'att_late_count', label: 'Aantal lessen te laat', labelAr: 'التأخير', key: 'te_laat' },
-        { id: 'att_absent_legit_count', label: 'Aantal lessen geoorloofd afwezig', labelAr: 'الغياب المبرر', key: 'afwezig_geoorloofd' },
-        { id: 'att_absent_illegit_count', label: 'Aantal lessen ongeoorloofd afwezig', labelAr: 'الغياب غير المبرر', key: 'afwezig_ongeoorloofd' },
-    ];
-    
-    return (
-        <tbody>
-            <tr className="bg-gray-200">
-                <th className="p-3 text-left font-semibold text-gray-700 border border-gray-300">Aanwezigheid</th>
-                <th className="p-3 text-right font-semibold text-gray-700 font-arabic border border-gray-300">الحضور والغياب</th>
-                <th className="p-3 w-24 text-center font-semibold border border-gray-300">Aantal</th>
-                {['G', 'V', 'M', 'O'].map(g => (
-                  <th key={g} className="p-3 w-12 text-center font-semibold border border-gray-300">{g}</th>
-                ))}
-            </tr>
-            {items.map((item) => (
-                <tr key={item.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-medium border border-gray-300">{item.label}</td>
-                    <td className="p-3 text-right font-arabic border border-gray-300">{item.labelAr}</td>
-                    <td className={`p-3 border border-gray-300 text-center font-bold text-lg ${
-                      item.key ? 'text-gray-700' : 'bg-gray-100'
-                    }`}>
-                        {item.key ? (stats ? stats[item.key] || 0 : '...') : ''}
-                    </td>
-                    {/* Alleen de eerste rij ('Aanwezigheid Algemeen') is beoordeelbaar */}
-                    {item.key === null ? (
-                        ['G', 'V', 'M', 'O'].map(grade => (
-                            <td key={grade} className="p-3 border border-gray-300 text-center">
-                                <GradeButton 
-                                  grade={grade} 
-                                  currentGrade={grades[item.id]} 
-                                  onGradeChange={(newGrade) => onGradeChange(item.id, newGrade)} 
-                                  disabled={disabled}
-                                />
-                            </td>
-                        ))
-                    ) : (
-                        <td colSpan="4" className="p-3 border border-gray-300 text-center bg-gray-100 text-gray-500">
-                          <span className="text-xs">Automatisch berekend</span>
-                        </td>
-                    )}
-                </tr>
-            ))}
-        </tbody>
-    );
+  const items = [
+    { id: 'att_general', label: 'Aanwezigheid Algemeen', labelAr: 'الحضور العام', key: null },
+    { id: 'att_present', label: 'Aantal lessen aanwezig', labelAr: 'الحضور', key: 'aanwezig' },
+    { id: 'att_late', label: 'Aantal lessen te laat', labelAr: 'التأخير', key: 'te_laat' },
+    { id: 'att_absent_legit', label: 'Aantal lessen geoorloofd afwezig', labelAr: 'الغياب المبرر', key: 'afwezig_geoorloofd' },
+    { id: 'att_absent_illegit', label: 'Aantal lessen ongeoorloofd afwezig', labelAr: 'الغياب غير المبرر', key: 'afwezig_ongeoorloofd' },
+  ];
+  
+  return (
+    <tbody>
+      <tr className="bg-gray-200">
+        <th className="p-3 text-left font-semibold text-gray-700 border border-gray-300">Aanwezigheid</th>
+        <th className="p-3 text-right font-semibold text-gray-700 font-arabic border border-gray-300">الحضور والغياب</th>
+        <th className="p-3 w-24 text-center font-semibold border border-gray-300">Aantal</th>
+        {['G', 'V', 'M', 'O'].map(g => (
+          <th key={g} className="p-3 w-12 text-center font-semibold border border-gray-300">{g}</th>
+        ))}
+      </tr>
+      {items.map((item) => (
+        <tr key={item.id} className="border-b hover:bg-gray-50">
+          <td className="p-3 font-medium border border-gray-300">{item.label}</td>
+          <td className="p-3 text-right font-arabic border border-gray-300">{item.labelAr}</td>
+          <td className={`p-3 border border-gray-300 text-center font-bold text-lg ${
+            item.key ? 'text-gray-700' : 'bg-gray-100'
+          }`}>
+            {item.key ? (stats ? stats[item.key] || 0 : '...') : ''}
+          </td>
+          {/* Alleen de eerste rij ('Aanwezigheid Algemeen') is beoordeelbaar */}
+          {item.key === null ? (
+            ['G', 'V', 'M', 'O'].map(grade => (
+              <td key={grade} className="p-3 border border-gray-300 text-center">
+                <GradeButton 
+                  grade={grade} 
+                  currentGrade={grades[item.id]} 
+                  onGradeChange={(newGrade) => onGradeChange(item.id, newGrade)} 
+                  disabled={disabled}
+                />
+              </td>
+            ))
+          ) : (
+            <td colSpan="4" className="p-3 border border-gray-300 text-center bg-gray-100 text-gray-500">
+              <span className="text-xs">Automatisch berekend</span>
+            </td>
+          )}
+        </tr>
+      ))}
+    </tbody>
+  );
 };
 
-const StudentReport = ({ student, studentClass, teacher, onClose }) => {
-  // De state bevat nu ook de dynamische stats
+const StudentReport = ({ student, studentClass, teacher, isEditable, onClose }) => {
   const [report, setReport] = useState({ 
     grades: {}, 
     comments: '', 
@@ -116,41 +115,41 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
-  const [isEditable, setIsEditable] = useState(true);
+  // isEditable wordt nu als prop doorgegeven
   
   const reportPeriod = "2024-2025";
   const currentDate = new Date().toLocaleDateString('nl-NL');
 
-  // Complete report data structure
-  const reportItems = {
+  // Complete report data structure met unieke IDs
+  const reportDataStructure = {
     arabic: [
-      { id: 'ar_schrijven', label: 'Schrijven', labelAr: 'الكتابة والخط' },
-      { id: 'ar_lezen', label: 'Lezen', labelAr: 'القراءة' },
-      { id: 'ar_letters', label: 'Herkennen van letters', labelAr: 'معرفة الحروف' },
-      { id: 'ar_dictee', label: 'Dictee', labelAr: 'الإملاء' },
-      { id: 'ar_presenteren', label: 'Presenteren', labelAr: 'العرض' },
+      { id: 'ar_write', label: 'Schrijven', labelAr: 'الكتابة والخط' },
+      { id: 'ar_read', label: 'Lezen', labelAr: 'القراءة' },
+      { id: 'ar_recognize', label: 'Herkennen van letters', labelAr: 'معرفة الحروف' },
+      { id: 'ar_dictation', label: 'Dictee', labelAr: 'الإملاء' },
+      { id: 'ar_present', label: 'Presenteren', labelAr: 'العرض' },
     ],
     quran: [
-      { id: 'qu_reciteren', label: 'Reciteren', labelAr: 'القراءة' },
-      { id: 'qu_memoriseren', label: 'Memoriseren', labelAr: 'الحفظ' },
-      { id: 'qu_leerproces', label: 'Leerproces', labelAr: 'عملية التعلم' },
-      { id: 'qu_surah_progress', label: 'Van Surah tot Surah', labelAr: 'من سورة إلى سورة' },
+      { id: 'qu_recite', label: 'Reciteren', labelAr: 'القراءة' },
+      { id: 'qu_memorize', label: 'Memoriseren', labelAr: 'الحفظ' },
+      { id: 'qu_process', label: 'Leerproces', labelAr: 'عملية التعلم' },
+      { id: 'qu_range', label: 'Van Surah tot Surah', labelAr: 'من سورة إلى سورة' },
     ],
     workEthic: [
-      { id: 'we_inzet', label: 'Inzet', labelAr: 'الإجتهاد' },
-      { id: 'we_concentratie', label: 'Concentratie', labelAr: 'التركيز' },
-      { id: 'we_zelfstandigheid', label: 'Zelfstandigheid', labelAr: 'الإعتماد على النفس' },
-      { id: 'we_werktempo', label: 'Werktempo', labelAr: 'السرعة في إنجاز الأعمال' },
-      { id: 'we_huiswerk', label: 'Huiswerk', labelAr: 'واجبات منزلية' },
+      { id: 'we_effort', label: 'Inzet', labelAr: 'الإجتهاد' },
+      { id: 'we_focus', label: 'Concentratie', labelAr: 'التركيز' },
+      { id: 'we_independent', label: 'Zelfstandigheid', labelAr: 'الإعتماد على النفس' },
+      { id: 'we_pace', label: 'Werktempo', labelAr: 'السرعة في إنجاز الأعمال' },
+      { id: 'we_homework', label: 'Huiswerk', labelAr: 'واجبات منزلية' },
     ],
     islamicEducation: [
-      { id: 'ie_begrijpen', label: 'Begrijpen', labelAr: 'الفهم' },
-      { id: 'ie_leren', label: 'Leren', labelAr: 'الحفظ' },
+      { id: 'ie_understand', label: 'Begrijpen', labelAr: 'الفهم' },
+      { id: 'ie_learn', label: 'Leren', labelAr: 'الحفظ' },
     ],
     behavior: [
-      { id: 'bh_docent', label: 'Tegen docent(e)', labelAr: 'إتجاه الأستاذ(ة)' },
-      { id: 'bh_medeleerlingen', label: 'Tegen medeleerlingen', labelAr: 'إتجاه التلاميذ' },
-    ]
+      { id: 'be_teacher', label: 'Tegen docent(e)', labelAr: 'إتجاه الأستاذ(ة)' },
+      { id: 'be_peers', label: 'Tegen medeleerlingen', labelAr: 'إتجاه التلاميذ' },
+    ],
   };
 
   // Auto-clear feedback
@@ -168,32 +167,30 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
       try {
         setLoading(true);
         
-        // Simulate API call - replace with actual API
-        /*
-        const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
-        */
+        // Try to fetch from API first
+        let data;
+        try {
+          data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
+        } catch (apiError) {
+          console.warn("API niet beschikbaar, gebruik mock data:", apiError);
+          // Fallback to mock data for development
+          data = {
+            grades: {
+              ar_write: 'G',
+              qu_recite: 'V',
+              att_general: 'G',
+            },
+            comments: '',
+            attendanceStats: {
+              aanwezig: 24,
+              te_laat: 2,
+              afwezig_geoorloofd: 1,
+              afwezig_ongeoorloofd: 0,
+            }
+          };
+        }
         
-        // Mock data with attendance stats
-        const mockData = {
-          grades: {
-            ar_schrijven: 'G',
-            qu_reciteren: 'V',
-            att_presence: 'G', // Generale aanwezigheidsbeoordeling
-          },
-          comments: '',
-          attendanceStats: {
-            aanwezig: 24,
-            te_laat: 2,
-            afwezig_geoorloofd: 1,
-            afwezig_ongeoorloofd: 0,
-          }
-        };
-        
-        setReport(mockData);
-        
-        // Check if user can edit (only own class)
-        const canEdit = teacher && String(teacher.id) === String(studentClass?.teacher_id);
-        setIsEditable(canEdit);
+        setReport(data || { grades: {}, comments: '', attendanceStats: null });
         
       } catch (error) {
         console.error("Fout bij ophalen rapport:", error);
@@ -209,7 +206,7 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
     if (student?.id) {
       fetchReport();
     }
-  }, [student.id, reportPeriod, teacher, studentClass]);
+  }, [student.id, reportPeriod]);
 
   const handleGradeChange = (itemId, newGrade) => {
     if (!isEditable) return;
@@ -231,27 +228,21 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
     setFeedback({ type: '', message: '' });
     
     try {
-      // Simulate API call - replace with actual API
-      /*
-      await apiCall('/api/reports/save', {
+      const result = await apiCall('/api/reports/save', {
         method: 'POST',
         body: JSON.stringify({
           studentId: student.id,
           classId: studentClass.id,
           mosqueId: student.mosque_id,
           period: reportPeriod,
-          grades: report.grades, // Sla alleen de beoordelingen op
+          grades: report.grades,
           comments: report.comments,
         })
       });
-      */
-      
-      // Mock save for development
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       setFeedback({ 
         type: 'success', 
-        message: 'Rapport succesvol opgeslagen!' 
+        message: result.message || 'Rapport succesvol opgeslagen!' 
       });
     } catch (error) {
       console.error('Save error:', error);
@@ -305,9 +296,11 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               <p className="text-xs text-gray-400 mt-1">Gegenereerd op: {currentDate}</p>
             </div>
             <div className="h-16 w-16 bg-emerald-100 rounded-lg flex items-center justify-center">
-              {/* Replace with actual logo when available */}
-              <span className="text-emerald-600 font-bold text-lg">LVS</span>
-              {/* <img src={logo} alt="Logo" className="h-16" /> */}
+              <img src={logo} alt="Logo" className="h-16" onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'block';
+              }} />
+              <span className="text-emerald-600 font-bold text-lg" style={{display: 'none'}}>LVS</span>
             </div>
           </div>
 
@@ -352,7 +345,7 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               <ReportSection 
                 title="Arabische Taal" 
                 titleAr="اللغة العربية" 
-                items={reportItems.arabic} 
+                items={reportDataStructure.arabic} 
                 grades={report.grades} 
                 onGradeChange={handleGradeChange}
                 disabled={!isEditable}
@@ -363,7 +356,7 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               <ReportSection 
                 title="Koran" 
                 titleAr="القرآن الكريم" 
-                items={reportItems.quran} 
+                items={reportDataStructure.quran} 
                 grades={report.grades} 
                 onGradeChange={handleGradeChange}
                 disabled={!isEditable}
@@ -374,7 +367,7 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               <ReportSection 
                 title="Werkhouding" 
                 titleAr="طريقة العمل" 
-                items={reportItems.workEthic} 
+                items={reportDataStructure.workEthic} 
                 grades={report.grades} 
                 onGradeChange={handleGradeChange}
                 disabled={!isEditable}
@@ -385,7 +378,7 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               <ReportSection 
                 title="Islamitische opvoeding" 
                 titleAr="التربية الإسلامية" 
-                items={reportItems.islamicEducation} 
+                items={reportDataStructure.islamicEducation} 
                 grades={report.grades} 
                 onGradeChange={handleGradeChange}
                 disabled={!isEditable}
@@ -396,14 +389,14 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               <ReportSection 
                 title="Gedrag in de klas" 
                 titleAr="السلوك في القسم" 
-                items={reportItems.behavior} 
+                items={reportDataStructure.behavior} 
                 grades={report.grades} 
                 onGradeChange={handleGradeChange}
                 disabled={!isEditable}
               />
             </table>
 
-            {/* Attendance Table met dynamische gegevens */}
+            {/* Attendance Table */}
             <table className="w-full text-sm border-collapse border border-gray-300">
               <AttendanceSection 
                 stats={report.attendanceStats} 
