@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET RAPPORT-INTEGRATIE EN isEditable FIX
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET UITKLAPBARE RIJEN EN ALLE FUNCTIONALITEIT
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
 import AddStudentModal from '../features/teacher/AddStudentModal';
 import QuranProgressTracker from '../features/teacher/QuranProgressTracker';
-import StudentReport from '../features/teacher/StudentReport'; // NIEUWE IMPORT
+import StudentReport from '../features/teacher/StudentReport';
 import { 
   AlertCircle, 
   UserPlus, 
@@ -22,11 +22,13 @@ import {
   ArrowLeft, 
   CheckCircle, 
   X, 
-  ClipboardList, 
+  ChevronDown, 
+  ChevronUp,
+  ClipboardList,
   Printer
 } from 'lucide-react';
 
-// Functionele MailModal met volledige functionaliteit
+// Volledige MailModal component
 const MailModal = ({ show, onClose, title, onSend, isLoading, recipientInfo }) => {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -144,21 +146,24 @@ const TeacherMyClassesPage = () => {
   const { realData } = useData();
   const { classes = [], students = [], users = [], loading, error } = realData;
 
-  // State voor de modals
+  // State voor modals en feedback
   const [modalState, setModalState] = useState({ type: null, data: null });
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
-
-  // State voor de Qor'aan modal
+  
+  // State voor Qor'aan modal
   const [showQuranModal, setShowQuranModal] = useState(false);
   const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
-
+  
   // State voor Add Student modal
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-
-  // NIEUWE STATE VOOR RAPPORT MODAL
+  
+  // State voor Rapport modal
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedStudentForReport, setSelectedStudentForReport] = useState(null);
+  
+  // NIEUWE STATE voor de uitgeklapte rij
+  const [expandedStudentId, setExpandedStudentId] = useState(null);
 
   // Auto-clear feedback after 5 seconds
   useEffect(() => {
@@ -170,6 +175,7 @@ const TeacherMyClassesPage = () => {
     }
   }, [feedback.message]);
 
+  // Loading and error states
   if (loading && !classes.length) {
     return <LoadingSpinner message="Klasgegevens laden..." />;
   }
@@ -208,11 +214,12 @@ const TeacherMyClassesPage = () => {
       </div>
     );
   }
-
+  
   const classStudents = students.filter(s => 
     String(s.class_id) === String(classId) && s.active
   );
 
+  // Modal handlers
   const openModal = (type, data = null) => setModalState({ type, data });
   const closeModal = () => {
     if (!isLoading) {
@@ -220,7 +227,7 @@ const TeacherMyClassesPage = () => {
     }
   };
   
-  // Handler functie voor de Qor'aan modal
+  // Qor'aan modal handlers
   const handleShowQuranProgress = (student) => {
     setSelectedStudentForQuran(student);
     setShowQuranModal(true);
@@ -231,7 +238,7 @@ const TeacherMyClassesPage = () => {
     setSelectedStudentForQuran(null);
   };
 
-  // Handler voor Add Student modal
+  // Add Student modal handlers
   const handleAddStudent = () => {
     setShowAddStudentModal(true);
   };
@@ -240,7 +247,7 @@ const TeacherMyClassesPage = () => {
     setShowAddStudentModal(false);
   };
 
-  // NIEUWE HANDLERS VOOR RAPPORT
+  // Rapport modal handlers
   const handleShowReport = (student) => {
     setSelectedStudentForReport(student);
     setShowReportModal(true);
@@ -252,14 +259,18 @@ const TeacherMyClassesPage = () => {
   };
 
   const handlePrintReport = () => {
-    // Focus op het rapport element voor printing
     const reportElement = document.getElementById('report-content');
     if (reportElement) {
       window.print();
     }
   };
+
+  // Functie om de rij uit/in te klappen
+  const toggleStudentExpansion = (studentId) => {
+    setExpandedStudentId(prevId => (prevId === studentId ? null : studentId));
+  };
   
-  // Volledige email handler
+  // Email handler
   const handleSendEmail = async ({ subject, body }) => {
     setIsLoading(true);
     setFeedback({ type: '', message: '' });
@@ -387,7 +398,7 @@ const TeacherMyClassesPage = () => {
         </div>
       )}
 
-      {/* Leerlingen Tabel met nieuwe Rapport Knop */}
+      {/* Leerlingen Tabel met Uitklapbare Rijen */}
       {classStudents.length === 0 ? (
         <div className="card text-center p-8">
           <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -401,67 +412,41 @@ const TeacherMyClassesPage = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-md border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Leerling
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Geboortedatum
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ouder
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact Ouder
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acties
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {classStudents.map(student => {
-                  const parent = users.find(u => String(u.id) === String(student.parent_id));
-                  return (
-                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="w-12 px-6 py-3"></th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Leerling
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acties
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {classStudents.map(student => {
+                const isExpanded = expandedStudentId === student.id;
+                const parent = users.find(u => String(u.id) === String(student.parent_id));
+                return (
+                  <React.Fragment key={student.id}>
+                    {/* Hoofdrij */}
+                    <tr className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => toggleStudentExpansion(student.id)} 
+                          className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                          title={isExpanded ? 'Inklappen' : 'Uitklappen'}
+                        >
+                          {isExpanded ? <ChevronUp size={20} className="text-gray-600" /> : <ChevronDown size={20} className="text-gray-600" />}
+                        </button>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-gray-900">{student.name}</div>
-                        {student.notes && (
+                        {student.notes && !isExpanded && (
                           <div className="text-xs text-gray-500 mt-1 max-w-xs truncate" title={student.notes}>
                             {student.notes}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.date_of_birth 
-                          ? new Date(student.date_of_birth).toLocaleDateString('nl-NL') 
-                          : <span className="italic text-gray-400">Niet opgegeven</span>
-                        }
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {parent?.name || <span className="italic text-gray-400">Geen ouder gekoppeld</span>}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {parent ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center">
-                              <Mail size={12} className="mr-2 text-gray-400 flex-shrink-0"/>
-                              <span className="truncate max-w-xs" title={parent.email}>
-                                {parent.email}
-                              </span>
-                            </div>
-                            {parent.phone && (
-                              <div className="flex items-center">
-                                <Phone size={12} className="mr-2 text-gray-400 flex-shrink-0"/>
-                                <span>{parent.phone}</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="italic text-gray-400">Geen contact info</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -477,13 +462,12 @@ const TeacherMyClassesPage = () => {
                             Mail
                           </Button>
                           
-                          {/* NIEUWE RAPPORT KNOP */}
                           <Button 
                             variant="secondary" 
                             size="sm" 
                             icon={ClipboardList} 
                             onClick={() => handleShowReport(student)}
-                            title="Rapport bekijken/printen"
+                            title="Rapport bekijken/bewerken"
                           >
                             Rapport
                           </Button>
@@ -499,11 +483,63 @@ const TeacherMyClassesPage = () => {
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    
+                    {/* Uitgeklapte rij met details */}
+                    {isExpanded && (
+                      <tr className="bg-emerald-50">
+                        <td colSpan="3" className="px-6 py-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <h4 className="font-semibold text-gray-500 text-xs uppercase mb-1">Geboortedatum</h4>
+                              <p className="text-gray-800">
+                                {student.date_of_birth 
+                                  ? new Date(student.date_of_birth).toLocaleDateString('nl-NL') 
+                                  : <span className="italic text-gray-400">Niet opgegeven</span>
+                                }
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-500 text-xs uppercase mb-1">Ouder</h4>
+                              <p className="text-gray-800">
+                                {parent?.name || <span className="italic text-gray-400">Geen ouder gekoppeld</span>}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-500 text-xs uppercase mb-1">Contact Ouder</h4>
+                              {parent ? (
+                                <div className="space-y-1 mt-1">
+                                  <div className="flex items-center text-gray-700">
+                                    <Mail size={12} className="mr-2 text-gray-400 flex-shrink-0"/>
+                                    <span className="truncate" title={parent.email}>
+                                      {parent.email}
+                                    </span>
+                                  </div>
+                                  {parent.phone && (
+                                    <div className="flex items-center text-gray-700">
+                                      <Phone size={12} className="mr-2 text-gray-400 flex-shrink-0"/>
+                                      <span>{parent.phone}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-gray-400 italic">Geen contact info</p>
+                              )}
+                            </div>
+                          </div>
+                          {student.notes && (
+                            <div className="mt-4 pt-3 border-t border-emerald-200">
+                              <h4 className="font-semibold text-gray-500 text-xs uppercase mb-1">Notities</h4>
+                              <p className="text-gray-800 italic">{student.notes}</p>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -568,7 +604,7 @@ const TeacherMyClassesPage = () => {
         </div>
       )}
 
-      {/* NIEUWE RAPPORT MODAL MET isEditable FIX */}
+      {/* Rapport Modal */}
       {showReportModal && selectedStudentForReport && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-start p-4 overflow-y-auto">
           <div className="bg-gray-100 rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col my-8">
