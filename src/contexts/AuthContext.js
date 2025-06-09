@@ -1,5 +1,5 @@
-// src/contexts/AuthContext.js - GECORRIGEERDE EN STABIELERE VERSIE
-import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
+// src/contexts/AuthContext.js - FINALE STABIELE VERSIE
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
@@ -21,29 +21,11 @@ const getSubdomainFromHostname = (hostname) => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentSubdomain, setCurrentSubdomain] = useState(() => getSubdomainFromHostname(window.location.hostname));
-  const [loadingUser, setLoadingUser] = useState(true); // Start altijd als true
+  const [loadingUser, setLoadingUser] = useState(true);
   const navigate = useNavigate();
-  
-  const isLoggingOut = useRef(false);
 
-  // Harde reset functie, nu simpeler
-  const hardResetAuth = useCallback(() => {
-    console.log("[AuthContext] HARD RESET AUTH");
-    isLoggingOut.current = false;
-    setCurrentUser(null);
-    setLoadingUser(false);
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    console.log("[AuthContext] Hard reset complete");
-  }, []);
-
-  // DE ENIGE useEffect DIE OVERBLIJFT VOOR AUTHENTICATIE.
-  // Deze listener is de 'single source of truth'.
   useEffect(() => {
-    console.log("[AuthContext] Setting up the one and only auth listener...");
+    console.log("[AuthContext] Setting up auth listener for session restoration.");
     
     // Initialiseer het subdomein
     const detectedSubdomain = getSubdomainFromHostname(window.location.hostname);
@@ -58,38 +40,32 @@ export const AuthProvider = ({ children }) => {
         setCurrentSubdomain(detectedSubdomain);
     }
     
+    // Alleen de listener. Geen aparte check.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(`[AuthContext] Auth event received: ${event}`);
-        
-        if (isLoggingOut.current) return;
+        console.log(`[AuthContext] Auth event: ${event}. Session available: ${!!session}`);
 
-        // Als er een sessie is (INITIAL_SESSION op load, of SIGNED_IN na login)
-        if (session?.user) {
-          console.log(`[AuthContext] Session found for event ${event}. Fetching app user...`);
+        // Deze listener is nu vooral voor INITIAL_SESSION (refresh) en externe events.
+        if (event === 'INITIAL_SESSION' && session?.user) {
+          console.log("[AuthContext] Restoring session. Fetching app user...");
           const { data: appUser, error: appUserError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+            .from('users').select('*').eq('id', session.user.id).single();
 
-          if (appUser && !isLoggingOut.current) {
+          if (appUser) {
             setCurrentUser(appUser);
             localStorage.setItem(`currentUser_${detectedSubdomain}`, JSON.stringify(appUser));
-            console.log(`[AuthContext] User set from ${event}:`, appUser.name);
+            console.log("[AuthContext] Session restored for:", appUser.name);
           } else {
-            console.warn("[AuthContext] User in session but not in DB or error. Resetting.", appUserError);
-            hardResetAuth();
-            if (window.location.pathname !== '/login') navigate('/login', { replace: true });
+            console.warn("[AuthContext] Session token valid, but user not found in DB. Logging out.", appUserError);
+            await supabase.auth.signOut();
+            setCurrentUser(null);
           }
-        } 
-        // Als er GEEN sessie is (bv. na refresh zonder geldige token, of na logout)
-        else {
-          console.log(`[AuthContext] No session for event ${event}. Clearing user.`);
+        } else if (event === 'SIGNED_OUT') {
+          console.log("[AuthContext] SIGNED_OUT event - clearing user");
           setCurrentUser(null);
         }
 
-        // BELANGRIJK: zet loadingUser altijd op false aan het einde van de check.
+        // Na de eerste check (meestal INITIAL_SESSION), is het laden klaar.
         setLoadingUser(false);
       }
     );
@@ -98,42 +74,95 @@ export const AuthProvider = ({ children }) => {
       console.log("[AuthContext] Cleaning up auth listener.");
       subscription?.unsubscribe();
     };
-  }, [navigate, hardResetAuth]); // Dependencies zijn nu stabiel
+  }, []);
 
-  // Login functie
   const handleLogin = useCallback(async (email, password) => {
-    console.log("[AuthContext] Login attempt for:", email);
+    console.log("[AuthContext] Starting robust login flow...");
+    setLoadingUser(true); // Zet laden aan tijdens de login-actie
+
     try {
-      if (!currentSubdomain || currentSubdomain === 'register') throw new Error('Geen geldig subdomein.');
-      const { data: mosque } = await supabase.from('mosques').select('id').eq('subdomain', currentSubdomain).single();
-      if (!mosque) throw new Error(`Moskee met subdomein '${currentSubdomain}' niet gevonden.`);
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      const { data: appUser, error: appUserError } = await supabase.from('users').select('*').eq('id', data.user.id).eq('mosque_id', mosque.id).single();
-      if (appUserError || !appUser) { await supabase.auth.signOut(); throw new Error('Gebruiker niet gevonden voor deze moskee.'); }
-      await supabase.from('users').update({ last_login: new Date() }).eq('id', appUser.id);
+      if (!currentSubdomain || currentSubdomain === 'register') {
+        throw new Error('Geen geldig subdomein gevonden voor login.');
+      }
       
-      // De onAuthStateChange listener zal de `currentUser` state nu bijwerken.
-      // We hoeven hier niet handmatig `setCurrentUser` aan te roepen.
+      // Get mosque
+      const { data: mosque, error: mosqueError } = await supabase
+        .from('mosques')
+        .select('id')
+        .eq('subdomain', currentSubdomain.toLowerCase().trim())
+        .single();
+      
+      if (mosqueError || !mosque) {
+        throw new Error(`Moskee met subdomein '${currentSubdomain}' niet gevonden.`);
+      }
+      
+      // Login with Supabase Auth
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password: password
+      });
+
+      if (signInError) {
+        if (signInError.message === 'Invalid login credentials') {
+          throw new Error('Ongeldige combinatie van email/wachtwoord.');
+        }
+        throw new Error(`Authenticatiefout: ${signInError.message}`);
+      }
+      
+      if (!authData.user) {
+        throw new Error("Inloggen mislukt, geen gebruiker teruggekregen.");
+      }
+
+      // Validate app user exists for this mosque
+      const { data: appUser, error: appUserError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authData.user.id)
+        .eq('mosque_id', mosque.id)
+        .single();
+        
+      if (appUserError || !appUser) {
+        await supabase.auth.signOut();
+        throw new Error('Gebruiker niet gevonden voor deze moskee.');
+      }
+
+      // Update last login
+      await supabase
+        .from('users')
+        .update({ last_login: new Date() })
+        .eq('id', appUser.id);
+      
+      // Belangrijk: zet de state HIER, voordat je navigeert.
+      setCurrentUser(appUser);
+      localStorage.setItem(`currentUser_${currentSubdomain}`, JSON.stringify(appUser));
+      setLoadingUser(false); // Zet laden uit, alles is klaar.
+      
+      console.log("[AuthContext] Login successful for:", appUser.name, appUser.role, ". Navigating to dashboard.");
       navigate('/dashboard', { replace: true });
       return true;
+
     } catch (error) {
-      console.error('Login error:', error);
-      const errorMessage = error.message.includes('Invalid login credentials') ? 'Ongeldige combinatie van email/wachtwoord.' : error.message;
-      throw new Error(errorMessage);
+      console.error('Login error in handleLogin:', error);
+      setLoadingUser(false); // Zet laden ook uit bij een fout.
+      throw error; // Re-throw de originele error
     }
   }, [currentSubdomain, navigate]);
 
   const handleLogout = useCallback(async () => {
     console.log("[AuthContext] Logout initiated");
-    isLoggingOut.current = true;
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    localStorage.clear(); // Simpele, effectieve clear
-    navigate('/login', { replace: true });
-    setTimeout(() => { isLoggingOut.current = false; }, 500);
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      localStorage.clear();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.warn("Logout error:", error);
+      // Zelfs bij error, forceer logout
+      setCurrentUser(null);
+      navigate('/login', { replace: true });
+    }
   }, [navigate]);
-  
+
   const switchSubdomain = useCallback((newSubdomain) => {
     const currentHostname = window.location.hostname;
     if (currentHostname === 'localhost') {
@@ -153,6 +182,18 @@ export const AuthProvider = ({ children }) => {
     }
     const port = window.location.port ? `:${window.location.port}` : '';
     window.location.href = `${window.location.protocol}//${newHost}${port}/`;
+  }, []);
+
+  const hardResetAuth = useCallback(() => {
+    console.log("[AuthContext] HARD RESET AUTH");
+    setCurrentUser(null);
+    setLoadingUser(false);
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    console.log("[AuthContext] Hard reset complete");
   }, []);
 
   const value = {
