@@ -152,55 +152,21 @@ const RapportView = ({ student }) => {
 
   useEffect(() => {
     const fetchReport = async () => {
-      if (!student?.id) { 
-        setLoading(false); 
-        setError("Leerling niet gevonden."); 
-        return; 
+      if (!student?.id) {
+        setLoading(false);
+        setError("Leerling niet gevonden.");
+        return;
       }
       
       try {
         setLoading(true);
         setError('');
         
-        // Check if we're in demo mode
-        const isDemoMode = !window.location.hostname.includes('production');
-        
-        if (isDemoMode) {
-          // Demo mode: gebruik mock data
-          console.log("Demo mode: gebruik compacte mock rapport data voor ouder");
-          await new Promise(resolve => setTimeout(resolve, 600)); // Simulate loading
-          
-          const mockData = {
-            student_id: student.id,
-            grades: {
-              ar_write: 'G',
-              ar_read: 'V',
-              ar_recognize: 'G',
-              ar_dictation: 'M',
-              ar_present: 'V',
-              qu_recite: 'G',
-              qu_memorize: 'V',
-              qu_process: 'G',
-              qu_range: 'V',
-              we_effort: 'G',
-              we_focus: 'V',
-              we_independent: 'G',
-              we_pace: 'V',
-              we_homework: 'G',
-              ie_understand: 'V',
-              ie_learn: 'G',
-              be_teacher: 'G',
-              be_peers: 'V',
-              att_general: 'G',
-            },
-            comments: `${student.name} toont uitstekende voortgang en veel inzet. De werkhouding is voorbeeldig en de resultaten zijn zeer goed. Blijf zo doorgaan!`,
-          };
-          setReport(mockData);
-        } else {
-          // Production mode: try real API
-          const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
-          setReport(data && data.student_id ? data : null);
-        }
+        // DIT IS DE CORRECTIE:
+        // De 'isDemoMode' check is verwijderd. We roepen nu ALTIJD de echte API aan.
+        const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
+        setReport(data && data.student_id ? data : null);
+
       } catch (err) { 
         console.error("Fout bij ophalen rapport:", err);
         setError("Kon het rapport niet laden."); 
@@ -241,15 +207,15 @@ const RapportView = ({ student }) => {
   };
 
   // Helper function to get section title
-  const getSectionTitle = (key, items) => {
-    switch(key) {
-      case 'arabic': return 'Arabische Taal';
-      case 'quran': return 'Koran';
-      case 'workEthic': return 'Werkhouding';
-      case 'islamicEducation': return 'Islamitische Opvoeding';
-      case 'behavior': return 'Gedrag in de Klas';
-      default: return key.charAt(0).toUpperCase() + key.slice(1);
-    }
+  const getSectionTitle = (key) => {
+    const titles = { 
+      arabic: 'Arabische Taal', 
+      quran: 'Koran', 
+      workEthic: 'Werkhouding', 
+      islamicEducation: 'Islamitische Opvoeding', 
+      behavior: 'Gedrag in de Klas' 
+    };
+    return titles[key] || key;
   };
 
   return (
@@ -264,9 +230,9 @@ const RapportView = ({ student }) => {
       {/* Grade Legend */}
       <div className="p-3 bg-gray-50 border rounded-md mb-6 text-xs sm:text-sm">
         <p>
-          <strong>G</strong> = Goed   
-          <strong className="ml-4">V</strong> = Voldoende   
-          <strong className="ml-4">M</strong> = Matig   
+          <strong>G</strong> = Goed
+          <strong className="ml-4">V</strong> = Voldoende
+          <strong className="ml-4">M</strong> = Matig
           <strong className="ml-4">O</strong> = Onvoldoende
         </p>
       </div>
@@ -275,7 +241,7 @@ const RapportView = ({ student }) => {
         {Object.entries(reportDataStructure).map(([key, sectionItems]) => (
           <div key={key} className="border-b border-gray-200 pb-4 last:border-b-0">
             <h4 className="font-bold text-gray-700 mb-3 text-lg">
-              {getSectionTitle(key, sectionItems)}
+              {getSectionTitle(key)}
             </h4>
             <ul className="space-y-2">
               {sectionItems.map(item => (
@@ -309,7 +275,7 @@ const RapportView = ({ student }) => {
 
         {/* Comments Section */}
         {report.comments && (
-          <div className="mt-6">
+          <div>
             <h4 className="font-bold text-gray-700 mb-3 text-lg border-b border-gray-200 pb-2">
               Opmerkingen van de leraar
             </h4>
