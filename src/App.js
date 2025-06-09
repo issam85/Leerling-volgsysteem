@@ -122,7 +122,6 @@ const AppRoutes = () => {
 
           <Route path="parent" element={<ProtectedRoute parentOnly={true}><Outlet /></ProtectedRoute>}>
             <Route path="my-children" element={<MyChildrenPage />} />
-            {/* NIEUWE ROUTE voor de detailpagina van een kind */}
             <Route path="my-children/:studentId" element={<ChildDetailPage />} />
             <Route index element={<Navigate to="my-children" replace />} />
           </Route>
