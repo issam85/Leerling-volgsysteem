@@ -1,4 +1,4 @@
-// src/features/teacher/StudentReport.js - VOLLEDIG INTERACTIEVE VERSIE
+// src/features/teacher/StudentReport.js - DEFINITIEVE VERSIE MET DYNAMISCHE AANWEZIGHEID
 import React, { useState, useEffect } from 'react';
 import { Printer, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import Button from '../../components/Button';
@@ -6,7 +6,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { apiCall } from '../../services/api';
 // import logo from '../../assets/logo-mijnlvs.png'; // Uncomment when logo is available
 
-// Grade button component met hover effecten
+// Grade button component
 const GradeButton = ({ grade, currentGrade, onGradeChange, disabled = false }) => (
   <button 
     onClick={() => !disabled && onGradeChange(grade === currentGrade ? null : grade)}
@@ -25,7 +25,7 @@ const GradeButton = ({ grade, currentGrade, onGradeChange, disabled = false }) =
   </button>
 );
 
-// Report section component
+// Standard report section component
 const ReportSection = ({ title, titleAr, items, grades, onGradeChange, disabled = false }) => (
   <tbody>
     <tr className="bg-gray-200">
@@ -54,34 +54,71 @@ const ReportSection = ({ title, titleAr, items, grades, onGradeChange, disabled 
   </tbody>
 );
 
-// Attendance section (different layout)
-const AttendanceSection = ({ items, attendanceData }) => (
-  <tbody>
-    <tr className="bg-gray-200">
-      <th className="p-3 text-left font-semibold text-gray-700 border border-gray-300">Aanwezigheid</th>
-      <th className="p-3 text-right font-semibold text-gray-700 font-arabic border border-gray-300">الحضور والغياب</th>
-      <th className="p-3 w-24 text-center font-semibold border border-gray-300">Aantal</th>
-    </tr>
-    {items.map((item) => (
-      <tr key={item.id} className="border-b hover:bg-gray-50">
-        <td className="p-3 border border-gray-300">{item.label}</td>
-        <td className="p-3 text-right font-arabic border border-gray-300">{item.labelAr}</td>
-        <td className="p-3 border border-gray-300 text-center font-medium">
-          {attendanceData?.[item.id] || 0}
-        </td>
-      </tr>
-    ))}
-  </tbody>
-);
+// NIEUW: Aparte component voor de aanwezigheidssectie
+const AttendanceSection = ({ stats, grades, onGradeChange, disabled = false }) => {
+    const items = [
+        { id: 'att_presence', label: 'Aanwezigheid Algemeen', labelAr: 'الحضور العام', key: null },
+        { id: 'att_present_count', label: 'Aantal lessen aanwezig', labelAr: 'الحضور', key: 'aanwezig' },
+        { id: 'att_late_count', label: 'Aantal lessen te laat', labelAr: 'التأخير', key: 'te_laat' },
+        { id: 'att_absent_legit_count', label: 'Aantal lessen geoorloofd afwezig', labelAr: 'الغياب المبرر', key: 'afwezig_geoorloofd' },
+        { id: 'att_absent_illegit_count', label: 'Aantal lessen ongeoorloofd afwezig', labelAr: 'الغياب غير المبرر', key: 'afwezig_ongeoorloofd' },
+    ];
+    
+    return (
+        <tbody>
+            <tr className="bg-gray-200">
+                <th className="p-3 text-left font-semibold text-gray-700 border border-gray-300">Aanwezigheid</th>
+                <th className="p-3 text-right font-semibold text-gray-700 font-arabic border border-gray-300">الحضور والغياب</th>
+                <th className="p-3 w-24 text-center font-semibold border border-gray-300">Aantal</th>
+                {['G', 'V', 'M', 'O'].map(g => (
+                  <th key={g} className="p-3 w-12 text-center font-semibold border border-gray-300">{g}</th>
+                ))}
+            </tr>
+            {items.map((item) => (
+                <tr key={item.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3 font-medium border border-gray-300">{item.label}</td>
+                    <td className="p-3 text-right font-arabic border border-gray-300">{item.labelAr}</td>
+                    <td className={`p-3 border border-gray-300 text-center font-bold text-lg ${
+                      item.key ? 'text-gray-700' : 'bg-gray-100'
+                    }`}>
+                        {item.key ? (stats ? stats[item.key] || 0 : '...') : ''}
+                    </td>
+                    {/* Alleen de eerste rij ('Aanwezigheid Algemeen') is beoordeelbaar */}
+                    {item.key === null ? (
+                        ['G', 'V', 'M', 'O'].map(grade => (
+                            <td key={grade} className="p-3 border border-gray-300 text-center">
+                                <GradeButton 
+                                  grade={grade} 
+                                  currentGrade={grades[item.id]} 
+                                  onGradeChange={(newGrade) => onGradeChange(item.id, newGrade)} 
+                                  disabled={disabled}
+                                />
+                            </td>
+                        ))
+                    ) : (
+                        <td colSpan="4" className="p-3 border border-gray-300 text-center bg-gray-100 text-gray-500">
+                          <span className="text-xs">Automatisch berekend</span>
+                        </td>
+                    )}
+                </tr>
+            ))}
+        </tbody>
+    );
+};
 
 const StudentReport = ({ student, studentClass, teacher, onClose }) => {
-  const [report, setReport] = useState({ grades: {}, comments: '', attendanceData: {} });
+  // De state bevat nu ook de dynamische stats
+  const [report, setReport] = useState({ 
+    grades: {}, 
+    comments: '', 
+    attendanceStats: null 
+  });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
   const [isEditable, setIsEditable] = useState(true);
   
-  const reportPeriod = "2024-2025"; // Dit kun je later dynamisch maken
+  const reportPeriod = "2024-2025";
   const currentDate = new Date().toLocaleDateString('nl-NL');
 
   // Complete report data structure
@@ -113,12 +150,6 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
     behavior: [
       { id: 'bh_docent', label: 'Tegen docent(e)', labelAr: 'إتجاه الأستاذ(ة)' },
       { id: 'bh_medeleerlingen', label: 'Tegen medeleerlingen', labelAr: 'إتجاه التلاميذ' },
-    ],
-    attendance: [
-      { id: 'att_aanwezig', label: 'Aantal lessen aanwezig', labelAr: 'الحضور' },
-      { id: 'att_te_laat', label: 'Aantal lessen te laat', labelAr: 'التأخير' },
-      { id: 'att_geoorloofd', label: 'Aantal lessen geoorloofd afwezig', labelAr: 'الغياب المبرر' },
-      { id: 'att_ongeoorloofd', label: 'Aantal lessen ongeoorloofd afwezig', labelAr: 'الغياب غير المبرر' },
     ]
   };
 
@@ -132,28 +163,29 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
     }
   }, [feedback.message]);
 
-  // Load report data
   useEffect(() => {
     const fetchReport = async () => {
       try {
         setLoading(true);
         
         // Simulate API call - replace with actual API
-        // const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
+        /*
+        const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
+        */
         
-        // Mock data for development
+        // Mock data with attendance stats
         const mockData = {
           grades: {
-            // Some example grades
             ar_schrijven: 'G',
             qu_reciteren: 'V',
+            att_presence: 'G', // Generale aanwezigheidsbeoordeling
           },
           comments: '',
-          attendanceData: {
-            att_aanwezig: 24,
-            att_te_laat: 2,
-            att_geoorloofd: 1,
-            att_ongeoorloofd: 0,
+          attendanceStats: {
+            aanwezig: 24,
+            te_laat: 2,
+            afwezig_geoorloofd: 1,
+            afwezig_ongeoorloofd: 0,
           }
         };
         
@@ -181,9 +213,8 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
 
   const handleGradeChange = (itemId, newGrade) => {
     if (!isEditable) return;
-    
     setReport(prev => ({
-      ...prev,
+      ...prev, 
       grades: { ...prev.grades, [itemId]: newGrade }
     }));
   };
@@ -207,8 +238,9 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
         body: JSON.stringify({
           studentId: student.id,
           classId: studentClass.id,
+          mosqueId: student.mosque_id,
           period: reportPeriod,
-          grades: report.grades,
+          grades: report.grades, // Sla alleen de beoordelingen op
           comments: report.comments,
         })
       });
@@ -371,11 +403,13 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
               />
             </table>
 
-            {/* Attendance Table */}
+            {/* Attendance Table met dynamische gegevens */}
             <table className="w-full text-sm border-collapse border border-gray-300">
               <AttendanceSection 
-                items={reportItems.attendance} 
-                attendanceData={report.attendanceData}
+                stats={report.attendanceStats} 
+                grades={report.grades} 
+                onGradeChange={handleGradeChange}
+                disabled={!isEditable}
               />
             </table>
           </div>
@@ -417,7 +451,11 @@ const StudentReport = ({ student, studentClass, teacher, onClose }) => {
       {/* Footer met knoppen */}
       <div className="flex items-center justify-between p-4 border-t bg-gray-100 print:hidden">
         <div className="text-sm text-gray-600">
-          {isEditable ? 'Klik op de cirkels om beoordelingen te geven' : 'Rapport in alleen-lezen modus'}
+          {report.attendanceStats && (
+            <span>
+              Totaal lessen: {Object.values(report.attendanceStats).reduce((a, b) => a + b, 0)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button 
