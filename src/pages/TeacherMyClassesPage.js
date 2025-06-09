@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - Uitgebreid met leerling toevoegen en Qor'aan voortgang
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE, PROFESSIONELE VERSIE
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -6,17 +6,17 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AddStudentModal from '../features/teacher/AddStudentModal';
 import QuranProgressTracker from '../features/teacher/QuranProgressTracker';
+import Button from '../components/Button';
 import { 
   BookOpen, 
   Users, 
   AlertCircle, 
-  ArrowRight, 
   UserPlus,
   BookMarked,
   ChevronDown,
   ChevronUp,
   Calendar,
-  TrendingUp
+  XCircle // Zorg dat deze import er is voor de modal
 } from 'lucide-react';
 
 const TeacherMyClassesPage = () => {
@@ -24,30 +24,24 @@ const TeacherMyClassesPage = () => {
   const { currentUser } = useAuth();
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [selectedClassForAddStudent, setSelectedClassForAddStudent] = useState(null);
-  const [expandedClass, setExpandedClass] = useState(null);
-  const [showQuranProgress, setShowQuranProgress] = useState(false);
+  const [showQuranModal, setShowQuranModal] = useState(false);
   const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
+  const [expandedClassId, setExpandedClassId] = useState(null);
 
-  // Veilige destructurering met fallbacks naar lege arrays
-  const teacherAssignedClasses = realData.teacherAssignedClasses || [];
-  const students = realData.students || [];
-  const allUsers = realData.users || [];
-  const loading = realData.loading;
-  const error = realData.error;
+  const { teacherAssignedClasses = [], students = [], loading, error } = realData;
 
-  // Aangepaste loading check
   if (loading && teacherAssignedClasses.length === 0) {
     return <LoadingSpinner message="Mijn klassen laden..." />;
   }
 
   if (error) {
-    return <div className="card text-red-600 bg-red-50 border-red-200 p-4"><AlertCircle className="inline mr-2"/>Fout bij laden: {error}</div>;
+    return <div className="card text-red-600 p-4"><AlertCircle className="inline mr-2"/>Fout: {error}</div>;
   }
 
-  if (!currentUser || currentUser.role !== 'teacher') {
-    return <div className="card p-4 text-center">Geen toegang. U dient ingelogd te zijn als leraar.</div>;
-  }
-
+  const handleToggleExpansion = (classId) => {
+    setExpandedClassId(prevId => (prevId === classId ? null : classId));
+  };
+  
   const handleAddStudent = (classObj) => {
     setSelectedClassForAddStudent(classObj);
     setShowAddStudentModal(true);
@@ -55,199 +49,110 @@ const TeacherMyClassesPage = () => {
 
   const handleShowQuranProgress = (student) => {
     setSelectedStudentForQuran(student);
-    setShowQuranProgress(true);
-  };
-
-  const toggleClassExpansion = (classId) => {
-    setExpandedClass(expandedClass === classId ? null : classId);
+    setShowQuranModal(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <h2 className="page-title">Mijn Klassen</h2>
-        <div className="text-sm text-gray-600">
-          Als leraar kunt u leerlingen toevoegen en Qor'aan voortgang bijhouden
-        </div>
+        <p className="text-sm text-gray-600">Beheer hier uw klassen, leerlingen en voortgang.</p>
       </div>
       
       {teacherAssignedClasses.length === 0 && !loading ? (
-        <div className="card text-center p-6">
+        <div className="card text-center p-8">
           <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">Geen klassen toegewezen</h3>
-          <p className="text-gray-600">Er zijn momenteel geen actieve klassen aan u toegewezen. Neem contact op met de administratie als dit niet klopt.</p>
+          <h3 className="text-xl font-semibold text-gray-700">Geen klassen toegewezen</h3>
+          <p className="text-gray-600">Neem contact op met de administratie als dit niet klopt.</p>
         </div>
       ) : (
-        teacherAssignedClasses.length > 0 && (
-          <div className="space-y-6">
-            {teacherAssignedClasses.map(cls => {
-              if (!cls || !cls.id) {
-                console.warn("[TeacherMyClassesPage] Invalid class object:", cls);
-                return null; 
-              }
-              
-              const classStudents = students.filter(s => s.class_id === cls.id && s.active);
-              const teacherDetails = allUsers.find(u => u.id === cls.teacher_id);
-              const isExpanded = expandedClass === cls.id;
+        <div className="space-y-5">
+          {teacherAssignedClasses.map(cls => {
+            // Defensive check voor ongeldige data in de array
+            if (!cls || !cls.id) return null;
 
-              return (
-                <div key={cls.id} className="card hover:shadow-lg transition-shadow duration-150">
-                  {/* Class header */}
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+            const classStudents = students.filter(s => s.class_id === cls.id && s.active);
+            const isExpanded = expandedClassId === cls.id;
+
+            return (
+              <div key={cls.id} className="card p-0 overflow-hidden border hover:shadow-lg transition-shadow duration-200">
+                {/* Kaart Header */}
+                <div className="p-5">
+                  <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-emerald-700 mb-2">{cls.name || "Naamloze Klas"}</h3>
-                      {teacherDetails && currentUser && teacherDetails.id !== currentUser.id && (
-                         <p className="text-xs text-gray-500 mb-1">Leraar: {teacherDetails.name}</p>
-                      )}
-                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">{cls.description || "Geen omschrijving."}</p>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Users size={16} className="mr-1.5" />
-                        <span>{classStudents.length} actieve leerling(en)</span>
-                      </div>
+                      <h3 className="text-2xl font-bold text-emerald-700">{cls.name}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{cls.description || "Geen omschrijving."}</p>
+                      <p className="flex items-center text-sm font-medium text-gray-600 mt-2">
+                        <Users size={16} className="mr-2 text-emerald-600"/>
+                        {classStudents.length} actieve leerling(en)
+                      </p>
                     </div>
-                    
-                    {/* Action buttons */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button
-                        onClick={() => handleAddStudent(cls)}
-                        className="inline-flex items-center justify-center px-3 py-2 border border-emerald-600 text-sm font-medium rounded-md text-emerald-600 bg-white hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                      >
-                        <UserPlus size={16} className="mr-2" />
-                        Leerling Toevoegen
-                      </button>
-                      
-                      <Link
-                        to={`/teacher/class/${cls.id}/attendance`}
-                        className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                      >
-                        <Calendar size={16} className="mr-2" />
-                        Absenties
+                    <div className="flex flex-col sm:flex-row gap-2 self-start md:self-center">
+                      <Button onClick={() => handleToggleExpansion(cls.id)} variant="secondary" icon={isExpanded ? ChevronUp : ChevronDown}>
+                        Leerlingen ({classStudents.length})
+                      </Button>
+                      <Button onClick={() => handleAddStudent(cls)} variant="secondary" icon={UserPlus}>Toevoegen</Button>
+                      <Link to={`/teacher/class/${cls.id}/attendance`}>
+                        <Button variant="primary" icon={Calendar} className="w-full">Absenties</Button>
                       </Link>
-                      
-                      {classStudents.length > 0 && (
-                        <button
-                          onClick={() => toggleClassExpansion(cls.id)}
-                          className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                        >
-                          {isExpanded ? (
-                            <>
-                              <ChevronUp size={16} className="mr-2" />
-                              Inklappen
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown size={16} className="mr-2" />
-                              Leerlingen ({classStudents.length})
-                            </>
-                          )}
-                        </button>
-                      )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Expanded students list */}
-                  {isExpanded && classStudents.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                        <Users size={18} className="mr-2" />
-                        Leerlingen in {cls.name}
-                      </h4>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Uitklapbare Leerlingenlijst */}
+                {isExpanded && (
+                  <div className="bg-gray-50 px-5 py-5 border-t border-emerald-100">
+                    <h4 className="text-md font-semibold text-gray-700 mb-3">Leerlingen in {cls.name}</h4>
+                    {classStudents.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {classStudents.map(student => (
-                          <div key={student.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div className="flex items-start justify-between mb-2">
-                              <h5 className="font-medium text-gray-800">{student.name}</h5>
-                              {!student.active && (
-                                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-                                  Inactief
-                                </span>
-                              )}
+                          <div key={student.id} className="bg-white p-4 rounded-lg border shadow-sm flex flex-col">
+                            <div className="flex-1">
+                                <h5 className="font-semibold text-gray-800">{student.name}</h5>
+                                {student.date_of_birth && (
+                                    <p className="text-xs text-gray-500">
+                                        Geboren: {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                                    </p>
+                                )}
+                                {student.notes && (
+                                    <p className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-100 line-clamp-2" title={student.notes}>
+                                        <strong>Notitie:</strong> {student.notes}
+                                    </p>
+                                )}
                             </div>
-                            
-                            {student.date_of_birth && (
-                              <p className="text-xs text-gray-500 mb-2">
-                                Geboren: {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
-                              </p>
-                            )}
-
-                            {student.notes && (
-                              <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                                {student.notes}
-                              </p>
-                            )}
-
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => handleShowQuranProgress(student)}
-                                className="w-full inline-flex items-center justify-center px-3 py-2 text-xs font-medium rounded-md text-emerald-700 bg-emerald-100 hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-emerald-500"
-                              >
-                                <BookMarked size={14} className="mr-1.5" />
-                                Qor'aan Voortgang
-                              </button>
-                            </div>
+                            <Button onClick={() => handleShowQuranProgress(student)} variant="secondary" size="sm" icon={BookMarked} fullWidth className="mt-4">
+                              Qor'aan Voortgang
+                            </Button>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )
-      )}
-
-      {/* Add Student Modal */}
-      {showAddStudentModal && selectedClassForAddStudent && (
-        <AddStudentModal
-          isOpen={showAddStudentModal}
-          onClose={() => {
-            setShowAddStudentModal(false);
-            setSelectedClassForAddStudent(null);
-          }}
-          classId={selectedClassForAddStudent.id}
-          className={selectedClassForAddStudent.name}
-        />
-      )}
-
-      {/* Quran Progress Modal/View */}
-      {showQuranProgress && selectedStudentForQuran && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                    <BookMarked className="mr-2 text-emerald-600" size={24} />
-                    Qor'aan Voortgang
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowQuranProgress(false);
-                      setSelectedStudentForQuran(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    <span className="sr-only">Sluiten</span>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="max-h-96 overflow-y-auto">
-                  <QuranProgressTracker
-                    studentId={selectedStudentForQuran.id}
-                    studentName={selectedStudentForQuran.name}
-                    classId={selectedStudentForQuran.class_id}
-                  />
-                </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">Er zijn nog geen leerlingen toegevoegd aan deze klas.</p>
+                    )}
+                  </div>
+                )}
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modals */}
+      {showAddStudentModal && <AddStudentModal isOpen={showAddStudentModal} onClose={() => setShowAddStudentModal(false)} classId={selectedClassForAddStudent.id} className={selectedClassForAddStudent.name} />}
+      
+      {/* De betere, professionele modal structuur */}
+      {showQuranModal && selectedStudentForQuran && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col transform transition-all">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 id="modal-title" className="text-lg font-medium text-gray-900">Qor'aan Voortgang: {selectedStudentForQuran.name}</h3>
+              <button onClick={() => setShowQuranModal(false)} className="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600">
+                <XCircle size={24} />
+                <span className="sr-only">Sluiten</span>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <QuranProgressTracker studentId={selectedStudentForQuran.id} studentName={selectedStudentForQuran.name} classId={selectedStudentForQuran.class_id} />
             </div>
           </div>
         </div>
