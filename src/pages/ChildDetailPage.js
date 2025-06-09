@@ -1,4 +1,4 @@
-// src/pages/ChildDetailPage.js - DEFINITIEVE VOLLEDIGE VERSIE MET WERKENDE RAPPORT-WEERGAVE
+// src/pages/ChildDetailPage.js - DEFINITIEVE VOLLEDIGE VERSIE
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -20,7 +20,6 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
 import QuranProgressView from '../features/parent/QuranProgressView';
-import StudentReport from '../features/teacher/StudentReport';
 
 // Volledige AbsentieOverzichtView component
 const AbsentieOverzichtView = ({ childId }) => {
@@ -111,138 +110,363 @@ const AbsentieOverzichtView = ({ childId }) => {
     );
 };
 
-// Verbeterde RapportView met StudentReport integratie
+// Volledig uitgewerkte RapportView component
 const RapportView = ({ student, studentClass, teacher }) => {
-    const [report, setReport] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const reportPeriod = "2024-2025";
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const reportPeriod = "2024-2025";
+  const currentDate = new Date().toLocaleDateString('nl-NL');
 
-    useEffect(() => {
-        const fetchReport = async () => {
-            try {
-                setLoading(true);
-                setError('');
-                
-                // Check if we're in demo mode (geen production hostname)
-                const isDemoMode = !window.location.hostname.includes('production');
-                
-                if (isDemoMode) {
-                    // Demo mode: gebruik mock data
-                    console.log("Demo mode: gebruik mock rapport data voor ouder");
-                    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate loading
-                    
-                    setReport({
-                        student_id: student.id,
-                        grades: {
-                            ar_write: 'G',
-                            ar_read: 'V',
-                            qu_recite: 'G',
-                            att_general: 'V',
-                            we_effort: 'G',
-                            ie_understand: 'V',
-                            be_teacher: 'G',
-                        },
-                        comments: 'Goede voortgang dit kwartaal. Blijf zo doorgaan met de mooie inzet!',
-                        attendanceStats: {
-                            aanwezig: 24,
-                            te_laat: 2,
-                            afwezig_geoorloofd: 1,
-                            afwezig_ongeoorloofd: 0,
-                        }
-                    });
-                } else {
-                    // Production mode: try real API
-                    const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
-                    if (data && data.student_id) {
-                        setReport(data);
-                    } else {
-                        setReport(null); // Geen rapport gevonden
-                    }
-                }
-            } catch (err) {
-                console.error("Fout bij ophalen rapport voor ouder:", err);
-                setError("Kon het rapport niet laden. Probeer het later opnieuw.");
-            } finally {
-                setLoading(false);
+  useEffect(() => {
+    const fetchReport = async () => {
+      // Wacht niet langer als we al weten dat er geen student is
+      if (!student?.id) {
+        setLoading(false);
+        setError("Leerlinginformatie niet beschikbaar.");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+        
+        // Check if we're in demo mode
+        const isDemoMode = !window.location.hostname.includes('production');
+        
+        if (isDemoMode) {
+          // Demo mode: gebruik mock data
+          console.log("Demo mode: gebruik mock rapport data voor ouder");
+          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate loading
+          
+          const mockData = {
+            student_id: student.id,
+            grades: {
+              ar_write: 'G',
+              ar_read: 'V',
+              ar_recognize: 'G',
+              ar_dictation: 'M',
+              ar_present: 'V',
+              qu_recite: 'G',
+              qu_memorize: 'V',
+              qu_process: 'G',
+              qu_range: 'V',
+              we_effort: 'G',
+              we_focus: 'V',
+              we_independent: 'G',
+              we_pace: 'V',
+              we_homework: 'G',
+              ie_understand: 'V',
+              ie_learn: 'G',
+              be_teacher: 'G',
+              be_peers: 'V',
+              att_general: 'G',
+            },
+            comments: `Uitstekende voortgang dit kwartaal. ${student.name} toont veel inzet en motivatie bij alle vakken. Blijf zo doorgaan!`,
+            attendanceStats: {
+              aanwezig: 26,
+              te_laat: 1,
+              afwezig_geoorloofd: 1,
+              afwezig_ongeoorloofd: 0,
             }
-        };
-
-        if (student?.id) {
-            fetchReport();
+          };
+          setReport(mockData);
+        } else {
+          // Production mode: try real API
+          const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
+          if (data && data.student_id) {
+            setReport(data);
+          } else {
+            setReport(null);
+          }
         }
-    }, [student?.id, reportPeriod]);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <LoadingSpinner message="Rapport laden..." />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="p-4 bg-red-100 border border-red-200 text-red-700 rounded-lg">
-                <div className="flex items-center">
-                    <XCircle size={16} className="mr-2" />
-                    <span>{error}</span>
-                </div>
-            </div>
-        );
-    }
-    
-    if (!report) {
-        return (
-            <div className="text-center py-12">
-                <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
-                    <Info size={32} className="mx-auto mb-4 text-blue-600" />
-                    <h3 className="font-semibold text-blue-800 mb-2">Nog geen rapport beschikbaar</h3>
-                    <p className="text-sm text-blue-700">
-                        De leraar heeft voor de periode "{reportPeriod}" nog geen rapport opgeslagen voor {student.name}.
-                    </p>
-                    <p className="text-xs text-blue-600 mt-2">
-                        Rapporten worden meestal aan het einde van elk kwartaal gepubliceerd.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    // Print functie voor ouders
-    const handlePrintReport = () => {
-        window.print();
+      } catch (err) {
+        console.error("Fout bij ophalen rapport voor ouder:", err);
+        setError("Kon het rapport niet laden.");
+      } finally {
+        setLoading(false);
+      }
     };
 
+    fetchReport();
+  }, [student?.id, reportPeriod]);
+
+  if (loading) return <LoadingSpinner message="Rapport laden..." />;
+  if (error) return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
+
+  if (!report) {
     return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-800">Rapport</h3>
-                <Button 
-                    icon={Printer} 
-                    variant="secondary" 
-                    onClick={handlePrintReport}
-                    title="Rapport afdrukken"
-                >
-                    Afdrukken
-                </Button>
-            </div>
-            
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <StudentReport 
-                    student={student} 
-                    studentClass={studentClass}
-                    teacher={teacher}
-                    isEditable={false} // BELANGRIJK: Ouders kunnen niet bewerken
-                />
-            </div>
-            
-            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
-                <Info size={16} className="inline mr-2" />
-                Dit is een alleen-lezen weergave van het rapport. Voor vragen over het rapport kunt u contact opnemen met de leraar.
-            </div>
-        </div>
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+        <Info size={24} className="mx-auto mb-2 text-blue-600" />
+        <h3 className="font-semibold text-blue-800">Nog geen rapport beschikbaar</h3>
+        <p className="text-sm text-blue-700 mt-1">
+          De leraar heeft voor de periode "{reportPeriod}" nog geen rapport opgeslagen voor {student.name}.
+        </p>
+      </div>
     );
+  }
+
+  // Definitie van de Grade weergave (read-only)
+  const GradeDisplay = ({ grade }) => {
+    if (!grade) return <div className="w-8 h-8 rounded-full bg-gray-200"></div>;
+    
+    const gradeColors = {
+      'G': 'bg-emerald-600',
+      'V': 'bg-blue-600', 
+      'M': 'bg-yellow-600',
+      'O': 'bg-red-600'
+    };
+    
+    return (
+      <div className={`w-8 h-8 rounded-full font-bold text-white text-xs flex items-center justify-center ${gradeColors[grade] || 'bg-gray-400'}`}>
+        {grade}
+      </div>
+    );
+  };
+
+  // Read-only rapport sectie component
+  const ReportSectionReadOnly = ({ title, titleAr, items, grades }) => (
+    <tbody>
+      <tr className="bg-gray-200">
+        <th className="p-3 text-left font-semibold text-gray-700 border border-gray-300">{title}</th>
+        <th className="p-3 text-right font-semibold text-gray-700 font-arabic border border-gray-300">{titleAr}</th>
+        {['G', 'V', 'M', 'O'].map(g => (
+          <th key={g} className="p-3 w-12 text-center font-semibold border border-gray-300">{g}</th>
+        ))}
+      </tr>
+      {items.map((item) => (
+        <tr key={item.id} className="border-b hover:bg-gray-50">
+          <td className="p-3 border border-gray-300">{item.label}</td>
+          <td className="p-3 text-right font-arabic border border-gray-300">{item.labelAr}</td>
+          {['G', 'V', 'M', 'O'].map(grade => (
+            <td key={grade} className="p-3 border border-gray-300 text-center">
+              {grades[item.id] === grade ? (
+                <GradeDisplay grade={grade} />
+              ) : (
+                <div className="w-8 h-8"></div>
+              )}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  );
+
+  // Aanwezigheid sectie (read-only)
+  const AttendanceSectionReadOnly = ({ stats, grades }) => {
+    const items = [
+      { id: 'att_general', label: 'Aanwezigheid Algemeen', labelAr: 'الحضور العام', key: null },
+      { id: 'att_present', label: 'Aantal lessen aanwezig', labelAr: 'الحضور', key: 'aanwezig' },
+      { id: 'att_late', label: 'Aantal lessen te laat', labelAr: 'التأخير', key: 'te_laat' },
+      { id: 'att_absent_legit', label: 'Aantal lessen geoorloofd afwezig', labelAr: 'الغياب المبرر', key: 'afwezig_geoorloofd' },
+      { id: 'att_absent_illegit', label: 'Aantal lessen ongeoorloofd afwezig', labelAr: 'الغياب غير المبرر', key: 'afwezig_ongeoorloofd' },
+    ];
+    
+    return (
+      <tbody>
+        <tr className="bg-gray-200">
+          <th className="p-3 text-left font-semibold text-gray-700 border border-gray-300">Aanwezigheid</th>
+          <th className="p-3 text-right font-semibold text-gray-700 font-arabic border border-gray-300">الحضور والغياب</th>
+          <th className="p-3 w-24 text-center font-semibold border border-gray-300">Aantal</th>
+          {['G', 'V', 'M', 'O'].map(g => (
+            <th key={g} className="p-3 w-12 text-center font-semibold border border-gray-300">{g}</th>
+          ))}
+        </tr>
+        {items.map((item) => (
+          <tr key={item.id} className="border-b hover:bg-gray-50">
+            <td className="p-3 font-medium border border-gray-300">{item.label}</td>
+            <td className="p-3 text-right font-arabic border border-gray-300">{item.labelAr}</td>
+            <td className={`p-3 border border-gray-300 text-center font-bold text-lg ${
+              item.key ? 'text-gray-700' : 'bg-gray-100'
+            }`}>
+              {item.key ? (stats ? stats[item.key] || 0 : '...') : ''}
+            </td>
+            {item.key === null ? (
+              ['G', 'V', 'M', 'O'].map(grade => (
+                <td key={grade} className="p-3 border border-gray-300 text-center">
+                  {grades[item.id] === grade ? (
+                    <GradeDisplay grade={grade} />
+                  ) : (
+                    <div className="w-8 h-8"></div>
+                  )}
+                </td>
+              ))
+            ) : (
+              <td colSpan="4" className="p-3 border border-gray-300 text-center bg-gray-100 text-gray-500">
+                <span className="text-xs">Automatisch berekend</span>
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    );
+  };
+
+  // De structuur van het rapport
+  const reportDataStructure = {
+    arabic: [
+      { id: 'ar_write', label: 'Schrijven', labelAr: 'الكتابة والخط' },
+      { id: 'ar_read', label: 'Lezen', labelAr: 'القراءة' },
+      { id: 'ar_recognize', label: 'Herkennen van letters', labelAr: 'معرفة الحروف' },
+      { id: 'ar_dictation', label: 'Dictee', labelAr: 'الإملاء' },
+      { id: 'ar_present', label: 'Presenteren', labelAr: 'العرض' },
+    ],
+    quran: [
+      { id: 'qu_recite', label: 'Reciteren', labelAr: 'القراءة' },
+      { id: 'qu_memorize', label: 'Memoriseren', labelAr: 'الحفظ' },
+      { id: 'qu_process', label: 'Leerproces', labelAr: 'عملية التعلم' },
+      { id: 'qu_range', label: 'Van Surah tot Surah', labelAr: 'من سورة إلى سورة' },
+    ],
+    workEthic: [
+      { id: 'we_effort', label: 'Inzet', labelAr: 'الإجتهاد' },
+      { id: 'we_focus', label: 'Concentratie', labelAr: 'التركيز' },
+      { id: 'we_independent', label: 'Zelfstandigheid', labelAr: 'الإعتماد على النفس' },
+      { id: 'we_pace', label: 'Werktempo', labelAr: 'السرعة في إنجاز الأعمال' },
+      { id: 'we_homework', label: 'Huiswerk', labelAr: 'واجبات منزلية' },
+    ],
+    islamicEducation: [
+      { id: 'ie_understand', label: 'Begrijpen', labelAr: 'الفهم' },
+      { id: 'ie_learn', label: 'Leren', labelAr: 'الحفظ' },
+    ],
+    behavior: [
+      { id: 'be_teacher', label: 'Tegen docent(e)', labelAr: 'إتجاه الأستاذ(ة)' },
+      { id: 'be_peers', label: 'Tegen medeleerlingen', labelAr: 'إتجاه التلاميذ' },
+    ],
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-800">Rapport</h3>
+        <Button variant="secondary" icon={Printer} onClick={() => window.print()}>
+          Afdrukken
+        </Button>
+      </div>
+      
+      <div className="bg-white p-8 border rounded-lg shadow-sm" id="parent-report-view">
+        {/* Report Header */}
+        <div className="flex justify-between items-start mb-8 print:mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Voortgangsrapport</h2>
+            <p className="text-gray-500">Schooljaar {reportPeriod}</p>
+            <p className="text-xs text-gray-400 mt-1">Bekeken op: {currentDate}</p>
+          </div>
+          <div className="h-16 w-16 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <span className="text-emerald-600 font-bold text-lg">LVS</span>
+          </div>
+        </div>
+
+        {/* Student Info Table */}
+        <table className="w-full mb-8 border-collapse">
+          <tbody>
+            <tr className="border-b">
+              <td className="p-3 font-semibold text-gray-600 w-1/4 bg-gray-50">Leerling:</td>
+              <td className="p-3">{student?.name}</td>
+            </tr>
+            <tr className="border-b">
+              <td className="p-3 font-semibold text-gray-600 bg-gray-50">Klas:</td>
+              <td className="p-3">{studentClass?.name}</td>
+            </tr>
+            <tr className="border-b">
+              <td className="p-3 font-semibold text-gray-600 bg-gray-50">Docent(e):</td>
+              <td className="p-3">{teacher?.name}</td>
+            </tr>
+            {student?.date_of_birth && (
+              <tr className="border-b">
+                <td className="p-3 font-semibold text-gray-600 bg-gray-50">Geboortedatum:</td>
+                <td className="p-3">{new Date(student.date_of_birth).toLocaleDateString('nl-NL')}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Grade Legend */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h4 className="font-semibold text-blue-800 mb-2">Beoordelingsschaal:</h4>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span><strong>G</strong> = Goed</span>
+            <span><strong>V</strong> = Voldoende</span>
+            <span><strong>M</strong> = Matig</span>
+            <span><strong>O</strong> = Onvoldoende</span>
+          </div>
+        </div>
+        
+        {/* Grades Tables */}
+        <div className="space-y-6">
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <ReportSectionReadOnly 
+              title="Arabische Taal" 
+              titleAr="اللغة العربية" 
+              items={reportDataStructure.arabic} 
+              grades={report.grades} 
+            />
+          </table>
+
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <ReportSectionReadOnly 
+              title="Koran" 
+              titleAr="القرآن الكريم" 
+              items={reportDataStructure.quran} 
+              grades={report.grades} 
+            />
+          </table>
+
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <ReportSectionReadOnly 
+              title="Werkhouding" 
+              titleAr="طريقة العمل" 
+              items={reportDataStructure.workEthic} 
+              grades={report.grades} 
+            />
+          </table>
+
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <ReportSectionReadOnly 
+              title="Islamitische opvoeding" 
+              titleAr="التربية الإسلامية" 
+              items={reportDataStructure.islamicEducation} 
+              grades={report.grades} 
+            />
+          </table>
+
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <ReportSectionReadOnly 
+              title="Gedrag in de klas" 
+              titleAr="السلوك في القسم" 
+              items={reportDataStructure.behavior} 
+              grades={report.grades} 
+            />
+          </table>
+
+          {/* Attendance Table */}
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <AttendanceSectionReadOnly 
+              stats={report.attendanceStats} 
+              grades={report.grades} 
+            />
+          </table>
+        </div>
+
+        {/* Comments section */}
+        <div className="mt-8">
+          <h3 className="font-semibold text-gray-700 mb-3">Opmerkingen</h3>
+          <div className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md text-sm bg-gray-50">
+            {report.comments || <span className="italic text-gray-500">Geen opmerkingen</span>}
+          </div>
+        </div>
+
+        {/* Info banner */}
+        <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex items-center">
+            <Info size={16} className="text-emerald-600 mr-2" />
+            <span className="text-sm text-emerald-800">
+              Dit is een alleen-lezen weergave van het rapport. Voor vragen kunt u contact opnemen met de leraar.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Hoofdcomponent
