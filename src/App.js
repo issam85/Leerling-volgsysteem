@@ -115,9 +115,11 @@ const AppRoutes = () => {
           </Route>
 
           <Route path="teacher" element={<ProtectedRoute teacherOnly={true}><Outlet /></ProtectedRoute>}>
-            <Route path="my-classes" element={<TeacherMyClassesPage />} />
+            {/* De nieuwe dynamische route voor het klassen-dashboard */}
+            <Route path="my-classes/:classId" element={<TeacherMyClassesPage />} />
             <Route path="class/:classId/attendance" element={<TeacherClassAttendancePage />} />
-            <Route index element={<Navigate to="my-classes" replace />} /> 
+            {/* De index route stuurt nu naar een placeholder of de eerste klas (logica in sidebar) */}
+            <Route index element={<Navigate to="/dashboard" replace />} /> 
           </Route>
 
           <Route path="parent" element={<ProtectedRoute parentOnly={true}><Outlet /></ProtectedRoute>}>

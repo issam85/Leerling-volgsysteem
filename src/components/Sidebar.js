@@ -1,4 +1,4 @@
-// src/components/Sidebar.js - DEFINITIEVE VERSIE met gecombineerde link/knop
+// src/components/Sidebar.js - AANGEPAST VOOR LERAAR ACCORDION
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,14 +24,19 @@ const Sidebar = () => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isChildrenMenuOpen, setIsChildrenMenuOpen] = useState(true);
+  const [isTeacherMenuOpen, setIsTeacherMenuOpen] = useState(true);
 
   const isParentSectionActive = location.pathname.startsWith('/parent/my-children');
+  const isTeacherSectionActive = location.pathname.startsWith('/teacher/my-classes');
 
   useEffect(() => {
     if (isParentSectionActive) {
       setIsChildrenMenuOpen(true);
     }
-  }, [isParentSectionActive]);
+    if (isTeacherSectionActive) {
+      setIsTeacherMenuOpen(true);
+    }
+  }, [isParentSectionActive, isTeacherSectionActive]);
 
   const handleLogout = async () => {
     try {
@@ -44,8 +49,13 @@ const Sidebar = () => {
 
   if (!currentUser) return null;
 
+  // Data voor verschillende rollen
   const myChildren = (currentUser.role === 'parent' && realData?.students)
     ? realData.students.filter(student => String(student.parent_id) === String(currentUser.id))
+    : [];
+    
+  const myClasses = (currentUser.role === 'teacher' && realData?.teacherAssignedClasses)
+    ? realData.teacherAssignedClasses
     : [];
   
   const baseItems = [
@@ -60,11 +70,6 @@ const Sidebar = () => {
     { to: '/admin/students', icon: Baby, label: 'Leerlingen' },
     { to: '/admin/payments', icon: CreditCard, label: 'Betalingen' },
     { to: '/admin/settings', icon: Settings, label: 'Instellingen' }
-  ];
-  
-  const teacherItems = [
-    ...baseItems,
-    { to: '/teacher/my-classes', icon: GraduationCap, label: 'Mijn Klassen' }
   ];
 
   return (
@@ -115,26 +120,82 @@ const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         <div className="px-2 space-y-1">
-          {/* Dashboard link voor ouders */}
-          {currentUser.role === 'parent' && (
-            <NavLink 
-              to="/dashboard" 
-              className={({ isActive }) => `flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors group ${
-                isActive 
-                  ? 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-600' 
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-              title={isCollapsed ? 'Dashboard' : ''}
-            >
-              <LayoutDashboard 
-                className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
-                size={20} 
-              />
-              {!isCollapsed && 'Dashboard'}
-            </NavLink>
+          {/* Dashboard altijd bovenaan */}
+          <NavLink 
+            to="/dashboard" 
+            className={({ isActive }) => `flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors group ${
+              isActive 
+                ? 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-600' 
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
+            title={isCollapsed ? 'Dashboard' : ''}
+          >
+            <LayoutDashboard 
+              className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
+              size={20} 
+            />
+            {!isCollapsed && 'Dashboard'}
+          </NavLink>
+          
+          {/* Leraar Accordion Menu */}
+          {currentUser.role === 'teacher' && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setIsTeacherMenuOpen(!isTeacherMenuOpen)}
+                className={`flex items-center justify-between w-full px-2 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
+                  isTeacherSectionActive
+                    ? 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-600'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+                title={isCollapsed ? 'Mijn Klassen' : ''}
+              >
+                <div className="flex items-center">
+                  <GraduationCap 
+                    className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
+                    size={20} 
+                  />
+                  {!isCollapsed && 'Mijn Klassen'}
+                </div>
+                {!isCollapsed && (
+                  <span className="ml-2">
+                    {isTeacherMenuOpen ? (
+                      <ChevronDown size={16} className="text-gray-400" />
+                    ) : (
+                      <ChevronRight size={16} className="text-gray-400" />
+                    )}
+                  </span>
+                )}
+              </button>
+              
+              {!isCollapsed && isTeacherMenuOpen && (
+                <div className="ml-6 space-y-1">
+                  {myClasses.length > 0 ? (
+                    myClasses.map(cls => (
+                      <NavLink 
+                        key={cls.id} 
+                        to={`/teacher/my-classes/${cls.id}`} 
+                        className={({ isActive }) => `flex items-center w-full px-2 py-1.5 text-xs font-medium rounded-md transition-colors group ${
+                          isActive
+                            ? 'bg-emerald-50 text-emerald-800 border-l-2 border-emerald-600'
+                            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                        }`}
+                      >
+                        <Circle size={6} className="mr-3 text-emerald-400 flex-shrink-0" />
+                        <span className="truncate">{cls.name}</span>
+                      </NavLink>
+                    ))
+                  ) : (
+                    <div className="flex items-center w-full px-2 py-1.5 text-xs text-gray-400 italic">
+                      <Circle size={6} className="mr-3 text-gray-300 flex-shrink-0" />
+                      Geen klassen toegewezen
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
-          {/* De nieuwe, gecombineerde knop voor "Mijn Kinderen" */}
+          {/* Ouder sectie (bestaande code) */}
           {currentUser.role === 'parent' && (
             <div className={`flex items-center rounded-md transition-colors group ${
               isParentSectionActive 
@@ -208,9 +269,9 @@ const Sidebar = () => {
             </div>
           )}
 
-          {/* Navigatie voor Admin en Leraar */}
-          {currentUser.role !== 'parent' && (
-            (currentUser.role === 'admin' ? adminItems : teacherItems).map((item) => (
+          {/* Admin navigatie */}
+          {currentUser.role === 'admin' && (
+            adminItems.slice(1).map((item) => (
               <NavLink 
                 key={item.to} 
                 to={item.to} 
