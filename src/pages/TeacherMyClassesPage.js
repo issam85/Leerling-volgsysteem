@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET WERKENDE QOR'AAN KNOP
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET RAPPORT-INTEGRATIE
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,8 +6,9 @@ import { useData } from '../contexts/DataContext';
 import { apiCall } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
-import AddStudentModal from '../features/teacher/AddStudentModal'; // Zorg dat dit pad klopt
-import QuranProgressTracker from '../features/teacher/QuranProgressTracker'; // Zorg dat dit pad klopt
+import AddStudentModal from '../features/teacher/AddStudentModal';
+import QuranProgressTracker from '../features/teacher/QuranProgressTracker';
+import StudentReport from '../features/teacher/StudentReport'; // NIEUWE IMPORT
 import { 
   AlertCircle, 
   UserPlus, 
@@ -15,12 +16,14 @@ import {
   BookMarked, 
   User, 
   Phone, 
-  Send,
+  Send, 
   Calendar,
-  XCircle,
-  ArrowLeft,
-  CheckCircle,
-  X
+  XCircle, 
+  ArrowLeft, 
+  CheckCircle, 
+  X, 
+  ClipboardList, 
+  Printer
 } from 'lucide-react';
 
 // Functionele MailModal met volledige functionaliteit
@@ -153,6 +156,10 @@ const TeacherMyClassesPage = () => {
   // State voor Add Student modal
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
+  // NIEUWE STATE VOOR RAPPORT MODAL
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedStudentForReport, setSelectedStudentForReport] = useState(null);
+
   // Auto-clear feedback after 5 seconds
   useEffect(() => {
     if (feedback.message) {
@@ -231,6 +238,25 @@ const TeacherMyClassesPage = () => {
 
   const handleCloseAddStudentModal = () => {
     setShowAddStudentModal(false);
+  };
+
+  // NIEUWE HANDLERS VOOR RAPPORT
+  const handleShowReport = (student) => {
+    setSelectedStudentForReport(student);
+    setShowReportModal(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setSelectedStudentForReport(null);
+    setShowReportModal(false);
+  };
+
+  const handlePrintReport = () => {
+    // Focus op het rapport element voor printing
+    const reportElement = document.getElementById('report-content');
+    if (reportElement) {
+      window.print();
+    }
   };
   
   // Volledige email handler
@@ -361,7 +387,7 @@ const TeacherMyClassesPage = () => {
         </div>
       )}
 
-      {/* Leerlingen Tabel */}
+      {/* Leerlingen Tabel met nieuwe Rapport Knop */}
       {classStudents.length === 0 ? (
         <div className="card text-center p-8">
           <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -451,6 +477,17 @@ const TeacherMyClassesPage = () => {
                             Mail
                           </Button>
                           
+                          {/* NIEUWE RAPPORT KNOP */}
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            icon={ClipboardList} 
+                            onClick={() => handleShowReport(student)}
+                            title="Rapport bekijken/printen"
+                          >
+                            Rapport
+                          </Button>
+                          
                           <Button 
                             size="sm" 
                             icon={BookMarked} 
@@ -525,6 +562,44 @@ const TeacherMyClassesPage = () => {
                 studentId={selectedStudentForQuran.id} 
                 studentName={selectedStudentForQuran.name} 
                 classId={selectedStudentForQuran.class_id} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NIEUWE RAPPORT MODAL */}
+      {showReportModal && selectedStudentForReport && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-start p-4 overflow-y-auto">
+          <div className="bg-gray-100 rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col my-8">
+            <div className="flex items-center justify-between p-4 border-b bg-white rounded-t-lg">
+              <h3 className="text-lg font-medium text-gray-900">
+                Rapport: {selectedStudentForReport.name}
+              </h3>
+              <div className="flex items-center gap-2">
+                <Button 
+                  icon={Printer} 
+                  variant="secondary" 
+                  onClick={handlePrintReport}
+                  title="Rapport afdrukken"
+                >
+                  Afdrukken
+                </Button>
+                <button 
+                  onClick={handleCloseReportModal} 
+                  className="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                  title="Rapport sluiten"
+                >
+                  <XCircle size={24} />
+                  <span className="sr-only">Sluiten</span>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto" id="report-content">
+              <StudentReport 
+                student={selectedStudentForReport}
+                studentClass={currentClass}
+                teacher={users.find(u => String(u.id) === String(currentClass.teacher_id))}
               />
             </div>
           </div>
