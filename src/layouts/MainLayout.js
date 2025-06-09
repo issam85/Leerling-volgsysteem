@@ -9,7 +9,7 @@ import { Building } from 'lucide-react'; // Icoon voor foutmeldingen
 
 const MainLayout = () => {
   const { realData, loadData } = useData();
-  const { currentUser, logout } = useAuth(); // Haal logout functie
+  const { currentUser, logout } = useAuth();
 
   // ProtectedRoute in App.js handelt al af als currentUser null is.
   // Dit is een extra check.
@@ -61,17 +61,20 @@ const MainLayout = () => {
     );
   }
 
+  // ==========================================================
+  // HIER ZIT DE CORRECTIE
+  // We wrappen de Sidebar en main in een div met "md:flex"
+  // en halen de overbodige padding van de main tag weg.
+  // ==========================================================
   return (
-    // De div met "flex" is niet meer nodig als Sidebar fixed is.
-    // De MainLayout wordt nu een container voor de content rechts van de sidebar.
-    <>
-      <Sidebar /> {/* Sidebar is fixed en staat los */}
-      <main className="flex-1 overflow-x-hidden overflow-y-auto md:pl-64"> {/* pl-64 voor desktop, mobiel anders? */}
+    <div className="relative min-h-screen md:flex">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto">
         <div className="p-4 sm:p-6 md:p-8">
             <Outlet />
         </div>
       </main>
-    </>
+    </div>
   );
 };
 
