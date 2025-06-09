@@ -1,7 +1,9 @@
-// src/pages/TeacherMyClassesPage.js - HET NIEUWE KLASSE-DASHBOARD
-import React, { useState } from 'react';
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET WERKENDE EMAIL
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { apiCall } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
 import { 
@@ -11,23 +13,118 @@ import {
   BookMarked, 
   User, 
   Phone, 
+  Send, 
   Calendar,
-  ArrowLeft
+  ArrowLeft,
+  X,
+  CheckCircle
 } from 'lucide-react';
 
-// Placeholder Modal Component
-const MailModal = ({ show, onClose, title, children }) => {
+// De nieuwe, functionele MailModal component
+const MailModal = ({ show, onClose, title, onSend, isLoading, recipientInfo }) => {
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!show) {
+      setSubject('');
+      setBody('');
+    }
+  }, [show]);
+
   if (!show) return null;
+
+  const handleSend = () => {
+    if (!subject.trim() || !body.trim()) {
+      alert('Onderwerp en bericht zijn verplicht.');
+      return;
+    }
+    onSend({ subject: subject.trim(), body: body.trim() });
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg w-full max-w-lg shadow-xl">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">{title}</h3>
-          <div>{children}</div>
-          <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={onClose} variant="secondary">Annuleren</Button>
-            <Button onClick={onClose}>Versturen</Button>
+    <div 
+      className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      onKeyDown={handleKeyPress}
+      tabIndex={-1}
+    >
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+            disabled={isLoading}
+          >
+            <X size={20} />
+            <span className="sr-only">Sluiten</span>
+          </button>
+        </div>
+        
+        <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+          {recipientInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Aan:</strong> {recipientInfo}
+              </p>
+            </div>
+          )}
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Onderwerp *
+            </label>
+            <input 
+              type="text" 
+              value={subject} 
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Onderwerp van uw email"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-gray-100"
+              disabled={isLoading}
+              maxLength={200}
+            />
           </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Bericht *
+            </label>
+            <textarea 
+              value={body} 
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Typ hier uw bericht..."
+              className="w-full h-32 p-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500 resize-none disabled:bg-gray-100"
+              disabled={isLoading}
+              maxLength={2000}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              {body.length}/2000 karakters
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-2 p-4 border-t bg-gray-50">
+          <Button 
+            onClick={onClose} 
+            variant="secondary" 
+            disabled={isLoading}
+          >
+            Annuleren
+          </Button>
+          <Button 
+            onClick={handleSend} 
+            icon={Send} 
+            disabled={isLoading || !subject.trim() || !body.trim()}
+          >
+            {isLoading ? 'Versturen...' : 'Versturen'}
+          </Button>
         </div>
       </div>
     </div>
@@ -37,13 +134,23 @@ const MailModal = ({ show, onClose, title, children }) => {
 const TeacherMyClassesPage = () => {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const { realData } = useData();
   const { classes = [], students = [], users = [], loading, error } = realData;
 
-  // State voor de modals
-  const [showMailParentModal, setShowMailParentModal] = useState(false);
-  const [showMailClassModal, setShowMailClassModal] = useState(false);
-  const [selectedRecipient, setSelectedRecipient] = useState(null);
+  const [modalState, setModalState] = useState({ type: null, data: null });
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
+
+  // Auto-clear feedback after 5 seconds
+  useEffect(() => {
+    if (feedback.message) {
+      const timer = setTimeout(() => {
+        setFeedback({ type: '', message: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback.message]);
 
   if (loading && !classes.length) {
     return <LoadingSpinner message="Klasgegevens laden..." />;
@@ -58,6 +165,15 @@ const TeacherMyClassesPage = () => {
     );
   }
 
+  if (!currentUser || currentUser.role !== 'teacher') {
+    return (
+      <div className="card text-orange-600 bg-orange-50 border-orange-200 p-4">
+        <AlertCircle className="inline mr-2"/>
+        Geen toegang. U dient ingelogd te zijn als leraar.
+      </div>
+    );
+  }
+
   const currentClass = classes.find(c => String(c.id) === String(classId));
   
   if (!currentClass) {
@@ -65,7 +181,9 @@ const TeacherMyClassesPage = () => {
       <div className="card text-center p-8">
         <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Klas niet gevonden</h2>
-        <p className="text-gray-600 mb-4">De opgevraagde klas kon niet worden gevonden.</p>
+        <p className="text-gray-600 mb-4">
+          De opgevraagde klas kon niet worden gevonden of u heeft geen toegang tot deze klas.
+        </p>
         <Button onClick={() => navigate('/dashboard')} icon={ArrowLeft}>
           Terug naar Dashboard
         </Button>
@@ -77,14 +195,73 @@ const TeacherMyClassesPage = () => {
     String(s.class_id) === String(classId) && s.active
   );
 
-  const handleMailParent = (student) => {
-    const parent = users.find(u => String(u.id) === String(student.parent_id));
-    if (parent) {
-      setSelectedRecipient({ ...parent, studentName: student.name });
-      setShowMailParentModal(true);
-    } else {
-      alert('Ouderinformatie niet gevonden voor deze leerling.');
+  const openModal = (type, data = null) => setModalState({ type, data });
+  const closeModal = () => {
+    if (!isLoading) {
+      setModalState({ type: null, data: null });
     }
+  };
+
+  const handleSendEmail = async ({ subject, body }) => {
+    setIsLoading(true);
+    setFeedback({ type: '', message: '' });
+    
+    try {
+      let result;
+      if (modalState.type === 'mail_parent') {
+        const parent = users.find(u => String(u.id) === String(modalState.data.parent_id));
+        if (!parent) {
+          throw new Error('Ouder niet gevonden');
+        }
+        result = await apiCall('/api/email/send-to-parent', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            recipientUserId: parent.id, 
+            subject, 
+            body,
+            studentName: modalState.data.name
+          })
+        });
+      } else if (modalState.type === 'mail_class') {
+        result = await apiCall('/api/email/send-to-class', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            classId: currentClass.id, 
+            subject, 
+            body 
+          })
+        });
+      }
+      
+      setFeedback({ 
+        type: 'success', 
+        message: result?.message || 'Email succesvol verstuurd!' 
+      });
+      closeModal();
+    } catch (error) {
+      console.error('Email error:', error);
+      setFeedback({ 
+        type: 'error', 
+        message: `Fout bij versturen: ${error.message}` 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getRecipientInfo = () => {
+    if (modalState.type === 'mail_parent' && modalState.data) {
+      const parent = users.find(u => String(u.id) === String(modalState.data.parent_id));
+      return parent ? `${parent.name} (${parent.email})` : 'Ouder niet gevonden';
+    } else if (modalState.type === 'mail_class') {
+      const parentCount = [...new Set(
+        classStudents
+          .map(s => s.parent_id)
+          .filter(Boolean)
+      )].length;
+      return `${parentCount} ouder(s) van klas ${currentClass.name}`;
+    }
+    return '';
   };
 
   return (
@@ -115,7 +292,7 @@ const TeacherMyClassesPage = () => {
           <Button 
             icon={Mail} 
             variant="secondary" 
-            onClick={() => setShowMailClassModal(true)}
+            onClick={() => openModal('mail_class')}
             disabled={classStudents.length === 0}
           >
             Bericht aan Klas
@@ -127,6 +304,28 @@ const TeacherMyClassesPage = () => {
           </Link>
         </div>
       </div>
+      
+      {/* Feedback Messages */}
+      {feedback.message && (
+        <div className={`p-4 rounded-md text-sm flex items-center ${
+          feedback.type === 'success' 
+            ? 'bg-green-100 text-green-700 border border-green-200' 
+            : 'bg-red-100 text-red-700 border border-red-200'
+        }`}>
+          {feedback.type === 'success' ? (
+            <CheckCircle size={18} className="mr-2 flex-shrink-0" />
+          ) : (
+            <AlertCircle size={18} className="mr-2 flex-shrink-0" />
+          )}
+          <span>{feedback.message}</span>
+          <button
+            onClick={() => setFeedback({ type: '', message: '' })}
+            className="ml-auto p-1 hover:bg-black hover:bg-opacity-10 rounded"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Leerlingen Tabel */}
       {classStudents.length === 0 ? (
@@ -208,7 +407,7 @@ const TeacherMyClassesPage = () => {
                           <Button 
                             variant="secondary" 
                             size="sm" 
-                            onClick={() => handleMailParent(student)}
+                            onClick={() => parent && openModal('mail_parent', student)}
                             disabled={!parent?.email}
                             title={parent?.email ? `Mail ${parent.name}` : 'Geen email beschikbaar'}
                           >
@@ -233,80 +432,24 @@ const TeacherMyClassesPage = () => {
         </div>
       )}
 
-      {/* Modals */}
+      {/* Email Modals */}
       <MailModal 
-        show={showMailParentModal} 
-        onClose={() => {
-          setShowMailParentModal(false);
-          setSelectedRecipient(null);
-        }} 
-        title={`Email naar ${selectedRecipient?.name}`}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Aan:
-            </label>
-            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              {selectedRecipient?.email} (ouder van {selectedRecipient?.studentName})
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Onderwerp:
-            </label>
-            <input 
-              type="text" 
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Onderwerp van uw email"
-              defaultValue={`Bericht over ${selectedRecipient?.studentName}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Bericht:
-            </label>
-            <textarea 
-              className="w-full h-32 p-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500 resize-none" 
-              placeholder="Typ hier uw bericht..."
-            />
-          </div>
-        </div>
-      </MailModal>
-
+        show={modalState.type === 'mail_parent'} 
+        onClose={closeModal} 
+        title={`Email naar ouder van ${modalState.data?.name}`}
+        onSend={handleSendEmail}
+        isLoading={isLoading}
+        recipientInfo={getRecipientInfo()}
+      />
+      
       <MailModal 
-        show={showMailClassModal} 
-        onClose={() => setShowMailClassModal(false)} 
+        show={modalState.type === 'mail_class'} 
+        onClose={closeModal} 
         title={`Bericht naar alle ouders van ${currentClass.name}`}
-      >
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              <strong>Let op:</strong> Dit bericht wordt verstuurd naar {classStudents.length} ouder(s).
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Onderwerp:
-            </label>
-            <input 
-              type="text" 
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Onderwerp van uw email"
-              defaultValue={`Bericht van klas ${currentClass.name}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Bericht:
-            </label>
-            <textarea 
-              className="w-full h-32 p-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500 resize-none" 
-              placeholder="Typ hier uw bericht..."
-            />
-          </div>
-        </div>
-      </MailModal>
+        onSend={handleSendEmail}
+        isLoading={isLoading}
+        recipientInfo={getRecipientInfo()}
+      />
     </div>
   );
 };
