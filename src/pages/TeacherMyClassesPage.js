@@ -1,4 +1,4 @@
-// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET WERKENDE EMAIL
+// src/pages/TeacherMyClassesPage.js - DEFINITIEVE VERSIE MET WERKENDE QOR'AAN KNOP
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,6 +6,8 @@ import { useData } from '../contexts/DataContext';
 import { apiCall } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
+import AddStudentModal from '../features/teacher/AddStudentModal'; // Zorg dat dit pad klopt
+import QuranProgressTracker from '../features/teacher/QuranProgressTracker'; // Zorg dat dit pad klopt
 import { 
   AlertCircle, 
   UserPlus, 
@@ -13,14 +15,15 @@ import {
   BookMarked, 
   User, 
   Phone, 
-  Send, 
+  Send,
   Calendar,
+  XCircle,
   ArrowLeft,
-  X,
-  CheckCircle
+  CheckCircle,
+  X
 } from 'lucide-react';
 
-// De nieuwe, functionele MailModal component
+// Functionele MailModal met volledige functionaliteit
 const MailModal = ({ show, onClose, title, onSend, isLoading, recipientInfo }) => {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -44,14 +47,14 @@ const MailModal = ({ show, onClose, title, onSend, isLoading, recipientInfo }) =
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && !isLoading) {
       onClose();
     }
   };
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] bg-black bg-opacity-50 flex items-center justify-center p-4"
       onKeyDown={handleKeyPress}
       tabIndex={-1}
     >
@@ -67,7 +70,7 @@ const MailModal = ({ show, onClose, title, onSend, isLoading, recipientInfo }) =
             <span className="sr-only">Sluiten</span>
           </button>
         </div>
-        
+
         <div className="p-4 space-y-4 flex-1 overflow-y-auto">
           {recipientInfo && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -109,7 +112,7 @@ const MailModal = ({ show, onClose, title, onSend, isLoading, recipientInfo }) =
             </div>
           </div>
         </div>
-        
+
         <div className="flex justify-end gap-2 p-4 border-t bg-gray-50">
           <Button 
             onClick={onClose} 
@@ -138,9 +141,17 @@ const TeacherMyClassesPage = () => {
   const { realData } = useData();
   const { classes = [], students = [], users = [], loading, error } = realData;
 
+  // State voor de modals
   const [modalState, setModalState] = useState({ type: null, data: null });
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
+
+  // State voor de Qor'aan modal
+  const [showQuranModal, setShowQuranModal] = useState(false);
+  const [selectedStudentForQuran, setSelectedStudentForQuran] = useState(null);
+
+  // State voor Add Student modal
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   // Auto-clear feedback after 5 seconds
   useEffect(() => {
@@ -201,7 +212,28 @@ const TeacherMyClassesPage = () => {
       setModalState({ type: null, data: null });
     }
   };
+  
+  // Handler functie voor de Qor'aan modal
+  const handleShowQuranProgress = (student) => {
+    setSelectedStudentForQuran(student);
+    setShowQuranModal(true);
+  };
 
+  const handleCloseQuranModal = () => {
+    setShowQuranModal(false);
+    setSelectedStudentForQuran(null);
+  };
+
+  // Handler voor Add Student modal
+  const handleAddStudent = () => {
+    setShowAddStudentModal(true);
+  };
+
+  const handleCloseAddStudentModal = () => {
+    setShowAddStudentModal(false);
+  };
+  
+  // Volledige email handler
   const handleSendEmail = async ({ subject, body }) => {
     setIsLoading(true);
     setFeedback({ type: '', message: '' });
@@ -272,23 +304,25 @@ const TeacherMyClassesPage = () => {
           <div className="flex items-center gap-3 mb-2">
             <button 
               onClick={() => navigate('/dashboard')}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors lg:hidden"
               title="Terug naar dashboard"
             >
-              <ArrowLeft size={20} className="text-gray-600" />
+              <ArrowLeft size={20} className="text-gray-600"/>
             </button>
             <h2 className="page-title mb-0">{currentClass.name}</h2>
           </div>
-          <p className="text-gray-600 ml-11">
-            {currentClass.description || 'Geen omschrijving beschikbaar'}
+          <p className="text-gray-600 ml-11 lg:ml-0 mb-2">
+            {currentClass.description || 'Geen omschrijving beschikbaar.'}
           </p>
-          <p className="text-sm text-gray-500 ml-11">
+          <p className="text-sm text-gray-500 ml-11 lg:ml-0">
             {classStudents.length} actieve leerling{classStudents.length !== 1 ? 'en' : ''}
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button icon={UserPlus}>Nieuwe Leerling</Button>
+          <Button icon={UserPlus} onClick={handleAddStudent}>
+            Nieuwe Leerling
+          </Button>
           <Button 
             icon={Mail} 
             variant="secondary" 
@@ -335,7 +369,9 @@ const TeacherMyClassesPage = () => {
           <p className="text-gray-600 mb-4">
             Er zijn nog geen leerlingen toegevoegd aan deze klas.
           </p>
-          <Button icon={UserPlus}>Voeg eerste leerling toe</Button>
+          <Button icon={UserPlus} onClick={handleAddStudent}>
+            Voeg eerste leerling toe
+          </Button>
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-md border overflow-hidden">
@@ -407,17 +443,19 @@ const TeacherMyClassesPage = () => {
                           <Button 
                             variant="secondary" 
                             size="sm" 
+                            icon={Mail} 
                             onClick={() => parent && openModal('mail_parent', student)}
                             disabled={!parent?.email}
                             title={parent?.email ? `Mail ${parent.name}` : 'Geen email beschikbaar'}
                           >
-                            <Mail size={14} />
+                            Mail
                           </Button>
+                          
                           <Button 
-                            variant="secondary" 
-                            size="sm"
-                            icon={BookMarked}
-                            title="Qor'aan voortgang"
+                            size="sm" 
+                            icon={BookMarked} 
+                            onClick={() => handleShowQuranProgress(student)}
+                            title="Qor'aan voortgang bekijken"
                           >
                             Qor'aan
                           </Button>
@@ -450,6 +488,48 @@ const TeacherMyClassesPage = () => {
         isLoading={isLoading}
         recipientInfo={getRecipientInfo()}
       />
+      
+      {/* Add Student Modal */}
+      {showAddStudentModal && (
+        <AddStudentModal
+          isOpen={showAddStudentModal}
+          onClose={handleCloseAddStudentModal}
+          classId={currentClass.id}
+          className={currentClass.name}
+        />
+      )}
+      
+      {/* Qor'aan Progress Modal */}
+      {showQuranModal && selectedStudentForQuran && (
+        <div 
+          className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4" 
+          aria-labelledby="quran-modal-title" 
+          role="dialog" 
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col transform transition-all">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 id="quran-modal-title" className="text-lg font-medium text-gray-900">
+                Qor'aan Voortgang: {selectedStudentForQuran.name}
+              </h3>
+              <button 
+                onClick={handleCloseQuranModal} 
+                className="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+              >
+                <XCircle size={24} />
+                <span className="sr-only">Sluiten</span>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <QuranProgressTracker 
+                studentId={selectedStudentForQuran.id} 
+                studentName={selectedStudentForQuran.name} 
+                classId={selectedStudentForQuran.class_id} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
