@@ -17,6 +17,7 @@ import PaymentsPage from './pages/PaymentsPage';
 import SettingsPage from './pages/SettingsPage';
 // Parent Pages
 import MyChildrenPage from './pages/MyChildrenPage';
+import ChildDetailPage from './pages/ChildDetailPage';
 // Teacher Pages
 import TeacherMyClassesPage from './pages/TeacherMyClassesPage';
 import TeacherClassAttendancePage from './pages/TeacherClassAttendancePage';
@@ -121,6 +122,8 @@ const AppRoutes = () => {
 
           <Route path="parent" element={<ProtectedRoute parentOnly={true}><Outlet /></ProtectedRoute>}>
             <Route path="my-children" element={<MyChildrenPage />} />
+            {/* NIEUWE ROUTE voor de detailpagina van een kind */}
+            <Route path="my-children/:studentId" element={<ChildDetailPage />} />
             <Route index element={<Navigate to="my-children" replace />} />
           </Route>
         </Route>
