@@ -6,7 +6,7 @@ import {
   ArrowLeft, 
   User, 
   BookOpen as ClassIcon, 
-  BarChart3, 
+  CalendarDays, 
   BookMarked, 
   ClipboardList,
   AlertCircle,
@@ -136,7 +136,7 @@ const ChildDetailPage = () => {
             {/* Tab Navigatie */}
             <div className="border-b border-gray-200">
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                    <TabButton tabName="overzicht" label="Overzicht" icon={BarChart3}/>
+                    <TabButton tabName="overzicht" label="Aanwezigheid" icon={CalendarDays}/>
                     <TabButton tabName="quran" label="Qor'aan" icon={BookMarked}/>
                     <TabButton tabName="rapport" label="Rapport" icon={ClipboardList}/>
                 </nav>
