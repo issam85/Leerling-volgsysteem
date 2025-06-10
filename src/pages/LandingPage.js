@@ -420,7 +420,7 @@ const LandingPage = () => {
                             size="xl" 
                             className="bg-white text-emerald-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold"
                         >
-                            Start Nu Gratis <ArrowRight className="w-5 h-5 ml-2" />
+                            Gratis Registreren <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                         <a href="mailto:i.abdellaoui@gmail.com">
                             <Button 
