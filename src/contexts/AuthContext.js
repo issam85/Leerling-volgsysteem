@@ -6,15 +6,23 @@ import { supabase } from '../supabaseClient';
 const AuthContext = createContext(null);
 
 const getSubdomainFromHostname = (hostname) => {
-  const parts = hostname.split('.');
+  // De localhost logica blijft hetzelfde en is prima.
   if (hostname === 'localhost' || hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-    return localStorage.getItem('currentSubdomainForDev') || 'al-hijra';
+    return localStorage.getItem('currentSubdomainForDev') || 'al-hijra'; // Je kunt hier 'test' van maken als je wilt
   }
+
+  const parts = hostname.split('.');
+  
+  // NIEUWE, GENERIEKE LOGICA:
+  // Als de hostnaam 3 of meer delen heeft (bv. test.mijnlvs.nl)
+  // EN het eerste deel is niet 'www'...
   if (parts.length >= 3 && parts[0] !== 'www') {
-    if (['al-hijra', 'al-noor', 'register'].includes(parts[0])) {
-      return parts[0];
-    }
+    // ...dan is dat eerste deel het subdomein.
+    return parts[0];
   }
+  
+  // In alle andere gevallen (bv. mijnlvs.nl of www.mijnlvs.nl),
+  // beschouwen we het als het hoofd-domein en sturen we naar registratie.
   return 'register';
 };
 
