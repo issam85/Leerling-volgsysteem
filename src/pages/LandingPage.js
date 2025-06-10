@@ -171,6 +171,200 @@ const LandingPage = () => {
                 </div>
             </section>
 
+            {/* Communicatie & Email Sectie */}
+            <section className="py-20 bg-white">
+                <div className="container mx-auto px-6">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                            ✉️ Directe Communicatie met Ouders
+                        </h2>
+                        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                            Versterkt de betrokkenheid van ouders door naadloze communicatie tussen leraren en families
+                        </p>
+                    </div>
+                    
+                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                        {/* Linkerkant: Visual Preview - Email Composer */}
+                        <div className="bg-gray-50 rounded-2xl p-8">
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-900">Nieuwe E-mail</h3>
+                                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Leraar Portal</span>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Aan:</label>
+                                        <div className="mt-1 p-2 bg-gray-50 rounded border text-sm text-gray-600">
+                                            📧 Alle ouders Klas 3 (24 ouders)
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Onderwerp:</label>
+                                        <div className="mt-1 p-2 bg-gray-50 rounded border text-sm text-gray-900">
+                                            Qor'aan toets aanstaande vrijdag
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Bericht:</label>
+                                        <div className="mt-1 p-3 bg-gray-50 rounded border text-sm text-gray-700 leading-relaxed">
+                                            Assalamu Alaikum wa rahmatullahi wa barakatuh,<br/><br/>
+                                            Aanstaande vrijdag hebben we een Qor'aan toets van Surah Al-Falaq. 
+                                            Graag thuis extra oefenen...<br/><br/>
+                                            Barakallahu feeki,<br/>
+                                            Ustadh Omar
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-end">
+                                        <button className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                            📤 Verstuur naar 24 ouders
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rechterkant: Features */}
+                        <div className="space-y-6">
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Bulk E-mails naar Klas</h3>
+                                    <p className="text-gray-600">Leraren kunnen met één klik alle ouders van hun klas informeren over toetsen, activiteiten of belangrijke mededelingen</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Individuele Ouder Communicatie</h3>
+                                    <p className="text-gray-600">Persoonlijke berichten naar specifieke ouders over de voortgang of gedrag van hun kind</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Ouders Kunnen Reageren</h3>
+                                    <p className="text-gray-600">Ouders kunnen direct vanuit hun portaal contact opnemen met de leraar voor vragen of feedback</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Email Geschiedenis</h3>
+                                    <p className="text-gray-600">Alle communicatie wordt bewaard zodat u altijd kunt terugkijken wat er besproken is</p>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+                                <h4 className="font-semibold text-blue-900 mb-2">💡 Praktijkvoorbeeld</h4>
+                                <p className="text-sm text-blue-800">
+                                    "Dankzij MijnLVS ben ik als ouder veel meer betrokken. Ik krijg direct updates over de Qor'aan voortgang van mijn dochter en kan de leraar makkelijk bereiken met vragen."
+                                </p>
+                                <p className="text-xs text-blue-600 mt-2">— Fatima, moeder van Aisha (8 jaar)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Qor'aan Memorisatie Tracking Sectie */}
+            <section className="py-20 bg-gradient-to-br from-emerald-50 to-teal-50">
+                <div className="container mx-auto px-6">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                            📖 Qor'aan Memorisatie Tracker
+                        </h2>
+                        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                            Het enige systeem in Nederland dat speciaal ontworpen is voor het volgen van Qor'aan memorisatie en recitatie per leerling
+                        </p>
+                    </div>
+                    
+                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                        {/* Linkerkant: Features */}
+                        <div className="space-y-6">
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-emerald-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Surah-per-Surah Tracking</h3>
+                                    <p className="text-gray-600">Volg precies welke ayaat elke leerling heeft gememoriseerd, van Al-Fatiha tot An-Nas</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-emerald-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Recitatie Kwaliteit</h3>
+                                    <p className="text-gray-600">Beoordeel tajweed, vloeiendheid en correctheid met een eenvoudig cijfersysteem</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-emerald-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Ouder Inzicht</h3>
+                                    <p className="text-gray-600">Ouders zien real-time de Qor'aan voortgang van hun kind via het ouderportaal</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start">
+                                <div className="w-3 h-3 bg-emerald-500 rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Automatische Rapporten</h3>
+                                    <p className="text-gray-600">Genereer professionele voortgangsrapporten met Qor'aan statistieken per periode</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rechterkant: Visual Preview */}
+                        <div className="bg-white rounded-2xl shadow-xl p-8">
+                            <div className="text-center mb-6">
+                                <h3 className="text-xl font-bold text-gray-900">Ahmed's Qor'aan Voortgang</h3>
+                                <p className="text-gray-600 text-sm">Klas 3 • Leraar: Ustadh Omar</p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                    <div>
+                                        <span className="font-medium text-gray-900">Surah Al-Fatiha</span>
+                                        <div className="text-xs text-gray-500">7 ayaat</div>
+                                    </div>
+                                    <div className="text-green-600 font-bold">✓ Voltooid</div>
+                                </div>
+                                
+                                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                    <div>
+                                        <span className="font-medium text-gray-900">Surah An-Nas</span>
+                                        <div className="text-xs text-gray-500">6 ayaat</div>
+                                    </div>
+                                    <div className="text-green-600 font-bold">✓ Voltooid</div>
+                                </div>
+                                
+                                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                                    <div>
+                                        <span className="font-medium text-gray-900">Surah Al-Falaq</span>
+                                        <div className="text-xs text-gray-500">5 ayaat • 3/5 geleerd</div>
+                                    </div>
+                                    <div className="text-blue-600 font-bold">60%</div>
+                                </div>
+                                
+                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <span className="font-medium text-gray-900">Surah Al-Ikhlas</span>
+                                        <div className="text-xs text-gray-500">4 ayaat</div>
+                                    </div>
+                                    <div className="text-gray-500">Nog niet gestart</div>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 p-4 bg-emerald-50 rounded-lg text-center">
+                                <div className="text-2xl font-bold text-emerald-600">19/22</div>
+                                <div className="text-sm text-emerald-700">Ayaat gememoriseerd deze maand</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Pricing Section */}
             <div id="prijzen" className="py-20 bg-gray-50">
                 <div className="container mx-auto px-6">
