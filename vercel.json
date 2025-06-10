@@ -12,12 +12,5 @@
         }
       ]
     }
-  ],
-  "build": {
-    "env": {
-      "REACT_APP_API_BASE_URL": "@react_app_api_base_url",
-      "REACT_APP_SUPABASE_URL": "@react_app_supabase_url",
-      "REACT_APP_SUPABASE_ANON_KEY": "@react_app_supabase_anon_key"
-    }
-  }
+  ]
 }
