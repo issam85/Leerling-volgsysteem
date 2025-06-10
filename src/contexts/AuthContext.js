@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.js - FINALE STABIELE VERSIE
+// src/contexts/AuthContext.js - FINALE STABIELE VERSIE MET VERBETERDE SWITCHSUBDOMAIN
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -165,23 +165,36 @@ export const AuthProvider = ({ children }) => {
 
   const switchSubdomain = useCallback((newSubdomain) => {
     const currentHostname = window.location.hostname;
-    if (currentHostname === 'localhost') {
+
+    // Handle localhost for development (remains the same)
+    if (currentHostname === 'localhost' || currentHostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
         localStorage.setItem('currentSubdomainForDev', newSubdomain);
-        window.location.reload(); 
+        window.location.reload();
         return;
     }
+
     const parts = currentHostname.split('.');
     let newHost;
-    if (parts.length >= 3 && parts[0] !== 'www') { 
+
+    // Handles 'mijnlvs.nl' (2 parts) and 'www.mijnlvs.nl' (3 parts)
+    // and rebuilds it to 'newSubdomain.mijnlvs.nl'
+    if (parts.length === 2 || (parts.length === 3 && parts[0] === 'www')) {
+        newHost = `${newSubdomain}.${parts.slice(-2).join('.')}`;
+    } 
+    // Handles replacing an existing subdomain like 'register.mijnlvs.nl'
+    else if (parts.length === 3) {
         newHost = `${newSubdomain}.${parts.slice(1).join('.')}`;
-    } else if (parts.length === 2) { 
-        newHost = `${newSubdomain}.${currentHostname}`;
-    } else { 
+    } 
+    // Fallback for other unexpected structures
+    else {
         console.warn("Cannot determine how to switch subdomain for hostname:", currentHostname);
-        newHost = currentHostname; 
+        newHost = `${newSubdomain}.mijnlvs.nl`; // Safer fallback
     }
+
     const port = window.location.port ? `:${window.location.port}` : '';
-    window.location.href = `${window.location.protocol}//${newHost}${port}/`;
+    
+    // Redirect directly to the login page of the new subdomain for a smoother flow
+    window.location.href = `${window.location.protocol}//${newHost}${port}/login`;
   }, []);
 
   const hardResetAuth = useCallback(() => {
