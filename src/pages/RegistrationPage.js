@@ -58,6 +58,11 @@ const RegistrationPage = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const { switchSubdomain } = useAuth();
 
+  // START -- NIEUWE CODE: State voor de slimme login link
+  const [showSubdomainInput, setShowSubdomainInput] = useState(false);
+  const [loginSubdomain, setLoginSubdomain] = useState('');
+  // EINDE -- NIEUWE CODE
+
   const nextStep = () => setStep(prev => prev + 1);
   const prevStep = () => setStep(prev => prev - 1);
 
@@ -65,6 +70,14 @@ const RegistrationPage = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  // START -- NIEUWE CODE: Functie om naar het ingevoerde subdomein te gaan
+  const handleSwitchToLogin = () => {
+    if (loginSubdomain.trim()) {
+      switchSubdomain(loginSubdomain.trim().toLowerCase());
+    }
+  };
+  // EINDE -- NIEUWE CODE
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -237,14 +250,50 @@ const RegistrationPage = () => {
             )}
           </form>
 
-          <div className="text-center mt-6">
-            <p className="text-sm text-gray-600">
-              Al een account?{' '}
-              <button onClick={() => switchSubdomain('al-hijra')} className="font-medium text-emerald-600 hover:text-emerald-500">
-                Ga naar inloggen
-              </button>
-            </p>
+          {/* ======================================================= */}
+          {/* START VERVANGING: Dit is de nieuwe, slimme login sectie */}
+          {/* ======================================================= */}
+          <div className="text-center mt-8">
+            {!showSubdomainInput ? (
+              <p className="text-sm text-gray-600">
+                Al een account?{' '}
+                <button
+                  onClick={() => setShowSubdomainInput(true)}
+                  className="font-medium text-emerald-600 hover:text-emerald-500 focus:outline-none focus:underline"
+                >
+                  Ga naar inloggen
+                </button>
+              </p>
+            ) : (
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <label htmlFor="login-subdomain" className="block text-sm font-medium text-gray-700 mb-2">
+                  Wat is het subdomein van uw organisatie?
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="login-subdomain"
+                    name="loginSubdomain"
+                    value={loginSubdomain}
+                    onChange={(e) => setLoginSubdomain(e.target.value)}
+                    placeholder="bijv. al-noor"
+                    className="flex-grow"
+                  />
+                  <Button onClick={handleSwitchToLogin} disabled={!loginSubdomain.trim()}>
+                    Ga verder
+                  </Button>
+                </div>
+                <button
+                  onClick={() => setShowSubdomainInput(false)}
+                  className="text-xs text-gray-500 hover:underline mt-2"
+                >
+                  Annuleren
+                </button>
+              </div>
+            )}
           </div>
+          {/* ======================================================= */}
+          {/* EINDE VERVANGING                                      */}
+          {/* ======================================================= */}
         </div>
       </div>
     </div>
