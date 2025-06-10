@@ -16,10 +16,6 @@ const LoginPage = () => {
     const [error, setError] = useState('');
     const [showEmergencyReset, setShowEmergencyReset] = useState(false);
     
-    // State voor slimme subdomein switching
-    const [showSubdomainInput, setShowSubdomainInput] = useState(false);
-    const [switchSubdomainValue, setSwitchSubdomainValue] = useState('');
-    
     const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, hardResetAuth } = useAuth();
     const { realData } = useData(); 
     const navigate = useNavigate();
@@ -89,12 +85,6 @@ const LoginPage = () => {
         }, 300);
     };
 
-    const handleSwitchToSubdomain = () => {
-        if (switchSubdomainValue.trim()) {
-            switchSubdomain(switchSubdomainValue.trim().toLowerCase());
-        }
-    };
-
     // Loading state
     if (loadingUser && !currentUser) { 
         return (
@@ -135,164 +125,80 @@ const LoginPage = () => {
         return <LoadingSpinner message="Organisatiegegevens laden..." />;
     }
 
+    // =======================================================
+    // START VERVANGING: De nieuwe, elegante return statement
+    // =======================================================
     return (
-        <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
-            {/* KOLOM 1: De "Branding" Kolom */}
-            <div className="hidden lg:flex lg:flex-col justify-between bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12">
-                <div>
-                    <div className="flex items-center text-lg font-medium">
-                        <Building className="w-8 h-8 mr-3 bg-white/20 p-1.5 rounded-lg" />
-                        <span>Portaal voor</span>
+        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center max-w-7xl mx-auto">
+                
+                {/* KOLOM 1: De "Branding" Kolom */}
+                <div className="hidden lg:block text-left">
+                    <div className="flex items-center text-lg font-medium text-gray-500">
+                        <Building className="w-8 h-8 mr-3 text-emerald-500" />
+                        <span>Inlogportaal voor</span>
                     </div>
-                    <h1 className="mt-4 text-5xl font-bold tracking-tight">
+                    <h1 className="mt-4 text-6xl font-bold tracking-tight text-gray-900">
                         {realData.mosque?.name || 'Uw Organisatie'}
                     </h1>
-                    <p className="mt-2 text-2xl text-emerald-200">
+                    <p className="mt-2 text-3xl font-light text-gray-500">
                         {realData.mosque?.city}
                     </p>
                 </div>
-                <div className="text-sm text-emerald-300">
-                    <p>Mogelijk gemaakt door MijnLVS</p>
-                </div>
-            </div>
 
-            {/* KOLOM 2: De Inlog-Actie Kolom */}
-            <div className="flex flex-col items-center justify-center px-6 py-12">
-                <div className="w-full max-w-sm">
-                    <div className="text-center">
-                        <img className="mx-auto h-12 w-auto mb-4" src={appLogo} alt="MijnLVS Logo" />
-                        <h2 className="text-2xl font-bold text-gray-900">
-                            Inloggen op uw account
-                        </h2>
-                        {/* Subtitel voor mobiele weergave */}
-                        <p className="lg:hidden mt-2 text-sm text-gray-500">
-                            Portaal voor {realData.mosque?.name || 'uw organisatie'}
-                        </p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-                        <Input
-                            label="Emailadres" 
-                            id="email" 
-                            type="email" 
-                            value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
-                            required
-                            placeholder="uwnaam@example.com" 
-                            autoComplete="email"
-                        />
-                        <Input
-                            label="Wachtwoord" 
-                            id="password" 
-                            type="password" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            required
-                            placeholder="Uw wachtwoord" 
-                            autoComplete="current-password"
-                        />
-                        
-                        {error && (
-                            <p className="text-red-600 text-sm text-center bg-red-50 p-2.5 rounded-md">
-                                {error}
+                {/* KOLOM 2: De Inlog-Actie Kolom */}
+                <div className="w-full max-w-md mx-auto">
+                    {/* De kaart die het formulier bevat */}
+                    <div className="bg-white p-8 shadow-xl rounded-2xl">
+                        <div className="text-center mb-8">
+                            <img className="mx-auto h-12 w-auto" src={appLogo} alt="MijnLVS Logo" />
+                            <h2 className="mt-6 text-2xl font-bold text-gray-900">
+                                Welkom terug
+                            </h2>
+                            <p className="lg:hidden mt-2 text-sm text-gray-500">
+                                Portaal voor {realData.mosque?.name || 'uw organisatie'}
                             </p>
-                        )}
-
-                        <Button 
-                            type="submit" 
-                            variant="primary" 
-                            fullWidth 
-                            size="lg" 
-                            disabled={loadingUser}
-                        >
-                            {loadingUser ? 'Bezig...' : 'Veilig Inloggen'}
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                    </form>
-
-                    {/* Emergency Reset */}
-                    <div className="mt-4 text-center">
-                        <button
-                            onClick={handleEmergencyReset}
-                            className="text-xs text-gray-400 hover:text-gray-600 underline"
-                            title="Reset alle inlogsessies en probeer opnieuw"
-                        >
-                            Problemen met inloggen? Klik hier om te resetten
-                        </button>
-                    </div>
-
-                    {/* Development Demo Info */}
-                    {process.env.NODE_ENV === 'development' && currentSubdomain !== 'register' && (
-                        <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-200 text-center">
-                            <p className="text-xs text-gray-500 font-semibold mb-1">DEV: Demo ({currentSubdomain})</p>
-                            <div className="text-xs space-y-0.5 text-gray-600">
-                                <p><strong>Admin:</strong> admin@{currentSubdomain}.nl / admin</p>
-                            </div>
                         </div>
-                    )}
 
-                    {/* Slimme Subdomein Switching */}
-                    <div className="text-center mt-8">
-                        {!showSubdomainInput ? (
-                            <p className="text-sm text-gray-600">
-                                Andere organisatie?{' '}
-                                <button
-                                    onClick={() => setShowSubdomainInput(true)}
-                                    className="font-medium text-emerald-600 hover:text-emerald-500 focus:outline-none focus:underline"
-                                >
-                                    Wissel van organisatie
-                                </button>
-                                {' of '}
-                                <button 
-                                    onClick={() => switchSubdomain('register')} 
-                                    className="font-medium text-emerald-600 hover:text-emerald-500"
-                                >
-                                    Registreer nieuwe organisatie
-                                </button>
-                            </p>
-                        ) : (
-                            <div className="bg-gray-50 p-4 rounded-lg border">
-                                <label htmlFor="switch-subdomain" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Naar welke organisatie wilt u?
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        id="switch-subdomain"
-                                        name="switchSubdomain"
-                                        value={switchSubdomainValue}
-                                        onChange={(e) => setSwitchSubdomainValue(e.target.value)}
-                                        placeholder="bijv. al-noor"
-                                        className="flex-grow"
-                                    />
-                                    <Button 
-                                        onClick={handleSwitchToSubdomain} 
-                                        disabled={!switchSubdomainValue.trim()}
-                                        size="sm"
-                                    >
-                                        Ga verder
-                                    </Button>
-                                </div>
-                                <div className="flex justify-between items-center mt-2">
-                                    <button
-                                        onClick={() => setShowSubdomainInput(false)}
-                                        className="text-xs text-gray-500 hover:underline"
-                                    >
-                                        Annuleren
-                                    </button>
-                                    <button
-                                        onClick={() => switchSubdomain('register')}
-                                        className="text-xs text-emerald-600 hover:underline"
-                                    >
-                                        Of registreer nieuwe organisatie
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <Input
+                                label="Emailadres" id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                                placeholder="uwnaam@example.com" autoComplete="email"
+                            />
+                            <Input
+                                label="Wachtwoord" id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+                                placeholder="Uw wachtwoord" autoComplete="current-password"
+                            />
+                            
+                            {error && <p className="text-red-600 text-sm text-center bg-red-50 p-2.5 rounded-md">{error}</p>}
+
+                            <Button type="submit" variant="primary" fullWidth size="lg" disabled={loadingUser}>
+                                {loadingUser ? 'Bezig...' : 'Veilig Inloggen'}
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                        </form>
+                    </div>
+
+                    {/* Links onder de kaart */}
+                    <div className="mt-8 text-center text-sm space-y-4">
+                        <p>
+                            <button onClick={handleEmergencyReset} className="font-medium text-gray-500 hover:text-emerald-600">
+                                Wachtwoord vergeten?
+                            </button>
+                        </p>
+                        <p>
+                            <button onClick={() => switchSubdomain('register')} className="font-medium text-gray-500 hover:text-emerald-600">
+                                Andere organisatie of nieuwe registratie?
+                            </button>
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     );
+    // =======================================================
+    // EINDE VERVANGING
+    // =======================================================
 };
 
 export default LoginPage;
