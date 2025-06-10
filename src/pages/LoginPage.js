@@ -125,80 +125,159 @@ const LoginPage = () => {
         return <LoadingSpinner message="Organisatiegegevens laden..." />;
     }
 
-    // =======================================================
-    // START VERVANGING: De nieuwe, elegante return statement
-    // =======================================================
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center max-w-7xl mx-auto">
-                
-                {/* KOLOM 1: De "Branding" Kolom */}
-                <div className="hidden lg:block text-left">
-                    <div className="flex items-center text-lg font-medium text-gray-500">
-                        <Building className="w-8 h-8 mr-3 text-emerald-500" />
+        <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
+            {/* KOLOM 1: Premium Branding Sectie */}
+            <div className="hidden lg:flex lg:flex-col justify-between bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12">
+                <div>
+                    <div className="flex items-center text-lg font-medium">
+                        <Building className="w-8 h-8 mr-3 bg-white/20 p-1.5 rounded-lg" />
                         <span>Inlogportaal voor</span>
                     </div>
-                    <h1 className="mt-4 text-6xl font-bold tracking-tight text-gray-900">
+                    <h1 className="mt-4 text-5xl font-bold tracking-tight">
                         {realData.mosque?.name || 'Uw Organisatie'}
                     </h1>
-                    <p className="mt-2 text-3xl font-light text-gray-500">
-                        {realData.mosque?.city}
+                    <p className="mt-2 text-2xl text-emerald-200">
+                        {realData.mosque?.city || 'Uw Stad'}
                     </p>
-                </div>
-
-                {/* KOLOM 2: De Inlog-Actie Kolom */}
-                <div className="w-full max-w-md mx-auto">
-                    {/* De kaart die het formulier bevat */}
-                    <div className="bg-white p-8 shadow-xl rounded-2xl">
-                        <div className="text-center mb-8">
-                            <img className="mx-auto h-12 w-auto" src={appLogo} alt="MijnLVS Logo" />
-                            <h2 className="mt-6 text-2xl font-bold text-gray-900">
-                                Welkom terug
-                            </h2>
-                            <p className="lg:hidden mt-2 text-sm text-gray-500">
-                                Portaal voor {realData.mosque?.name || 'uw organisatie'}
-                            </p>
+                    
+                    {/* Toegevoegde content om het professioneler te maken */}
+                    <div className="mt-12 space-y-6">
+                        <div className="flex items-start">
+                            <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
+                            <div>
+                                <h3 className="text-lg font-semibold">Veilige toegang</h3>
+                                <p className="text-emerald-100 text-sm">Beveiligde login voor leraren, ouders en beheerders</p>
+                            </div>
                         </div>
+                        <div className="flex items-start">
+                            <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
+                            <div>
+                                <h3 className="text-lg font-semibold">Altijd up-to-date</h3>
+                                <p className="text-emerald-100 text-sm">Real-time inzicht in voortgang en aanwezigheid</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start">
+                            <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
+                            <div>
+                                <h3 className="text-lg font-semibold">Makkelijk beheer</h3>
+                                <p className="text-emerald-100 text-sm">Centrale administratie voor alle aspecten van uw onderwijs</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="text-sm text-emerald-300">
+                    <p>Mogelijk gemaakt door MijnLVS</p>
+                </div>
+            </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <Input
-                                label="Emailadres" id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                                placeholder="uwnaam@example.com" autoComplete="email"
-                            />
-                            <Input
-                                label="Wachtwoord" id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                                placeholder="Uw wachtwoord" autoComplete="current-password"
-                            />
-                            
-                            {error && <p className="text-red-600 text-sm text-center bg-red-50 p-2.5 rounded-md">{error}</p>}
-
-                            <Button type="submit" variant="primary" fullWidth size="lg" disabled={loadingUser}>
-                                {loadingUser ? 'Bezig...' : 'Veilig Inloggen'}
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
-                        </form>
+            {/* KOLOM 2: Login Formulier */}
+            <div className="flex flex-col items-center justify-center px-6 py-12 lg:px-12">
+                <div className="w-full max-w-md">
+                    <div className="text-center mb-8">
+                        <img className="mx-auto h-16 w-auto mb-6" src={appLogo} alt="MijnLVS Logo" />
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                            Welkom terug
+                        </h2>
+                        <p className="text-gray-600">
+                            Log in op uw {realData.mosque?.name || 'organisatie'} account
+                        </p>
+                        {/* Subtitel voor mobiele weergave */}
+                        <p className="lg:hidden mt-4 text-sm text-gray-500 p-4 bg-emerald-50 rounded-lg">
+                            📚 Portaal voor {realData.mosque?.name || 'uw organisatie'}
+                        </p>
                     </div>
 
-                    {/* Links onder de kaart */}
-                    <div className="mt-8 text-center text-sm space-y-4">
-                        <p>
-                            <button onClick={handleEmergencyReset} className="font-medium text-gray-500 hover:text-emerald-600">
-                                Wachtwoord vergeten?
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <Input
+                            label="Emailadres" 
+                            id="email" 
+                            type="email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            required
+                            placeholder="uwnaam@example.com" 
+                            autoComplete="email"
+                        />
+                        <Input
+                            label="Wachtwoord" 
+                            id="password" 
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            required
+                            placeholder="Uw wachtwoord" 
+                            autoComplete="current-password"
+                        />
+                        
+                        {error && (
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-red-700 text-sm text-center">{error}</p>
+                            </div>
+                        )}
+
+                        <Button 
+                            type="submit" 
+                            variant="primary" 
+                            fullWidth 
+                            size="lg" 
+                            disabled={loadingUser}
+                            className="py-4 text-lg font-semibold"
+                        >
+                            {loadingUser ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Bezig met inloggen...
+                                </span>
+                            ) : (
+                                <span className="flex items-center justify-center">
+                                    🔐 Veilig Inloggen
+                                    <ArrowRight className="w-5 h-5 ml-2" />
+                                </span>
+                            )}
+                        </Button>
+                    </form>
+
+                    {/* Development Demo Info */}
+                    {process.env.NODE_ENV === 'development' && currentSubdomain !== 'register' && (
+                        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-700 font-semibold mb-2">🔧 Ontwikkeling: Demo Account ({currentSubdomain})</p>
+                            <div className="text-xs space-y-1 text-blue-600">
+                                <p><strong>Admin:</strong> admin@{currentSubdomain}.nl / admin</p>
+                                <p><strong>Leraar:</strong> leraar@{currentSubdomain}.nl / leraar</p>
+                                <p><strong>Ouder:</strong> ouder@{currentSubdomain}.nl / ouder</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Action Links */}
+                    <div className="mt-8 space-y-4 text-center">
+                        <button
+                            onClick={handleEmergencyReset}
+                            className="text-sm text-gray-500 hover:text-emerald-600 font-medium transition-colors"
+                        >
+                            🔄 Problemen met inloggen? Reset sessie
+                        </button>
+                        
+                        <div className="flex flex-col space-y-2">
+                            <button 
+                                onClick={() => switchSubdomain('register')} 
+                                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                            >
+                                ➕ Nieuwe organisatie registreren
                             </button>
-                        </p>
-                        <p>
-                            <button onClick={() => switchSubdomain('register')} className="font-medium text-gray-500 hover:text-emerald-600">
-                                Andere organisatie of nieuwe registratie?
-                            </button>
-                        </p>
+                            <p className="text-xs text-gray-400">
+                                Of schakel naar een andere bestaande organisatie
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     );
-    // =======================================================
-    // EINDE VERVANGING
-    // =======================================================
 };
 
 export default LoginPage;
