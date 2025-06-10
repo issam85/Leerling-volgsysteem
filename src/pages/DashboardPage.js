@@ -3,10 +3,10 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../utils/financials';
-import { DollarSign, Users, BookOpen as ClassIcon, User as UserIcon, Mail } from 'lucide-react';
+import { DollarSign, Users, BookOpen as ClassIcon, User as UserIcon, Mail, ChevronRight } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
@@ -53,6 +53,7 @@ const DashboardPage = () => {
     const teacherOfFirstChild = firstClass && users ? users.find(u => u.id === firstClass.teacher_id) : null;
     
     return {
+      myChildren,
       childrenCount: myChildren.length,
       paymentInfo: (users && payments) ? calculateParentPaymentStatus(currentUser.id, users, payments) : null,
       firstChildId: firstChild?.id,
@@ -140,74 +141,94 @@ const DashboardPage = () => {
             <p className="text-gray-600 max-w-md mx-auto">Welkom op uw persoonlijke dashboard.</p>
           </div>
 
-          {/* Parent Dashboard Content */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Kinderen Card */}
-            <div className="card md:col-span-1 flex flex-col justify-between">
-              <div>
-                <h4 className="text-lg font-semibold text-gray-700 mb-3">Mijn Kinderen</h4>
-                <p className="text-gray-600 mb-4">
-                  U heeft <span className="font-bold">{parentData.childrenCount}</span> kind(eren) ingeschreven.
-                </p>
+          {/* Mijn Kinderen Sectie */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-700">Mijn Kinderen</h3>
+
+            {/* Lijst van kinderen */}
+            {parentData.myChildren.length > 0 ? (
+              <div className="space-y-4">
+                {parentData.myChildren.map(child => {
+                  const childClass = classes?.find(c => c.id === child.class_id);
+                  const teacher = childClass && users ? users.find(u => u.id === childClass.teacher_id) : null;
+                  
+                  return (
+                    <Link 
+                      to={`/parent/my-children/${child.id}`} 
+                      key={child.id} 
+                      className="card block hover:bg-emerald-50 hover:shadow-lg transition-all duration-200"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xl font-semibold text-emerald-700">{child.name}</h4>
+                          <div className="space-y-1 mt-1">
+                            <span className="text-sm text-gray-500 block">
+                              Bekijk voortgang, aanwezigheid en rapporten
+                            </span>
+                            {childClass && (
+                              <span className="text-xs text-gray-400">
+                                Klas: {childClass.name} • Leraar: {teacher?.name || 'Onbekend'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight size={24} className="text-gray-400" />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
-              <div className="space-y-2">
-                <Button 
-                  variant="primary" 
-                  onClick={() => parentData.firstChildId && navigate(`/parent/my-children/${parentData.firstChildId}`)} 
-                  icon={Users} 
-                  className="w-full"
-                  disabled={!parentData.firstChildId}
-                >
-                  Bekijk Details
-                </Button>
-                {parentData.teacherEmail && (
-                  <a href={`mailto:${parentData.teacherEmail}`}>
-                    <Button variant="secondary" icon={Mail} className="w-full">
-                      Contact Leraar/Lerares
-                    </Button>
-                  </a>
+            ) : (
+              <div className="card text-center py-8">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">Er zijn nog geen kinderen aan uw account gekoppeld.</p>
+              </div>
+            )}
+
+            {/* Financiën en Contact Sectie */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
+              {/* Financieel Overzicht */}
+              <div className="card md:col-span-2">
+                <h4 className="text-lg font-semibold text-gray-700 mb-3">Financieel Overzicht</h4>
+                
+                {/* Payment Info */}
+                {parentData.paymentInfo ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-800">€{parentData.paymentInfo.amountDue}</div>
+                      <div className="text-xs font-medium text-blue-600">Te Betalen</div>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-green-800">€{parentData.paymentInfo.totalPaid}</div>
+                      <div className="text-xs font-medium text-green-600">Betaald</div>
+                    </div>
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-red-800">€{parentData.paymentInfo.remainingBalance}</div>
+                      <div className="text-xs font-medium text-red-600">Openstaand</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Betalingsstatus wordt geladen...</p>
                 )}
               </div>
-            </div>
 
-            {/* Financieel + Contact Card */}
-            <div className="card md:col-span-2">
-              <h4 className="text-lg font-semibold text-gray-700 mb-3">Financieel Overzicht</h4>
-              
-              {/* Payment Info */}
-              {parentData.paymentInfo ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center mb-6">
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-800">€{parentData.paymentInfo.amountDue}</div>
-                    <div className="text-xs font-medium text-blue-600">Te Betalen</div>
-                  </div>
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-green-800">€{parentData.paymentInfo.totalPaid}</div>
-                    <div className="text-xs font-medium text-green-600">Betaald</div>
-                  </div>
-                  <div className="bg-red-50 p-3 rounded-lg">
-                    <div className="text-2xl font-bold text-red-800">€{parentData.paymentInfo.remainingBalance}</div>
-                    <div className="text-xs font-medium text-red-600">Openstaand</div>
-                  </div>
+              {/* Contact Card */}
+              {mosque?.contact_committee_name && mosque?.contact_committee_email ? (
+                <div className="card">
+                  <h4 className="text-lg font-semibold text-gray-700 mb-2">Vragen?</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Neem contact op met de {mosque.contact_committee_name}.
+                  </p>
+                  <a href={`mailto:${mosque.contact_committee_email}`}>
+                    <Button icon={Mail} className="w-full">Stuur e-mail</Button>
+                  </a>
                 </div>
               ) : (
-                <p className="text-gray-500 mb-6">Betalingsstatus wordt geladen...</p>
-              )}
-
-              {/* Contact Section */}
-              {mosque?.contact_committee_name && mosque?.contact_committee_email && (
-                <div className="mt-6 pt-6 border-t">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h5 className="font-semibold text-gray-800">Vragen?</h5>
-                      <p className="text-sm text-gray-600">
-                        Neem contact op met de {mosque.contact_committee_name}.
-                      </p>
-                    </div>
-                    <a href={`mailto:${mosque.contact_committee_email}`}>
-                      <Button icon={Mail}>Stuur e-mail</Button>
-                    </a>
-                  </div>
+                <div className="card">
+                  <h4 className="text-lg font-semibold text-gray-700 mb-2">Contact</h4>
+                  <p className="text-sm text-gray-600">
+                    Contactgegevens worden binnenkort beschikbaar gesteld.
+                  </p>
                 </div>
               )}
             </div>

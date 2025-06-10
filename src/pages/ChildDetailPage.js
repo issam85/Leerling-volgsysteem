@@ -12,7 +12,8 @@ import {
   ClipboardList,
   AlertCircle, 
   Info, 
-  Printer
+  Printer,
+  Mail
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuranProgressView from '../features/parent/QuranProgressView';
@@ -345,34 +346,46 @@ const ChildDetailPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center mb-6">
-        <button 
-          onClick={() => navigate('/parent/my-children')} 
-          className="p-2 mr-4 rounded-full hover:bg-gray-100 transition-colors"
-          title="Terug naar mijn kinderen"
-        >
-          <ArrowLeft size={24} className="text-gray-600"/>
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">{student.name}</h1>
-          <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-            <span className="inline-flex items-center">
-              <ClassIcon size={14} className="mr-1.5"/>
-              {studentClass?.name || 'Geen klas toegewezen'}
-            </span>
-            <span className="inline-flex items-center">
-              <User size={14} className="mr-1.5"/>
-              {teacher?.name || 'Geen leraar toegewezen'}
-            </span>
-            {student.date_of_birth && (
+      {/* Header met actieknop */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+        {/* Linkerkant: Info */}
+        <div className="flex items-center">
+          <button 
+            onClick={() => navigate('/parent/my-children')} 
+            className="p-2 mr-4 rounded-full hover:bg-gray-100 transition-colors"
+            title="Terug naar mijn kinderen"
+          >
+            <ArrowLeft size={24} className="text-gray-600"/>
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">{student.name}</h1>
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
               <span className="inline-flex items-center">
-                <CalendarDays size={14} className="mr-1.5"/>
-                {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                <ClassIcon size={14} className="mr-1.5"/>
+                {studentClass?.name || 'Geen klas'}
               </span>
-            )}
+              <span className="inline-flex items-center">
+                <User size={14} className="mr-1.5"/>
+                {teacher?.name || 'Geen leraar'}
+              </span>
+              {student.date_of_birth && (
+                <span className="inline-flex items-center">
+                  <CalendarDays size={14} className="mr-1.5"/>
+                  {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Rechterkant: Actieknop */}
+        {teacher?.email && (
+          <a href={`mailto:${teacher.email}`}>
+            <Button icon={Mail} variant="secondary">
+              Contact Leraar/Lerares
+            </Button>
+          </a>
+        )}
       </div>
 
       {/* Tab Navigatie */}
