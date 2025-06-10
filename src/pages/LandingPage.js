@@ -31,7 +31,7 @@ const LandingPage = () => {
             priceSuffix: 'voor grote organisaties',
             features: ['Alles in Professioneel', 'Eigen Branding', 'API Toegang', 'Persoonlijke Onboarding', 'Prioriteitssupport'],
             cta: 'Neem Contact Op',
-            link: 'mailto:info@mijnlvs.nl',
+            link: 'mailto:i.abdellaoui@gmail.com',
             isFeatured: false,
         },
     ];
@@ -414,9 +414,6 @@ const LandingPage = () => {
                     <h2 className="text-3xl lg:text-4xl font-bold mb-4">
                         Klaar om uw onderwijs te digitaliseren?
                     </h2>
-                    <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto">
-                        Sluit u aan bij tientallen organisaties die hun administratie al hebben gemoderniseerd met MijnLVS
-                    </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Button 
                             onClick={handleStartDemo}
@@ -425,7 +422,7 @@ const LandingPage = () => {
                         >
                             Start Nu Gratis <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
-                        <a href="mailto:info@mijnlvs.nl">
+                        <a href="mailto:i.abdellaoui@gmail.com">
                             <Button 
                                 variant="ghost" 
                                 size="xl" 
@@ -447,11 +444,11 @@ const LandingPage = () => {
                             <span className="font-bold text-xl">MijnLVS</span>
                         </div>
                         <div className="text-sm text-gray-400">
-                            <a href="mailto:info@mijnlvs.nl" className="hover:text-white mr-6 transition-colors">
-                                📧 info@mijnlvs.nl
+                            <a href="mailto:i.abdellaoui@gmail.com" className="hover:text-white mr-6 transition-colors">
+                                📧 i.abdellaoui@gmail.com
                             </a>
-                            <a href="tel:085-1234567" className="hover:text-white transition-colors">
-                                📞 085-1234567
+                            <a href="tel:0640246600" className="hover:text-white transition-colors">
+                                📞 06-40246600
                             </a>
                         </div>
                     </div>
