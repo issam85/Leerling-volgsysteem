@@ -1,4 +1,4 @@
-// src/pages/DashboardPage.js - DEFINITIEVE, COMPLETE EN ROBUUSTE VERSIE
+// src/pages/DashboardPage.js - DEFINITIEVE, COMPLETE EN ROBUUSTE VERSIE MET NIEUWE LAYOUT
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -162,108 +162,85 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Ouder Dashboard */}
+      {/* Ouder Dashboard - NIEUWE LAYOUT */}
       {currentUser.role === 'parent' && parentData && (
-        <div className="space-y-6">
-          {/* Welcome Card */}
-          <div className="card text-center">
-            <Users className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-semibold text-gray-800 mb-1">Ouder Dashboard</h3>
-            <p className="text-gray-600 max-w-md mx-auto">Welkom op uw persoonlijke dashboard.</p>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
 
-          {/* Mijn Kinderen Sectie */}
-          <div className="space-y-6">
+          {/* ----- KOLOM 1: HOOFDCONTENT (Mijn Kinderen) ----- */}
+          <div className="lg:col-span-2 space-y-6">
             <h3 className="text-xl font-semibold text-gray-700">Mijn Kinderen</h3>
-
-            {/* Lijst van kinderen */}
-            {parentData.myChildren.length > 0 ? (
+            
+            {parentData.childrenCount > 0 ? (
               <div className="space-y-4">
-                {parentData.myChildren.map(child => {
-                  const childClass = classes?.find(c => c.id === child.class_id);
-                  const teacher = childClass && users ? users.find(u => u.id === childClass.teacher_id) : null;
-                  
+                {students.filter(s => String(s.parent_id) === String(currentUser.id)).map(child => {
+                  const childClass = classes?.find(c => String(c.id) === String(child.class_id));
+                  const teacher = users?.find(u => u.id === childClass?.teacher_id);
                   return (
                     <Link 
                       to={`/parent/my-children/${child.id}`} 
                       key={child.id} 
-                      className="card block hover:bg-emerald-50 hover:shadow-lg transition-all duration-200"
+                      className="card block hover:bg-emerald-50 hover:shadow-lg transition-all duration-150 cursor-pointer"
                     >
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h4 className="text-xl font-semibold text-emerald-700">{child.name}</h4>
-                          <div className="space-y-1 mt-1">
-                            <span className="text-sm text-gray-500 block">
-                              Bekijk voortgang, aanwezigheid en rapporten
-                            </span>
-                            {childClass && (
-                              <span className="text-xs text-gray-400">
-                                Klas: {childClass.name} • Leraar: {teacher?.name || 'Onbekend'}
-                              </span>
-                            )}
+                          <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-600">
+                              <span className="inline-flex items-center"><ClassIcon size={14} className="mr-1.5 text-blue-500"/>{childClass?.name || 'Geen klas'}</span>
+                              <span className="inline-flex items-center"><UserIcon size={14} className="mr-1.5 text-purple-500"/>{teacher?.name || 'Geen leraar'}</span>
                           </div>
                         </div>
                         <ChevronRight size={24} className="text-gray-400" />
                       </div>
                     </Link>
-                  );
+                  )
                 })}
               </div>
             ) : (
-              <div className="card text-center py-8">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">Er zijn nog geen kinderen aan uw account gekoppeld.</p>
+              <div className="card text-center p-8">
+                  <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-700">Geen kinderen gevonden</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">Er zijn nog geen leerlingen aan uw account gekoppeld.</p>
+              </div>
+            )}
+          </div>
+
+          {/* ----- KOLOM 2: ZIJBALK (Financiën & Contact) ----- */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Financieel Overzicht Card */}
+            {parentData.paymentInfo && (
+              <div className="card">
+                <h4 className="text-lg font-semibold text-gray-700 mb-4">Financieel Overzicht</h4>
+                <div className="space-y-3">
+                  <div className="bg-blue-50 p-3 rounded-lg text-center">
+                    <div className="text-xs font-medium text-blue-600">Te Betalen</div>
+                    <div className="text-2xl font-bold text-blue-800">€{parentData.paymentInfo.amountDue}</div>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded-lg text-center">
+                    <div className="text-xs font-medium text-green-600">Betaald</div>
+                    <div className="text-2xl font-bold text-green-800">€{parentData.paymentInfo.totalPaid}</div>
+                  </div>
+                  <div className="bg-red-50 p-3 rounded-lg text-center">
+                    <div className="text-xs font-medium text-red-600">Openstaand</div>
+                    <div className="text-2xl font-bold text-red-800">€{parentData.paymentInfo.remainingBalance}</div>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Financiën en Contact Sectie */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
-              {/* Financieel Overzicht */}
-              <div className="card md:col-span-2">
-                <h4 className="text-lg font-semibold text-gray-700 mb-3">Financieel Overzicht</h4>
-                
-                {/* Payment Info */}
-                {parentData.paymentInfo ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-800">€{parentData.paymentInfo.amountDue}</div>
-                      <div className="text-xs font-medium text-blue-600">Te Betalen</div>
-                    </div>
-                    <div className="bg-green-50 p-3 rounded-lg">
-                      <div className="text-2xl font-bold text-green-800">€{parentData.paymentInfo.totalPaid}</div>
-                      <div className="text-xs font-medium text-green-600">Betaald</div>
-                    </div>
-                    <div className="bg-red-50 p-3 rounded-lg">
-                      <div className="text-2xl font-bold text-red-800">€{parentData.paymentInfo.remainingBalance}</div>
-                      <div className="text-xs font-medium text-red-600">Openstaand</div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500">Betalingsstatus wordt geladen...</p>
-                )}
+            {/* Contact Card */}
+            {mosque?.contact_committee_name && mosque?.contact_committee_email && (
+              <div className="card">
+                <h4 className="text-lg font-semibold text-gray-700 mb-2">Vragen?</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Neem contact op met de {mosque.contact_committee_name}.
+                </p>
+                <Button icon={Mail} className="w-full" onClick={() => setIsMailModalOpen(true)}>
+                  Stuur e-mail
+                </Button>
               </div>
-
-              {/* Contact Card */}
-              {mosque?.contact_committee_name && mosque?.contact_committee_email ? (
-                <div className="card">
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">Vragen?</h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Neem contact op met de {mosque.contact_committee_name}.
-                  </p>
-                  <Button icon={Mail} className="w-full" onClick={() => setIsMailModalOpen(true)}>
-                    Stuur e-mail
-                  </Button>
-                </div>
-              ) : (
-                <div className="card">
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">Contact</h4>
-                  <p className="text-sm text-gray-600">
-                    Contactgegevens worden binnenkort beschikbaar gesteld.
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
+
         </div>
       )}
 
