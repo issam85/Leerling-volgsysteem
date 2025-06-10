@@ -183,9 +183,9 @@ const RegistrationPage = () => {
       {/* ==================================================================== */}
       <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12 flex flex-col justify-between">
           <div>
-              {/* Logo is nu nog groter, klikbaar en heeft meer ruimte */}
+              {/* Logo is nu extra groot, klikbaar en heeft meer ruimte */}
               <a href="/" className="inline-block hover:scale-110 transition-transform duration-200">
-                  <img className="h-32 w-auto bg-white p-5 rounded-2xl shadow-lg" src={appLogo} alt="MijnLVS Logo" />
+                  <img className="h-36 w-auto bg-white p-6 rounded-2xl shadow-lg" src={appLogo} alt="MijnLVS Logo" />
               </a>
               
               {/* Nieuwe, gerichte headline en sub-headline */}
