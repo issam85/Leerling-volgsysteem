@@ -1,11 +1,65 @@
 // src/pages/LandingPage.js
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import appLogo from '../assets/logo-mijnlvs.png';
 import Button from '../components/Button';
 import { CheckCircle, BookOpen, Users, BarChart3, Building, ArrowRight } from 'lucide-react';
 
+// VOEG DEZE IMPORT TOE ALS JE EEN APARTE API SERVICE HEBT
+// import { apiCall } from '../services/api';
+
 const LandingPage = () => {
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+    // API Call functie (vervang door jouw eigen implementatie indien nodig)
+    const apiCall = async (url, options = {}) => {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+            ...options,
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+        
+        return response.json();
+    };
+
+    // Stripe Checkout Handler voor Professioneel Plan
+    const handleChooseProfessional = async () => {
+        setIsProcessingPayment(true);
+        try {
+            // VERVANG DEZE PRICE_ID MET JOUW STRIPE PRICE_ID:
+            const priceId = 'price_1RYa3GFmYwBPXo2HwGl8Ffb5'; // <-- Vervang met jouw echte Stripe Price ID
+            
+            const result = await apiCall('/api/stripe/create-checkout-session', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    priceId,
+                    metadata: {
+                        plan_type: 'professional',
+                        source: 'landing_page'
+                    }
+                })
+            });
+            
+            if (result.url) {
+                // Stuur de gebruiker naar de Stripe betaalpagina
+                window.location.href = result.url;
+            } else {
+                throw new Error('Geen checkout URL ontvangen');
+            }
+        } catch (error) {
+            console.error('Stripe checkout error:', error);
+            alert(`Er ging iets mis bij het starten van de betaling: ${error.message}`);
+            setIsProcessingPayment(false);
+        }
+    };
+
     const pricingTiers = [
         {
             name: 'Basis',
@@ -22,8 +76,9 @@ const LandingPage = () => {
             priceSuffix: '/ maand',
             features: ['Onbeperkt Aantal Leerlingen', 'Financieel Beheer', 'Qor\'aan Voortgang', 'Rapporten Module', 'Email Communicatie', 'Standaard Support'],
             cta: 'Kies Professioneel',
-            link: '/register',
+            handler: handleChooseProfessional, // Gebruik handler in plaats van link
             isFeatured: true,
+            isStripeCheckout: true, // Flag om te weten dat dit een Stripe checkout is
         },
         {
             name: 'Compleet',
@@ -87,6 +142,16 @@ const LandingPage = () => {
                                         Start je 14-daagse demo nu
                                     </Button>
                                 </Link>
+                                <p className="mt-2 text-sm text-gray-500 text-center lg:text-left">
+                                    Of ga direct naar 
+                                    <button 
+                                        onClick={handleChooseProfessional}
+                                        disabled={isProcessingPayment}
+                                        className="text-emerald-600 hover:underline ml-1 font-medium disabled:opacity-50"
+                                    >
+                                        {isProcessingPayment ? 'laden...' : 'Professioneel Plan (€25/maand)'}
+                                    </button>
+                                </p>
                             </div>
                             
                             {/* Trust indicators */}
@@ -389,19 +454,29 @@ const LandingPage = () => {
                                         </li>
                                     ))}
                                 </ul>
-                                {tier.link.startsWith('mailto') ? (
+                                {tier.isStripeCheckout ? (
+                                    <Button 
+                                        fullWidth 
+                                        variant={tier.isFeatured ? 'primary' : 'secondary'} 
+                                        size="lg"
+                                        onClick={tier.handler}
+                                        disabled={isProcessingPayment}
+                                    >
+                                        {isProcessingPayment ? 'Bezig met laden...' : tier.cta}
+                                    </Button>
+                                ) : tier.link && tier.link.startsWith('mailto') ? (
                                     <a href={tier.link} className="block">
                                         <Button fullWidth variant={tier.isFeatured ? 'primary' : 'secondary'} size="lg">
                                             {tier.cta}
                                         </Button>
                                     </a>
-                                ) : (
+                                ) : tier.link ? (
                                     <Link to={tier.link} className="block">
                                         <Button fullWidth variant={tier.isFeatured ? 'primary' : 'secondary'} size="lg">
                                             {tier.cta}
                                         </Button>
                                     </Link>
-                                )}
+                                ) : null}
                             </div>
                         ))}
                     </div>
