@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import appLogo from '../assets/logo-mijnlvs.png';
 import { Building, UserCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 
-// De Stepper Component (kan in hetzelfde bestand of apart)
+// De Stepper Component
 const Stepper = ({ currentStep }) => {
   const steps = [
     { number: 1, title: 'Organisatie', icon: Building },
@@ -20,22 +20,22 @@ const Stepper = ({ currentStep }) => {
   return (
     <nav aria-label="Progress">
       <ol role="list" className="space-y-4 md:flex md:space-y-0 md:space-x-8">
-        {steps.map((step, index) => (
-          <li key={step.title} className="md:flex-1">
-            {currentStep > step.number ? (
+        {steps.map((stepInfo) => (
+          <li key={stepInfo.title} className="md:flex-1">
+            {currentStep > stepInfo.number ? (
               <div className="group flex flex-col border-l-4 border-emerald-600 py-2 pl-4 md:border-l-0 md:border-t-4 md:pl-0 md:pt-4 md:pb-0">
-                <span className="text-sm font-medium text-emerald-600">{`Stap ${step.number}`}</span>
-                <span className="text-sm font-medium">{step.title}</span>
+                <span className="text-sm font-medium text-emerald-600">{`Stap ${stepInfo.number}`}</span>
+                <span className="text-sm font-medium">{stepInfo.title}</span>
               </div>
-            ) : currentStep === step.number ? (
+            ) : currentStep === stepInfo.number ? (
               <div className="flex flex-col border-l-4 border-emerald-600 py-2 pl-4 md:border-l-0 md:border-t-4 md:pl-0 md:pt-4 md:pb-0" aria-current="step">
-                <span className="text-sm font-medium text-emerald-600">{`Stap ${step.number}`}</span>
-                <span className="text-sm font-medium">{step.title}</span>
+                <span className="text-sm font-medium text-emerald-600">{`Stap ${stepInfo.number}`}</span>
+                <span className="text-sm font-medium">{stepInfo.title}</span>
               </div>
             ) : (
               <div className="group flex flex-col border-l-4 border-gray-200 py-2 pl-4 md:border-l-0 md:border-t-4 md:pl-0 md:pt-4 md:pb-0">
-                <span className="text-sm font-medium text-gray-500">{`Stap ${step.number}`}</span>
-                <span className="text-sm font-medium">{step.title}</span>
+                <span className="text-sm font-medium text-gray-500">{`Stap ${stepInfo.number}`}</span>
+                <span className="text-sm font-medium">{stepInfo.title}</span>
               </div>
             )}
           </li>
@@ -162,50 +162,82 @@ const RegistrationPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-white lg:grid lg:grid-cols-5">
       {loading && <LoadingSpinner message="Registratie verwerken..." />}
-      
-      <div className="w-full max-w-4xl">
-        <div className="text-center mb-8">
-          <img className="mx-auto h-16 w-auto" src={appLogo} alt="MijnLVS Logo" />
-          <h2 className="mt-4 text-3xl font-extrabold text-gray-900">Nieuwe Organisatie Registreren</h2>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
-            <div className="mb-8">
-                <Stepper currentStep={step} />
-            </div>
+      {/* KOLOM 1: De "Banner" - Zichtbaar op grote schermen */}
+      <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12 flex flex-col justify-between">
+        <div>
+          <img className="h-12 w-auto bg-white p-2 rounded-lg" src={appLogo} alt="MijnLVS Logo" />
+          <h1 className="mt-8 text-3xl font-bold tracking-tight">
+            Een modern systeem voor een moderne organisatie.
+          </h1>
+          <p className="mt-4 text-emerald-100">
+            MijnLVS biedt alle tools die je nodig hebt om de administratie, communicatie en voortgang van je leerlingen efficiënt te beheren.
+          </p>
+          <ul className="mt-8 space-y-4 text-emerald-50">
+            <li className="flex items-start">
+              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
+              <span><strong className="text-white">Overzicht voor leraren:</strong> Volg aanwezigheid en voortgang per leerling.</span>
+            </li>
+            <li className="flex items-start">
+              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
+              <span><strong className="text-white">Inzicht voor ouders:</strong> Bekijk rapporten en communiceer direct.</span>
+            </li>
+            <li className="flex items-start">
+              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
+              <span><strong className="text-white">Efficiëntie voor de administratie:</strong> Beheer betalingen en gebruikers centraal.</span>
+            </li>
+          </ul>
+        </div>
+        <div className="text-sm text-emerald-200 mt-8">
+          © {new Date().getFullYear()} MijnLVS. Alle rechten voorbehouden.
+        </div>
+      </div>
+
+      {/* KOLOM 2: De Formulier Wizard */}
+      <div className="lg:col-span-3 flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+        <div className="w-full max-w-lg mx-auto">
+          {/* Logo voor mobiele weergave */}
+          <div className="lg:hidden text-center mb-8">
+            <img className="mx-auto h-16 w-auto" src={appLogo} alt="MijnLVS Logo" />
+            <h2 className="mt-4 text-2xl font-extrabold text-gray-900">Nieuwe Organisatie Registreren</h2>
+          </div>
+
+          <div className="mb-8">
+            <Stepper currentStep={step} />
+          </div>
+
+          {error && (
+            <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">{error}</div>
+          )}
+          
+          {/* De formulier logica */}
+          <form onSubmit={handleSubmit}>
+            {renderStep()}
             
-            {error && (
-                <div className="mb-6 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">{error}</div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-                {renderStep()}
-
-                {step < 3 && (
-                    <div className="mt-8 pt-5 border-t flex justify-between items-center">
-                        {step > 1 ? (
-                            <Button onClick={prevStep} variant="secondary" icon={ArrowLeft}>Vorige</Button>
-                        ) : (
-                            // Placeholder om de layout consistent te houden
-                            <div /> 
-                        )}
-                        
-                        {step === 1 && <Button onClick={nextStep} variant="primary">Volgende</Button>}
-                        {step === 2 && <Button type="submit" variant="primary" disabled={loading}>Registratie Afronden</Button>}
-                    </div>
+            {step < 3 && (
+              <div className="mt-8 pt-5 border-t flex justify-between items-center">
+                {step > 1 ? (
+                  <Button onClick={prevStep} variant="secondary" icon={ArrowLeft}>Vorige</Button>
+                ) : (
+                  <div></div>
                 )}
-            </form>
-        </div>
-        
-        <div className="text-center mt-6">
+                
+                {step === 1 && <Button onClick={nextStep} variant="primary">Volgende</Button>}
+                {step === 2 && <Button type="submit" variant="primary" disabled={loading}>Registratie Afronden</Button>}
+              </div>
+            )}
+          </form>
+
+          <div className="text-center mt-6">
             <p className="text-sm text-gray-600">
               Al een account?{' '}
               <button onClick={() => switchSubdomain('al-hijra')} className="font-medium text-emerald-600 hover:text-emerald-500">
                 Ga naar inloggen
               </button>
             </p>
+          </div>
         </div>
       </div>
     </div>
