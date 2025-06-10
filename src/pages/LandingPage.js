@@ -18,7 +18,7 @@ const LandingPage = () => {
         },
         {
             name: 'Professioneel',
-            price: '€20',
+            price: '€25',
             priceSuffix: '/ maand',
             features: ['Onbeperkt Aantal Leerlingen', 'Financieel Beheer', 'Qor\'aan Voortgang', 'Rapporten Module', 'Email Communicatie', 'Standaard Support'],
             cta: 'Kies Professioneel',
