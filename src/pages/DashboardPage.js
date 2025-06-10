@@ -1,11 +1,13 @@
 // src/pages/DashboardPage.js - DEFINITIEVE, COMPLETE EN ROBUUSTE VERSIE
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../utils/financials';
+import { apiCall } from '../services/api';
 import { DollarSign, Users, BookOpen as ClassIcon, User as UserIcon, Mail, ChevronRight } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
+import MailModal from '../components/MailModal';
 import { useNavigate, Link } from 'react-router-dom';
 
 const DashboardPage = () => {
@@ -14,6 +16,11 @@ const DashboardPage = () => {
   const { users, students, classes, payments, mosque, loading: dataLoading, error: dataError } = realData;
   const navigate = useNavigate();
 
+  // State voor de email modal
+  const [isMailModalOpen, setIsMailModalOpen] = useState(false);
+  const [mailLoading, setMailLoading] = useState(false);
+  const [mailFeedback, setMailFeedback] = useState({ type: '', text: '' });
+
   // Loading en Error states
   if (dataLoading || !currentUser) {
     return <LoadingSpinner message="Dashboard laden..." />;
@@ -21,6 +28,30 @@ const DashboardPage = () => {
   if (dataError) {
     return <div className="p-8 text-center text-red-600">Fout bij laden: {dataError}</div>;
   }
+
+  // Functie om email naar commissie te versturen
+  const handleSendCommitteeEmail = async ({ subject, body }) => {
+    setMailLoading(true);
+    setMailFeedback({ type: '', text: '' });
+    try {
+      const result = await apiCall('/api/email/send-generic', {
+        method: 'POST',
+        body: JSON.stringify({
+          recipientEmail: mosque.contact_committee_email,
+          subject,
+          body
+        })
+      });
+      if (!result.success) throw new Error(result.error || 'Versturen mislukt');
+      
+      setMailFeedback({ type: 'success', text: 'E-mail succesvol verzonden!' });
+      setIsMailModalOpen(false);
+    } catch (error) {
+      setMailFeedback({ type: 'error', text: `Fout: ${error.message}` });
+    } finally {
+      setMailLoading(false);
+    }
+  };
 
   // --- Data voorbereiden voor de UI ---
 
@@ -219,9 +250,9 @@ const DashboardPage = () => {
                   <p className="text-sm text-gray-600 mb-4">
                     Neem contact op met de {mosque.contact_committee_name}.
                   </p>
-                  <a href={`mailto:${mosque.contact_committee_email}`}>
-                    <Button icon={Mail} className="w-full">Stuur e-mail</Button>
-                  </a>
+                  <Button icon={Mail} className="w-full" onClick={() => setIsMailModalOpen(true)}>
+                    Stuur e-mail
+                  </Button>
                 </div>
               ) : (
                 <div className="card">
@@ -243,6 +274,27 @@ const DashboardPage = () => {
           <p className="text-gray-600">
             Er is nog geen specifieke dashboard weergave voor uw rol ({userRoleDisplay}).
           </p>
+        </div>
+      )}
+
+      {/* Email Modal */}
+      <MailModal
+        isOpen={isMailModalOpen}
+        onClose={() => setIsMailModalOpen(false)}
+        onSend={handleSendCommitteeEmail}
+        isLoading={mailLoading}
+        title={`Bericht aan ${mosque?.contact_committee_name || 'Onderwijscommissie'}`}
+        recipientInfo={mosque?.contact_committee_email}
+      />
+
+      {/* Email Feedback */}
+      {mailFeedback.text && (
+        <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+          mailFeedback.type === 'success' 
+            ? 'bg-green-100 text-green-800 border border-green-200' 
+            : 'bg-red-100 text-red-800 border border-red-200'
+        }`}>
+          {mailFeedback.text}
         </div>
       )}
     </div>

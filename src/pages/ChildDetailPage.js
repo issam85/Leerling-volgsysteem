@@ -1,4 +1,4 @@
-// src/pages/ChildDetailPage.js - DEFINITIEVE VERSIE MET CORRECTE RAPPORT-WEERGAVE
+// src/pages/ChildDetailPage.js - DEFINITIEVE VERSIE MET CORRECTE RAPPORT-WEERGAVE EN MAILMODAL
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -18,6 +18,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuranProgressView from '../features/parent/QuranProgressView';
 import Button from '../components/Button';
+import MailModal from '../components/MailModal';
 
 // Definieer de structuur van het rapport HIER, zodat beide views het kunnen gebruiken.
 const reportDataStructure = {
@@ -306,6 +307,11 @@ const ChildDetailPage = () => {
   const { students, classes, users, loading: dataLoading } = realData;
   const [activeTab, setActiveTab] = useState('rapport');
 
+  // State voor de mail modal
+  const [isMailModalOpen, setIsMailModalOpen] = useState(false);
+  const [mailLoading, setMailLoading] = useState(false);
+  const [mailFeedback, setMailFeedback] = useState({ type: '', text: '' });
+
   if (dataLoading && !students?.length) {
     return <LoadingSpinner message="Leerlinggegevens laden..." />;
   }
@@ -329,6 +335,30 @@ const ChildDetailPage = () => {
 
   const studentClass = classes?.find(c => c.id === student.class_id);
   const teacher = users?.find(u => u.id === studentClass?.teacher_id);
+
+  // Functie om email naar leraar te versturen
+  const handleSendTeacherEmail = async ({ subject, body }) => {
+    setMailLoading(true);
+    setMailFeedback({ type: '', text: '' });
+    try {
+      const result = await apiCall('/api/email/send-generic', {
+        method: 'POST',
+        body: JSON.stringify({
+          recipientEmail: teacher.email,
+          subject,
+          body
+        })
+      });
+      if (!result.success) throw new Error(result.error || 'Versturen mislukt');
+      
+      setMailFeedback({ type: 'success', text: 'E-mail succesvol verzonden!' });
+      setIsMailModalOpen(false);
+    } catch (error) {
+      setMailFeedback({ type: 'error', text: `Fout: ${error.message}` });
+    } finally {
+      setMailLoading(false);
+    }
+  };
   
   const TabButton = ({ tabName, label, icon: Icon }) => (
     <button
@@ -380,13 +410,22 @@ const ChildDetailPage = () => {
 
         {/* Rechterkant: Actieknop */}
         {teacher?.email && (
-          <a href={`mailto:${teacher.email}`}>
-            <Button icon={Mail} variant="secondary">
-              Contact Leraar/Lerares
-            </Button>
-          </a>
+          <Button icon={Mail} variant="secondary" onClick={() => setIsMailModalOpen(true)}>
+            Contact Leraar/Lerares
+          </Button>
         )}
       </div>
+
+      {/* Feedback weergave */}
+      {mailFeedback.text && (
+        <div className={`p-4 rounded-md ${
+          mailFeedback.type === 'success' 
+            ? 'bg-green-100 text-green-800 border border-green-200' 
+            : 'bg-red-100 text-red-800 border border-red-200'
+        }`}>
+          {mailFeedback.text}
+        </div>
+      )}
 
       {/* Tab Navigatie */}
       <div className="border-b border-gray-200">
@@ -408,6 +447,16 @@ const ChildDetailPage = () => {
         )}
         {activeTab === 'rapport' && <RapportView student={student} />}
       </div>
+
+      {/* Email Modal */}
+      <MailModal
+        isOpen={isMailModalOpen}
+        onClose={() => setIsMailModalOpen(false)}
+        onSend={handleSendTeacherEmail}
+        isLoading={mailLoading}
+        title={`Bericht aan ${teacher?.name || 'Leraar/Lerares'}`}
+        recipientInfo={teacher?.email}
+      />
     </div>
   );
 };
