@@ -218,10 +218,21 @@ const RegistrationPage = () => {
       {/* KOLOM 2: De Formulier Wizard */}
       <div className="lg:col-span-3 flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <div className="w-full max-w-lg mx-auto">
-          {/* Logo voor mobiele weergave */}
+          {/* Logo voor mobiele weergave - ook klikbaar en groter */}
           <div className="lg:hidden text-center mb-8">
-            <img className="mx-auto h-16 w-auto" src={appLogo} alt="MijnLVS Logo" />
+            <a href="/" className="inline-block hover:scale-105 transition-transform duration-200">
+              <img className="mx-auto h-20 w-auto bg-emerald-50 p-3 rounded-xl shadow-md" src={appLogo} alt="MijnLVS Logo" />
+            </a>
             <h2 className="mt-4 text-2xl font-extrabold text-gray-900">Nieuwe Organisatie Registreren</h2>
+            
+            {/* Breadcrumb voor mobiel */}
+            <div className="mt-2 flex items-center justify-center text-sm text-gray-500">
+              <a href="/" className="hover:text-emerald-600 transition-colors">
+                🏠 Hoofdpagina
+              </a>
+              <span className="mx-2">→</span>
+              <span className="text-gray-700">Registratie</span>
+            </div>
           </div>
 
           <div className="mb-8">
