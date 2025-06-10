@@ -165,34 +165,41 @@ const RegistrationPage = () => {
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-5">
       {loading && <LoadingSpinner message="Registratie verwerken..." />}
 
-      {/* KOLOM 1: De "Banner" - Zichtbaar op grote schermen */}
+      {/* ==================================================================== */}
+      {/* KOLOM 1: De "Banner" - Zichtbaar op grote schermen (NIEUWE VERSIE) */}
+      {/* ==================================================================== */}
       <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12 flex flex-col justify-between">
-        <div>
-          <img className="h-12 w-auto bg-white p-2 rounded-lg" src={appLogo} alt="MijnLVS Logo" />
-          <h1 className="mt-8 text-3xl font-bold tracking-tight">
-            Een modern systeem voor een moderne organisatie.
-          </h1>
-          <p className="mt-4 text-emerald-100">
-            MijnLVS biedt alle tools die je nodig hebt om de administratie, communicatie en voortgang van je leerlingen efficiënt te beheren.
-          </p>
-          <ul className="mt-8 space-y-4 text-emerald-50">
-            <li className="flex items-start">
-              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
-              <span><strong className="text-white">Overzicht voor leraren:</strong> Volg aanwezigheid en voortgang per leerling.</span>
-            </li>
-            <li className="flex items-start">
-              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
-              <span><strong className="text-white">Inzicht voor ouders:</strong> Bekijk rapporten en communiceer direct.</span>
-            </li>
-            <li className="flex items-start">
-              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
-              <span><strong className="text-white">Efficiëntie voor de administratie:</strong> Beheer betalingen en gebruikers centraal.</span>
-            </li>
-          </ul>
-        </div>
-        <div className="text-sm text-emerald-200 mt-8">
-          © {new Date().getFullYear()} MijnLVS. Alle rechten voorbehouden.
-        </div>
+          <div>
+              {/* Logo is nu groter (h-16) en heeft meer ruimte */}
+              <img className="h-16 w-auto bg-white p-2.5 rounded-xl shadow-md" src={appLogo} alt="MijnLVS Logo" />
+              
+              {/* Nieuwe, gerichte headline en sub-headline */}
+              <h1 className="mt-10 text-3xl font-bold tracking-tight">
+                  Het hart van uw Islamitisch onderwijs.
+              </h1>
+              <p className="mt-4 text-emerald-100">
+                  MijnLVS is speciaal ontworpen voor moskeeën en onderwijsinstellingen die Arabische taal- en Qor'aanlessen verzorgen.
+              </p>
+              
+              {/* Nieuwe, specifiekere bullet points */}
+              <ul className="mt-8 space-y-4 text-emerald-50">
+                  <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
+                      <span><strong className="text-white">Qor'aan & Rapporten:</strong> Volg de voortgang en aanwezigheid per leerling.</span>
+                  </li>
+                  <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
+                      <span><strong className="text-white">Inzicht voor Ouders:</strong> Ouders blijven betrokken bij de ontwikkeling van hun kind.</span>
+                  </li>
+                  <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
+                      <span><strong className="text-white">Efficiënt Beheer:</strong> Centrale administratie voor lesgeld, klassen en gebruikers.</span>
+                  </li>
+              </ul>
+          </div>
+          <div className="text-sm text-emerald-200 mt-8">
+              © {new Date().getFullYear()} MijnLVS. Alle rechten voorbehouden.
+          </div>
       </div>
 
       {/* KOLOM 2: De Formulier Wizard */}
