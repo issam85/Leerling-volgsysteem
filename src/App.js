@@ -107,16 +107,18 @@ const AppRoutes = () => {
   // Alle volgende routes vereisen DataProvider.
   return (
     <DataProvider>
+      {/* Deze code is nu BINNEN de DataProvider */}
       {location.state?.unauthorizedAttempt && (
-          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-md z-[200] animate-pulse" role="alert">
+          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-md z-[200]">
               <strong className="font-bold">Geen Toegang! </strong>
               <span className="block sm:inline">U heeft geen rechten ({location.state.requiredRole} vereist) voor de vorige pagina.</span>
           </div>
       )}
       <Routes>
+        {/* LoginPage heeft nu toegang tot de data uit DataProvider */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<Navigate to="/login" replace />} /> 
-
+        
+        {/* De beveiligde routes blijven zoals ze waren */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
