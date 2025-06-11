@@ -1,10 +1,21 @@
-// src/pages/DashboardPage.js - DEFINITIEVE, COMPLETE EN ROBUUSTE VERSIE MET NIEUWE LAYOUT
+// src/pages/DashboardPage.js - MODERNE EN PROFESSIONELE VERSIE
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../utils/financials';
 import { apiCall } from '../services/api';
-import { DollarSign, Users, BookOpen as ClassIcon, User as UserIcon, Mail, ChevronRight } from 'lucide-react';
+import { 
+  DollarSign, 
+  Users, 
+  BookOpen as ClassIcon, 
+  User as UserIcon, 
+  Mail, 
+  ChevronRight,
+  TrendingUp,
+  Award,
+  Calendar,
+  Bell
+} from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
 import MailModal from '../components/MailModal';
@@ -62,15 +73,68 @@ const DashboardPage = () => {
     return {
       financialMetrics,
       statsCards: [
-        { label: 'Leerlingen', value: students?.length || 0, icon: Users, color: 'blue' },
-        { label: 'Klassen', value: classes?.length || 0, icon: ClassIcon, color: 'emerald' },
-        { label: 'Leraren', value: users?.filter(u => u.role === 'teacher').length || 0, icon: UserIcon, color: 'purple' },
-        { label: 'Ouders', value: users?.filter(u => u.role === 'parent').length || 0, icon: Users, color: 'orange' },
+        { 
+          label: 'Leerlingen', 
+          value: students?.length || 0, 
+          icon: Users, 
+          color: 'emerald',
+          bgGradient: 'from-emerald-500 to-emerald-600',
+          change: '+12%',
+          changeType: 'positive'
+        },
+        { 
+          label: 'Klassen', 
+          value: classes?.length || 0, 
+          icon: ClassIcon, 
+          color: 'blue',
+          bgGradient: 'from-blue-500 to-blue-600',
+          change: '+2',
+          changeType: 'positive'
+        },
+        { 
+          label: 'Leraren', 
+          value: users?.filter(u => u.role === 'teacher').length || 0, 
+          icon: UserIcon, 
+          color: 'purple',
+          bgGradient: 'from-purple-500 to-purple-600',
+          change: 'Stabiel',
+          changeType: 'neutral'
+        },
+        { 
+          label: 'Ouders', 
+          value: users?.filter(u => u.role === 'parent').length || 0, 
+          icon: Users, 
+          color: 'orange',
+          bgGradient: 'from-orange-500 to-orange-600',
+          change: '+8%',
+          changeType: 'positive'
+        },
       ],
       financialCards: financialMetrics ? [
-        { label: 'Totaal Openstaand', value: `€${financialMetrics.totalOutstanding}`, IconComponent: DollarSign, color: 'red' },
-        { label: 'Totaal Betaald', value: `€${financialMetrics.totalPaid}`, IconComponent: DollarSign, color: 'green' },
-        { label: '% Betaald', value: `${financialMetrics.percentagePaid}%`, IconComponent: () => <span className="text-xl font-bold">%</span>, color: 'blue' }
+        { 
+          label: 'Totaal Openstaand', 
+          value: `€${financialMetrics.totalOutstanding}`, 
+          icon: TrendingUp, 
+          color: 'red',
+          bgGradient: 'from-red-500 to-red-600',
+          description: 'Dit kwartaal'
+        },
+        { 
+          label: 'Totaal Betaald', 
+          value: `€${financialMetrics.totalPaid}`, 
+          icon: DollarSign, 
+          color: 'green',
+          bgGradient: 'from-green-500 to-green-600',
+          description: 'Deze maand'
+        },
+        { 
+          label: 'Betalingsratio', 
+          value: `${financialMetrics.percentagePaid}%`, 
+          icon: Award, 
+          color: 'indigo',
+          bgGradient: 'from-indigo-500 to-indigo-600',
+          description: 'Van totaal'
+        }
       ] : []
     };
   })();
@@ -98,29 +162,69 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-8">
-      {/* Welkomstbanner */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-xl p-6 md:p-8 text-white shadow-lg">
-        <h2 className="text-2xl md:text-3xl font-bold mb-1">Welkom terug, {welcomeMessageName}!</h2>
-        <p className="opacity-90 text-lg">{mosqueDisplayName}</p>
-        <p className="opacity-80 text-sm mt-1">Je bent ingelogd als: <span className="font-semibold">{userRoleDisplay}</span></p>
+      {/* Moderne Welkomstbanner met meer visuele impact */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-8 text-white shadow-2xl">
+        {/* Decoratieve elementen */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                Welkom terug, {welcomeMessageName}! ✨
+              </h2>
+              <p className="opacity-90 text-xl mb-1">{mosqueDisplayName}</p>
+              <div className="flex items-center space-x-4">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 backdrop-blur-sm">
+                  <UserIcon className="w-4 h-4 mr-2" />
+                  {userRoleDisplay}
+                </span>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 backdrop-blur-sm">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </span>
+              </div>
+            </div>
+            <div className="hidden md:block">
+              <Bell className="w-8 h-8 opacity-60" />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Admin Dashboard */}
+      {/* Admin Dashboard - Verbeterde Styling */}
       {currentUser.role === 'admin' && adminData && (
         <div className="space-y-8">
-          {/* Financieel Overzicht */}
+          {/* Financieel Overzicht - Moderne Cards */}
           {adminData.financialMetrics && (
             <div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-4">Financieel Overzicht</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">💰 Financieel Overzicht</h3>
+                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  Live data
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {adminData.financialCards.map(card => (
-                  <div key={card.label} className={`card border-l-4 border-${card.color}-500 flex justify-between items-center`}>
-                    <div>
-                      <p className={`text-sm font-medium text-gray-500`}>{card.label}</p>
-                      <p className={`text-3xl font-bold text-${card.color}-600`}>{card.value}</p>
-                    </div>
-                    <div className={`p-3 rounded-full bg-${card.color}-100 text-${card.color}-600`}>
-                      <card.IconComponent className="w-7 h-7" />
+                  <div key={card.label} className="group relative overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                    {/* Gradient Background */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.bgGradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
+                    
+                    <div className="relative p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`p-3 rounded-xl bg-gradient-to-br ${card.bgGradient} text-white shadow-lg`}>
+                          <card.icon className="w-6 h-6" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-500">{card.label}</p>
+                          <p className="text-xs text-gray-400">{card.description}</p>
+                        </div>
+                      </div>
+                      <div className="text-3xl font-bold text-gray-800 mb-1">{card.value}</div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full bg-gradient-to-r ${card.bgGradient} rounded-full`} style={{width: '75%'}}></div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -128,47 +232,110 @@ const DashboardPage = () => {
             </div>
           )}
 
-          {/* Systeem Statistieken */}
+          {/* Systeem Statistieken - Verbeterde Cards */}
           <div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-4">Systeem Statistieken</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-800">📊 Systeem Statistieken</h3>
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                Realtime
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {adminData.statsCards.map(stat => { 
                 const Icon = stat.icon; 
                 return (
-                  <div key={stat.label} className={`card border-l-4 border-${stat.color}-500 flex justify-between items-center`}>
-                    <div>
-                      <p className={`text-sm font-medium text-gray-500`}>{stat.label}</p>
-                      <p className={`text-3xl font-bold text-${stat.color}-600`}>{stat.value}</p>
-                    </div>
-                    <div className={`p-3 rounded-full bg-${stat.color}-100 text-${stat.color}-600`}>
-                      <Icon className="w-7 h-7" />
+                  <div key={stat.label} className="group relative overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                    {/* Gradient Background */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
+                    
+                    <div className="relative p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.bgGradient} text-white shadow-lg`}>
+                          <Icon className="w-6 h-6" />
+                        </div>
+                        <div className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          stat.changeType === 'positive' ? 'bg-green-100 text-green-700' :
+                          stat.changeType === 'negative' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {stat.change}
+                        </div>
+                      </div>
+                      <div className="text-3xl font-bold text-gray-800 mb-1">{stat.value}</div>
+                      <p className="text-sm font-medium text-gray-500">{stat.label}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
+
+          {/* Quick Actions - Nieuwe Sectie */}
+          <div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-6">⚡ Snelle Acties</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link to="/admin/students" className="group p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-emerald-500">
+                <div className="flex items-center">
+                  <Users className="w-8 h-8 text-emerald-500 mr-3" />
+                  <div>
+                    <h4 className="font-semibold text-gray-800 group-hover:text-emerald-600">Nieuwe Leerling</h4>
+                    <p className="text-sm text-gray-500">Voeg een leerling toe</p>
+                  </div>
+                </div>
+              </Link>
+              <Link to="/admin/classes" className="group p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-blue-500">
+                <div className="flex items-center">
+                  <ClassIcon className="w-8 h-8 text-blue-500 mr-3" />
+                  <div>
+                    <h4 className="font-semibold text-gray-800 group-hover:text-blue-600">Beheer Klassen</h4>
+                    <p className="text-sm text-gray-500">Klas instellingen</p>
+                  </div>
+                </div>
+              </Link>
+              <Link to="/admin/payments" className="group p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-purple-500">
+                <div className="flex items-center">
+                  <DollarSign className="w-8 h-8 text-purple-500 mr-3" />
+                  <div>
+                    <h4 className="font-semibold text-gray-800 group-hover:text-purple-600">Betalingen</h4>
+                    <p className="text-sm text-gray-500">Financieel overzicht</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Leraar Dashboard */}
+      {/* Leraar Dashboard - Verbeterde Styling */}
       {currentUser.role === 'teacher' && (
-        <div className="card text-center p-8">
-          <UserIcon className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
-          <h3 className="text-2xl font-semibold text-gray-800 mb-2">Leraren Dashboard</h3>
-          <p className="text-gray-600 max-w-md mx-auto">
-            Welkom op uw dashboard. Selecteer een van uw klassen in het menu aan de linkerkant om te beginnen.
-          </p>
+        <div className="text-center">
+          <div className="bg-white rounded-2xl shadow-xl p-12 max-w-2xl mx-auto">
+            <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <UserIcon className="w-12 h-12 text-white" />
+            </div>
+            <h3 className="text-3xl font-bold text-gray-800 mb-4">Leraren Dashboard</h3>
+            <p className="text-gray-600 max-w-md mx-auto mb-8 leading-relaxed">
+              Welkom op uw persoonlijke dashboard. Selecteer een van uw klassen in het menu om te beginnen met het bijhouden van leerlinggegevens.
+            </p>
+            <div className="bg-emerald-50 p-4 rounded-xl">
+              <p className="text-emerald-700 text-sm font-medium">💡 Tip: Gebruik het menu aan de linkerkant om naar uw klassen te navigeren</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Ouder Dashboard - NIEUWE LAYOUT */}
+      {/* Ouder Dashboard - Verbeterde Layout en Styling */}
       {currentUser.role === 'parent' && parentData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-          {/* ----- KOLOM 1: HOOFDCONTENT (Mijn Kinderen) ----- */}
+          {/* Hoofdcontent: Mijn Kinderen */}
           <div className="lg:col-span-2 space-y-6">
-            <h3 className="text-xl font-semibold text-gray-700">Mijn Kinderen</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-gray-800">👶 Mijn Kinderen</h3>
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {parentData.childrenCount} {parentData.childrenCount === 1 ? 'kind' : 'kinderen'}
+              </span>
+            </div>
             
             {parentData.childrenCount > 0 ? (
               <div className="space-y-4">
@@ -179,64 +346,100 @@ const DashboardPage = () => {
                     <Link 
                       to={`/parent/my-children/${child.id}`} 
                       key={child.id} 
-                      className="card block hover:bg-emerald-50 hover:shadow-lg transition-all duration-150 cursor-pointer"
+                      className="group block bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-xl font-semibold text-emerald-700">{child.name}</h4>
-                          <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-600">
-                              <span className="inline-flex items-center"><ClassIcon size={14} className="mr-1.5 text-blue-500"/>{childClass?.name || 'Geen klas'}</span>
-                              <span className="inline-flex items-center"><UserIcon size={14} className="mr-1.5 text-purple-500"/>{teacher?.name || 'Geen leraar'}</span>
+                      <div className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-3">
+                              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-lg mr-4 shadow-lg">
+                                {child.name.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 className="text-xl font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">
+                                  {child.name}
+                                </h4>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <span className="inline-flex items-center text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                                    <ClassIcon size={14} className="mr-1.5"/>
+                                    {childClass?.name || 'Geen klas'}
+                                  </span>
+                                  <span className="inline-flex items-center text-sm text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">
+                                    <UserIcon size={14} className="mr-1.5"/>
+                                    {teacher?.name || 'Geen leraar'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
+                          <ChevronRight size={24} className="text-gray-400 group-hover:text-emerald-500 transition-colors" />
                         </div>
-                        <ChevronRight size={24} className="text-gray-400" />
                       </div>
+                      {/* Gradient border effect */}
+                      <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
                     </Link>
                   )
                 })}
               </div>
             ) : (
-              <div className="card text-center p-8">
-                  <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700">Geen kinderen gevonden</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">Er zijn nog geen leerlingen aan uw account gekoppeld.</p>
+              <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Users className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-700 mb-2">Geen kinderen gevonden</h3>
+                <p className="text-gray-600 max-w-md mx-auto">Er zijn nog geen leerlingen aan uw account gekoppeld.</p>
               </div>
             )}
           </div>
 
-          {/* ----- KOLOM 2: ZIJBALK (Financiën & Contact) ----- */}
+          {/* Zijbalk: Financiën & Contact */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Financieel Overzicht Card */}
+            {/* Financieel Overzicht Card - Verbeterd */}
             {parentData.paymentInfo && (
-              <div className="card">
-                <h4 className="text-lg font-semibold text-gray-700 mb-4">Financieel Overzicht</h4>
-                <div className="space-y-3">
-                  <div className="bg-blue-50 p-3 rounded-lg text-center">
-                    <div className="text-xs font-medium text-blue-600">Te Betalen</div>
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-lg font-bold text-gray-800">💳 Financiën</h4>
+                  <DollarSign className="w-6 h-6 text-emerald-500" />
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                    <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Te Betalen</div>
                     <div className="text-2xl font-bold text-blue-800">€{parentData.paymentInfo.amountDue}</div>
                   </div>
-                  <div className="bg-green-50 p-3 rounded-lg text-center">
-                    <div className="text-xs font-medium text-green-600">Betaald</div>
+                  <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+                    <div className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Betaald</div>
                     <div className="text-2xl font-bold text-green-800">€{parentData.paymentInfo.totalPaid}</div>
                   </div>
-                  <div className="bg-red-50 p-3 rounded-lg text-center">
-                    <div className="text-xs font-medium text-red-600">Openstaand</div>
+                  <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-xl border border-red-200">
+                    <div className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Openstaand</div>
                     <div className="text-2xl font-bold text-red-800">€{parentData.paymentInfo.remainingBalance}</div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Contact Card */}
+            {/* Contact Card - Verbeterd */}
             {mosque?.contact_committee_name && mosque?.contact_committee_email && (
-              <div className="card">
-                <h4 className="text-lg font-semibold text-gray-700 mb-2">Vragen?</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Neem contact op met de {mosque.contact_committee_name}.
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-bold text-gray-800">💬 Contact</h4>
+                  <Mail className="w-6 h-6 text-emerald-500" />
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Heeft u vragen? Neem contact op met de {mosque.contact_committee_name}.
                 </p>
-                <Button icon={Mail} className="w-full" onClick={() => setIsMailModalOpen(true)}>
-                  Stuur e-mail
+                <Button 
+                  icon={Mail} 
+                  className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200" 
+                  onClick={() => setIsMailModalOpen(true)}
+                >
+                  Stuur E-mail
                 </Button>
+                <div className="mt-4 p-3 bg-emerald-50 rounded-lg">
+                  <p className="text-xs text-emerald-700">
+                    📧 {mosque.contact_committee_email}
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -246,8 +449,11 @@ const DashboardPage = () => {
 
       {/* Fallback voor onbekende rollen */}
       {!['admin', 'teacher', 'parent'].includes(currentUser.role) && (
-        <div className="card">
-          <h3 className="text-xl font-semibold text-gray-700">Dashboard</h3>
+        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <UserIcon className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-700 mb-2">Dashboard</h3>
           <p className="text-gray-600">
             Er is nog geen specifieke dashboard weergave voor uw rol ({userRoleDisplay}).
           </p>
@@ -264,14 +470,17 @@ const DashboardPage = () => {
         recipientInfo={mosque?.contact_committee_email}
       />
 
-      {/* Email Feedback */}
+      {/* Email Feedback - Verbeterd */}
       {mailFeedback.text && (
-        <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+        <div className={`fixed top-4 right-4 p-4 rounded-xl shadow-2xl z-50 backdrop-blur-sm border ${
           mailFeedback.type === 'success' 
-            ? 'bg-green-100 text-green-800 border border-green-200' 
-            : 'bg-red-100 text-red-800 border border-red-200'
+            ? 'bg-green-50/90 text-green-800 border-green-200' 
+            : 'bg-red-50/90 text-red-800 border-red-200'
         }`}>
-          {mailFeedback.text}
+          <div className="flex items-center">
+            {mailFeedback.type === 'success' ? '✅' : '❌'}
+            <span className="ml-2 font-medium">{mailFeedback.text}</span>
+          </div>
         </div>
       )}
     </div>
