@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Award,
   Calendar,
-  Bell
+  Bell,
+  Euro
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
@@ -122,7 +123,7 @@ const DashboardPage = () => {
         { 
           label: 'Totaal Betaald', 
           value: `€${financialMetrics.totalPaid}`, 
-          icon: DollarSign, 
+          icon: Euro, 
           color: 'green',
           bgGradient: 'from-green-500 to-green-600',
           description: 'Deze maand'
@@ -213,8 +214,8 @@ const DashboardPage = () => {
                     
                     <div className="relative p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-br ${card.bgGradient} text-white shadow-lg`}>
-                          <card.icon className="w-6 h-6" />
+                        <div className={`p-3 rounded-xl bg-${card.color}-100 shadow-sm`}>
+                          <card.icon className={`w-6 h-6 text-${card.color}-600`} />
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-gray-500">{card.label}</p>
@@ -250,8 +251,8 @@ const DashboardPage = () => {
                     
                     <div className="relative p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.bgGradient} text-white shadow-lg`}>
-                          <Icon className="w-6 h-6" />
+                        <div className={`p-3 rounded-xl bg-${stat.color}-100 shadow-sm`}>
+                          <Icon className={`w-6 h-6 text-${stat.color}-600`} />
                         </div>
                         <div className={`text-xs font-semibold px-2 py-1 rounded-full ${
                           stat.changeType === 'positive' ? 'bg-green-100 text-green-700' :
@@ -270,39 +271,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* Quick Actions - Nieuwe Sectie */}
-          <div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">⚡ Snelle Acties</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link to="/admin/students" className="group p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-emerald-500">
-                <div className="flex items-center">
-                  <Users className="w-8 h-8 text-emerald-500 mr-3" />
-                  <div>
-                    <h4 className="font-semibold text-gray-800 group-hover:text-emerald-600">Nieuwe Leerling</h4>
-                    <p className="text-sm text-gray-500">Voeg een leerling toe</p>
-                  </div>
-                </div>
-              </Link>
-              <Link to="/admin/classes" className="group p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-blue-500">
-                <div className="flex items-center">
-                  <ClassIcon className="w-8 h-8 text-blue-500 mr-3" />
-                  <div>
-                    <h4 className="font-semibold text-gray-800 group-hover:text-blue-600">Beheer Klassen</h4>
-                    <p className="text-sm text-gray-500">Klas instellingen</p>
-                  </div>
-                </div>
-              </Link>
-              <Link to="/admin/payments" className="group p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-purple-500">
-                <div className="flex items-center">
-                  <DollarSign className="w-8 h-8 text-purple-500 mr-3" />
-                  <div>
-                    <h4 className="font-semibold text-gray-800 group-hover:text-purple-600">Betalingen</h4>
-                    <p className="text-sm text-gray-500">Financieel overzicht</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </div>
+
         </div>
       )}
 
@@ -310,8 +279,8 @@ const DashboardPage = () => {
       {currentUser.role === 'teacher' && (
         <div className="text-center">
           <div className="bg-white rounded-2xl shadow-xl p-12 max-w-2xl mx-auto">
-            <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <UserIcon className="w-12 h-12 text-white" />
+            <div className="w-24 h-24 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+              <UserIcon className="w-12 h-12 text-emerald-600" />
             </div>
             <h3 className="text-3xl font-bold text-gray-800 mb-4">Leraren Dashboard</h3>
             <p className="text-gray-600 max-w-md mx-auto mb-8 leading-relaxed">
@@ -352,7 +321,7 @@ const DashboardPage = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center mb-3">
-                              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-lg mr-4 shadow-lg">
+                              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 font-bold text-lg mr-4 shadow-sm">
                                 {child.name.charAt(0)}
                               </div>
                               <div>
@@ -430,7 +399,7 @@ const DashboardPage = () => {
                 </p>
                 <Button 
                   icon={Mail} 
-                  className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200" 
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 shadow-md hover:shadow-lg transition-all duration-200" 
                   onClick={() => setIsMailModalOpen(true)}
                 >
                   Stuur E-mail
