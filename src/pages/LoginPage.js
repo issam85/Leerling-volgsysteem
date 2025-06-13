@@ -15,6 +15,7 @@ const LoginPage = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [showEmergencyReset, setShowEmergencyReset] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, hardResetAuth } = useAuth();
     const { realData } = useData(); 
@@ -52,6 +53,7 @@ const LoginPage = () => {
         e.preventDefault();
         setError('');
         setShowEmergencyReset(false);
+        setIsSubmitting(true);
         
         try {
             console.log("[LoginPage] Starting login process...");
@@ -68,6 +70,8 @@ const LoginPage = () => {
             
         } catch (err) {
             setError(err.message || 'Inloggen mislukt. Controleer uw gegevens.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -120,7 +124,7 @@ const LoginPage = () => {
         );
     }
 
-    // Conditional rendering gebaseerd op het laden van moskee-data
+    // Conditional rendering gebaseerd op het laden van organisatie-data
     if (realData.loading && !realData.mosque) {
         return <LoadingSpinner message="Organisatiegegevens laden..." />;
     }
@@ -221,10 +225,10 @@ const LoginPage = () => {
                             variant="primary" 
                             fullWidth 
                             size="lg" 
-                            disabled={loadingUser}
+                            disabled={isSubmitting || loadingUser}
                             className="py-4 text-lg font-semibold"
                         >
-                            {loadingUser ? (
+                            {isSubmitting || loadingUser ? (
                                 <span className="flex items-center justify-center">
                                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

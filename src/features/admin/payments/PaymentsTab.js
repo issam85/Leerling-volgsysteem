@@ -1,29 +1,26 @@
-// src/features/admin/payments/PaymentsTab.js
+// src/features/admin/payments/PaymentsTab.js - CORRECTED VERSION (No Edit/Delete)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../../contexts/DataContext'; // currentUser zit nu in useData
+import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../../../utils/financials';
 import Button from '../../../components/Button';
 import AddPaymentModal from './AddPaymentModal';
-import { DollarSign, Plus, Edit3, Trash2, CheckCircle, XCircle, AlertTriangle, Info, Users as UsersIcon, AlertCircle as AlertCircleIcon } from 'lucide-react';
+import { DollarSign, Plus, CheckCircle, XCircle, AlertTriangle, Info, Users as UsersIcon, AlertCircle as AlertCircleIcon } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 
 const PaymentsTab = () => {
-  const { realData, loadData, currentUser } = useData(); // currentUser hier vandaan voor processed_by
+  const { realData, loadData, currentUser } = useData();
   const navigate = useNavigate();
   const { users, payments, mosque, loading: dataLoading, error: dataError } = realData;
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
-  const [editingPayment, setEditingPayment] = useState(null);
   const [selectedParentForPaymentModal, setSelectedParentForPaymentModal] = useState(null);
   const [pageError, setPageError] = useState('');
   const [modalErrorText, setModalErrorText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const parents = users.filter(u => u.role === 'parent');
-  // Bereken financialMetrics alleen als users en payments geladen zijn
   const financialMetrics = (users.length > 0 || payments.length > 0) ? calculateFinancialMetrics(users, payments) : { totalOutstanding: "0.00", totalPaid: "0.00", percentagePaid: 0 };
-
 
   useEffect(() => {
     if (dataError) setPageError(dataError); else setPageError('');
@@ -31,15 +28,6 @@ const PaymentsTab = () => {
 
   const handleOpenAddModal = (parent = null) => {
     setSelectedParentForPaymentModal(parent);
-    setEditingPayment(null);
-    setShowAddPaymentModal(true);
-    setModalErrorText('');
-  };
-
-  const handleOpenEditModal = (payment) => {
-    const parentOfPayment = parents.find(p => String(p.id) === String(payment.parent_id));
-    setSelectedParentForPaymentModal(parentOfPayment); // Kan undefined zijn als ouder niet meer bestaat
-    setEditingPayment(payment);
     setShowAddPaymentModal(true);
     setModalErrorText('');
   };
@@ -59,70 +47,42 @@ const PaymentsTab = () => {
 
     try {
       const payload = {
-        parent_id: paymentDataFromModal.parentId, // Is al UUID string
+        parent_id: paymentDataFromModal.parentId,
         amount: parsedAmount,
         payment_method: paymentDataFromModal.paymentMethod,
         description: paymentDataFromModal.description || 'Algemene bijdrage',
         notes: paymentDataFromModal.notes || '',
-        processed_by: currentUser?.id, // ID van ingelogde admin
-        payment_date: paymentDataFromModal.payment_date, // YYYY-MM-DD
-        // student_id is optioneel, kan worden toegevoegd aan AddPaymentModal
+        processed_by: currentUser?.id,
+        payment_date: paymentDataFromModal.payment_date,
+        mosque_id: mosque.id,
         ...(paymentDataFromModal.student_id && { student_id: paymentDataFromModal.student_id }),
       };
 
-      let result;
-      if (editingPayment) {
-        // PUT naar /api/payments/:paymentId (BACKEND MOET DIT IMPLEMENTEREN)
-        result = await apiCall(`/api/payments/${editingPayment.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload)
-        });
-      } else {
-        payload.mosque_id = mosque.id; // Vereist door je backend /api/payments POST
-        // POST naar /api/payments
-        result = await apiCall(`/api/payments`, {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-      }
+      // ✅ ONLY POST operation - no PUT for editing
+      const result = await apiCall(`/api/payments`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
 
       if (result.success || result.payment) {
         setShowAddPaymentModal(false);
-        setEditingPayment(null);
         setSelectedParentForPaymentModal(null);
         await loadData();
         setActionLoading(false);
         return true;
       } else {
-        throw new Error(result.error || "Kon betaling niet verwerken.");
+        throw new Error(result.error || "Kon betaling niet registreren.");
       }
     } catch (err) {
       console.error('Error submitting payment:', err);
-      setModalErrorText(err.message || `Fout bij het ${editingPayment ? 'bewerken' : 'registreren'} van betaling.`);
+      setModalErrorText(err.message || 'Fout bij het registreren van betaling.');
       setActionLoading(false);
       return false;
     }
   };
 
-   const handleDeletePayment = async (paymentIdToDelete) => {
-    if (!window.confirm("Weet u zeker dat u deze betaling wilt verwijderen? Dit kan niet ongedaan gemaakt worden.")) return;
-    if (!mosque || !mosque.id) { alert("Moskee informatie niet beschikbaar."); return; }
-    setActionLoading(true);
-    try {
-      // DELETE naar /api/payments/:paymentId (BACKEND MOET DIT IMPLEMENTEREN)
-      const result = await apiCall(`/api/payments/${paymentIdToDelete}`, { method: 'DELETE' });
-      // HIER DE CORRECTIE:
-      if (result.success) { // Gebruik result.success, niet response.status
-        await loadData();
-      } else {
-         throw new Error(result.error || "Kon betaling niet verwijderen.");
-      }
-    } catch (err) {
-      console.error("Error deleting payment:", err);
-      setPageError(`Fout bij verwijderen van betaling: ${err.message}`);
-    }
-    setActionLoading(false);
-  };
+  // ❌ REMOVED: handleDeletePayment function - backend doesn't support this
+  // ❌ REMOVED: handleOpenEditModal function - backend doesn't support this
 
   const getPaymentStatusIcon = (statusKey) => {
     if (statusKey === 'betaald') return <CheckCircle size={14} className="text-green-600 mr-1" />;
@@ -132,11 +92,11 @@ const PaymentsTab = () => {
     return null;
   };
 
-  if (dataLoading && !payments.length && !users.length) { // Wacht tot ook users geladen zijn voor financialMetrics
+  if (dataLoading && !payments.length && !users.length) {
     return <LoadingSpinner message="Betalingen en financiële data laden..." />;
   }
   
-  // Sorteer betalingen op datum, nieuwste eerst
+  // Sort payments by date, newest first
   const sortedPayments = [...payments].sort((a,b) => {
       const dateA = new Date(a.payment_date || a.created_at);
       const dateB = new Date(b.payment_date || b.created_at);
@@ -206,12 +166,11 @@ const PaymentsTab = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Methode</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notitie</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Ouder</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acties</th>
+                {/* ❌ REMOVED: Actions column since we can't edit/delete */}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedPayments.map(payment => {
-                // Je backend stuurt al geneste parent info mee
                 const parentName = payment.parent?.name || <span className="italic text-gray-400">Onbekend</span>;
                 const parentPaymentInfo = payment.parent_id ? calculateParentPaymentStatus(payment.parent_id, users, payments) : null;
                 
@@ -233,16 +192,15 @@ const PaymentsTab = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {parentPaymentInfo ? (
-                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${statusColorClass} capitalize`}>
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs leading-tight font-semibold rounded-full ${statusColorClass} capitalize`}>
                           {getPaymentStatusIcon(parentPaymentInfo.paymentStatus)}
                           {parentPaymentInfo.paymentStatus.replace('_', ' ')}
                         </span>
-                      ) : <span className="italic text-gray-400">-</span>}
+                      ) : (
+                        <span className="italic text-gray-400">-</span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
-                      <Button onClick={() => handleOpenEditModal(payment)} variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 p-1.5" title="Bewerken" disabled={actionLoading}> <Edit3 size={16} /> </Button>
-                      <Button onClick={() => handleDeletePayment(payment.id)} variant="ghost" size="sm" className="text-red-600 hover:text-red-800 p-1.5" title="Verwijderen" disabled={actionLoading}> <Trash2 size={16} /> </Button>
-                    </td>
+                    {/* ❌ REMOVED: Action buttons column */}
                   </tr>
                 );
               })}
@@ -251,17 +209,29 @@ const PaymentsTab = () => {
         </div>
       )}
 
+      {/* ✅ Notice about payment limitations */}
+      {sortedPayments.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md text-sm">
+          <div className="flex items-center">
+            <Info size={16} className="mr-2 flex-shrink-0" />
+            <p>
+              <strong>Let op:</strong> Betalingen kunnen niet bewerkt of verwijderd worden voor administratieve integriteit. 
+              Neem contact op met de systeembeheerder als correcties nodig zijn.
+            </p>
+          </div>
+        </div>
+      )}
+
       {showAddPaymentModal && (
         <AddPaymentModal
           isOpen={showAddPaymentModal}
-          onClose={() => { setShowAddPaymentModal(false); setEditingPayment(null); setSelectedParentForPaymentModal(null); setModalErrorText(''); }}
+          onClose={() => { setShowAddPaymentModal(false); setSelectedParentForPaymentModal(null); setModalErrorText(''); }}
           onSubmit={handlePaymentSubmit}
-          initialData={editingPayment}
-          parents={parents} // Lijst van alle ouders voor de dropdown
-          selectedParentProp={selectedParentForPaymentModal} // Voor het voorselecteren van de ouder
+          initialData={null} // ❌ Always null since we can't edit
+          parents={parents}
+          selectedParentProp={selectedParentForPaymentModal}
           modalError={modalErrorText}
           isLoading={actionLoading}
-          // Geef users en payments mee voor het tonen van de status van de ouder in de modal
           usersFromDataContext={users}
           paymentsFromDataContext={payments}
         />

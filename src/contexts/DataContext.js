@@ -1,4 +1,4 @@
-// src/contexts/DataContext.js - COMPLETE VERSIE met alle nieuwe functies
+// src/contexts/DataContext.js - CORRECTED VERSION met juiste API endpoints
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -8,7 +8,6 @@ const DataContext = createContext(null);
 export const DataProvider = ({ children }) => {
   const { currentUser, currentSubdomain, loadingUser } = useAuth();
   
-  // COMPLETE useState declaratie - met alle nieuwe velden
   const [realData, setRealData] = useState({
     users: [],
     classes: [],
@@ -18,9 +17,9 @@ export const DataProvider = ({ children }) => {
     teacherAssignedClasses: [],
     currentClassLessons: [],
     currentLessonAttendance: [],
-    attendanceStats: {}, // Absentie statistieken per leerling
-    quranStats: {}, // ✨ NIEUW: Qor'aan statistieken per leerling
-    loading: false, // Start false to prevent initial loops
+    attendanceStats: {},
+    quranStats: {}, // ✨ Qor'aan statistieken per leerling
+    loading: false,
     error: null,
   });
 
@@ -33,11 +32,10 @@ export const DataProvider = ({ children }) => {
 
   console.log("🔍 [DataContext] Render - currentUser:", !!currentUser, "loadingUser:", loadingUser, "subdomain:", currentSubdomain, "loading:", realData.loading);
 
-  // FORCE RESET FUNCTIE - om uit loading loops te komen
+  // FORCE RESET FUNCTIE
   const forceResetDataContext = useCallback(() => {
     console.warn("[DataContext] 🚨 FORCE RESET - Clearing all data and loading states");
     
-    // Clear alle timeouts
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
       loadingTimeoutRef.current = null;
@@ -47,12 +45,10 @@ export const DataProvider = ({ children }) => {
       forceResetTimeoutRef.current = null;
     }
     
-    // Reset alle refs
     isDataInitialized.current = false;
     lastLoadedSubdomain.current = null;
     lastLoadedUserId.current = null;
     
-    // Reset state - inclusief nieuwe velden
     setRealData({
       users: [],
       classes: [],
@@ -71,7 +67,7 @@ export const DataProvider = ({ children }) => {
     console.log("[DataContext] ✅ Force reset completed");
   }, []);
 
-  // Emergency loading timeout - force stop loading after 10 seconds
+  // Emergency loading timeout
   useEffect(() => {
     if (realData.loading) {
       console.log("[DataContext] ⏰ Starting emergency timeout (10 seconds)");
@@ -97,7 +93,7 @@ export const DataProvider = ({ children }) => {
     };
   }, [realData.loading]);
 
-  // WATCH FOR STUCK LOADING - als we 15 seconden in loading blijven, force reset
+  // WATCH FOR STUCK LOADING
   useEffect(() => {
     if (realData.loading) {
       forceResetTimeoutRef.current = setTimeout(() => {
@@ -158,9 +154,9 @@ export const DataProvider = ({ children }) => {
       const mosqueId = mosqueForDataLoading.id;
       const [usersRes, classesRes, studentsRes, paymentsRes] = await Promise.all([
         apiCall(`/api/mosques/${mosqueId}/users`),
-        apiCall(`/api/mosques/${mosqueId}/classes`),
-        apiCall(`/api/mosques/${mosqueId}/students`),
-        apiCall(`/api/mosques/${mosqueId}/payments`),
+        apiCall(`/api/classes/mosque/${mosqueId}`), // ✅ CORRECTED endpoint
+        apiCall(`/api/students/mosque/${mosqueId}`), // ✅ CORRECTED endpoint  
+        apiCall(`/api/payments/mosque/${mosqueId}`), // ✅ CORRECTED endpoint
       ]);
       
       console.log(`[DataContext] ✅ Admin data loaded successfully for ${mosqueForDataLoading.name}`);
@@ -196,10 +192,9 @@ export const DataProvider = ({ children }) => {
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
-      // Always fetch fresh data for teachers to avoid dependency loops
       const [classesRes, studentsRes, usersRes] = await Promise.all([
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
+        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
+        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
         apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`),
       ]);
       
@@ -225,7 +220,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  // ✨ NIEUWE ENHANCED PARENT DATA LOADING MET QOR'AAN STATS
+  // ✅ CORRECTED: Enhanced parent data loading met JUISTE Qor'aan endpoints
   const loadParentInitialDataWithQuranStats = useCallback(async (mosqueForDataLoading) => {
     if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
       console.log("[DataContext] loadParentInitialDataWithQuranStats: Pre-conditions not met for parent. Skipping.");
@@ -237,11 +232,10 @@ export const DataProvider = ({ children }) => {
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
-      // Voor ouders laden we students, classes, users
       console.log(`[DataContext] 📡 Fetching parent data from API...`);
       const [studentsRes, classesRes, usersRes] = await Promise.all([
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/students`),
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/classes`),
+        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
+        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
         apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`)
       ]);
       
@@ -251,11 +245,9 @@ export const DataProvider = ({ children }) => {
       
       console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}`);
       
-      // Filter alleen hun eigen kinderen
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
       console.log(`[DataContext] 👶 Found ${parentChildren.length} children for parent ${currentUser.name} (parent_id: ${currentUser.id})`);
 
-      // Haal ZOWEL absentie als Qor'aan statistieken op
       let attendanceStats = {};
       let quranStats = {};
       
@@ -263,9 +255,9 @@ export const DataProvider = ({ children }) => {
         const childIds = parentChildren.map(child => child.id);
         
         try {
-          // Attendance stats
+          // ✅ CORRECTED: Attendance stats endpoint
           console.log(`[DataContext] 📈 Loading attendance stats for children...`);
-          const statsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students/attendance-stats`, {
+          const statsRes = await apiCall(`/api/students/mosque/${mosqueForDataLoading.id}/attendance-stats`, {
             method: 'POST',
             body: JSON.stringify({ student_ids: childIds })
           });
@@ -276,9 +268,9 @@ export const DataProvider = ({ children }) => {
         }
 
         try {
-          // ✨ NIEUW: Qor'aan stats
+          // ✅ CORRECTED: Qor'aan stats endpoint  
           console.log(`[DataContext] 📖 Loading Quran stats for children...`);
-          const quranStatsRes = await apiCall(`/api/mosques/${mosqueForDataLoading.id}/students/quran-stats`, {
+          const quranStatsRes = await apiCall(`/api/quran/mosque/${mosqueForDataLoading.id}/students/stats`, {
             method: 'POST',
             body: JSON.stringify({ student_ids: childIds })
           });
@@ -292,12 +284,12 @@ export const DataProvider = ({ children }) => {
       console.log(`[DataContext] ✅ Parent data loaded successfully for ${currentUser.name}`);
       setRealData(prev => ({
         ...prev,
-        students: parentChildren, // Alleen hun kinderen
-        payments: [], // Leeg voor nu - kan later apart geladen worden
-        users: allUsers, // Alle users (zodat leraarsnamen getoond kunnen worden)
-        classes: allClasses, // Alle klassen (zodat klasnamen getoond kunnen worden)
-        attendanceStats: attendanceStats, // Absentie statistieken per kind
-        quranStats: quranStats, // ✨ NIEUW: Qor'aan statistieken per kind
+        students: parentChildren,
+        payments: [],
+        users: allUsers,
+        classes: allClasses,
+        attendanceStats: attendanceStats,
+        quranStats: quranStats, // ✅ CORRECTED Qor'aan stats
         teacherAssignedClasses: [],
         loading: false,
         error: null,
@@ -312,9 +304,9 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  // ===== NIEUWE FUNCTIES VOOR QOR'AAN & LEERLING BEHEER =====
+  // ===== CORRECTED FUNCTIES VOOR QOR'AAN & LEERLING BEHEER =====
 
-  // ✨ LEERLING TOEVOEGEN (ALLEEN VOOR LERAREN)
+  // ✅ LEERLING TOEVOEGEN (ALLEEN VOOR LERAREN)
   const addStudentToClass = useCallback(async (classId, studentData) => {
     if (!currentUser || currentUser.role !== 'teacher' || !realData.mosque?.id) {
       throw new Error('Alleen leraren kunnen leerlingen toevoegen');
@@ -328,13 +320,13 @@ export const DataProvider = ({ children }) => {
         added_by_teacher_id: currentUser.id
       };
 
-      const result = await apiCall(`/api/mosques/${realData.mosque.id}/students`, {
+      // ✅ CORRECTED: Use new teacher endpoint for adding students
+      const result = await apiCall(`/api/students/mosque/${realData.mosque.id}`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
 
       if (result.success) {
-        // Refresh data om nieuwe student te tonen
         await refreshAllData();
         return result;
       }
@@ -347,7 +339,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser, realData.mosque?.id]);
 
-  // ✨ QOR'AAN VOORTGANG OPHALEN
+  // ✅ QOR'AAN VOORTGANG OPHALEN - CORRECTED ENDPOINT
   const fetchQuranProgressForStudent = useCallback(async (studentId) => {
     if (!currentUser || !realData.mosque?.id || !studentId) {
       return [];
@@ -356,7 +348,8 @@ export const DataProvider = ({ children }) => {
     try {
       console.log(`[DataContext] Fetching Quran progress for student ${studentId}`);
       
-      const progress = await apiCall(`/api/mosques/${realData.mosque.id}/students/${studentId}/quran-progress`);
+      // ✅ CORRECTED: Use correct backend endpoint
+      const progress = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/${studentId}/progress`);
       return progress || [];
     } catch (error) {
       console.error('[DataContext] Error fetching Quran progress:', error);
@@ -365,7 +358,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser, realData.mosque?.id]);
 
-  // ✨ QOR'AAN VOORTGANG BIJWERKEN (ALLEEN VOOR LERAREN)
+  // ✅ QOR'AAN VOORTGANG BIJWERKEN - CORRECTED ENDPOINT
   const updateQuranProgress = useCallback(async (studentId, progressData) => {
     if (!currentUser || currentUser.role !== 'teacher' || !realData.mosque?.id || !studentId) {
       throw new Error('Alleen leraren kunnen Qor\'aan voortgang bijwerken');
@@ -379,7 +372,8 @@ export const DataProvider = ({ children }) => {
         updated_by_teacher_id: currentUser.id
       };
 
-      const result = await apiCall(`/api/mosques/${realData.mosque.id}/students/${studentId}/quran-progress`, {
+      // ✅ CORRECTED: Use correct backend endpoint
+      const result = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/${studentId}/progress`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -397,7 +391,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser, realData.mosque?.id]);
 
-  // ✨ BULK QOR'AAN STATISTIEKEN (VOOR OUDERS)
+  // ✅ BULK QOR'AAN STATISTIEKEN - CORRECTED ENDPOINT
   const fetchQuranStatsForChildren = useCallback(async (studentIds) => {
     if (!currentUser || currentUser.role !== 'parent' || !realData.mosque?.id || !studentIds?.length) {
       return {};
@@ -406,7 +400,8 @@ export const DataProvider = ({ children }) => {
     try {
       console.log(`[DataContext] Fetching Quran stats for ${studentIds.length} children`);
       
-      const stats = await apiCall(`/api/mosques/${realData.mosque.id}/students/quran-stats`, {
+      // ✅ CORRECTED: Use correct backend endpoint
+      const stats = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/stats`, {
         method: 'POST',
         body: JSON.stringify({ student_ids: studentIds })
       });
@@ -414,7 +409,6 @@ export const DataProvider = ({ children }) => {
       return stats || {};
     } catch (error) {
       console.error('[DataContext] Error fetching Quran stats:', error);
-      // Niet fataal voor parent data loading
       return {};
     }
   }, [currentUser, realData.mosque?.id]);
@@ -478,7 +472,6 @@ export const DataProvider = ({ children }) => {
       });
       
       if (result.success) {
-        // ALWAYS refresh attendance data from database after save
         try {
           console.log("[DataContext] Save successful, refreshing attendance from database...");
           const freshAttendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
@@ -487,7 +480,6 @@ export const DataProvider = ({ children }) => {
           return { success: true, freshData: freshAttendance || [] };
         } catch (fetchError) {
           console.error("[DataContext] Could not refresh attendance after save:", fetchError);
-          // Save was successful, but refresh failed - still return success
           return { success: true, freshData: null };
         }
       }
@@ -519,17 +511,15 @@ export const DataProvider = ({ children }) => {
       }
   }, []);
 
-  // Mosque fetch effect - with loop prevention
+  // Mosque fetch effect
   useEffect(() => {
     console.log("[DataContext] 🏗️ Mosque Fetch useEffect. LoadingUser:", loadingUser, "Subdomain:", currentSubdomain);
     
-    // Prevent running if auth is still loading
     if (loadingUser) {
       console.log("[DataContext] ⏳ Auth still loading, skipping mosque fetch");
       return;
     }
     
-    // Handle register subdomain
     if (currentSubdomain === 'register') {
       console.log("[DataContext] 📝 Register subdomain detected, clearing data");
       setRealData({ 
@@ -541,7 +531,6 @@ export const DataProvider = ({ children }) => {
       return;
     }
 
-    // Only fetch if subdomain changed and we don't have data for this subdomain
     if (lastLoadedSubdomain.current !== currentSubdomain || !realData.mosque || realData.mosque.subdomain !== currentSubdomain) {
       console.log(`[DataContext] 🔄 Mosque data needs refresh for ${currentSubdomain}. Fetching...`);
       setRealData(prev => ({ ...prev, loading: true, error: null, mosque: null }));
@@ -565,17 +554,15 @@ export const DataProvider = ({ children }) => {
     }
   }, [loadingUser, currentSubdomain, fetchMosqueDataBySubdomain, realData.mosque?.subdomain]);
 
-  // Role-based data loading effect - with loop prevention - ✨ UPDATED to use new parent function
+  // Role-based data loading effect
   useEffect(() => {
     console.log("[DataContext] 👤 Role-based Data Load useEffect. currentUser:", !!currentUser, "Role:", currentUser?.role, "mosque:", !!realData.mosque?.id, "LoadingUser:", loadingUser);
     
-    // Prevent running if auth is still loading or no mosque
     if (loadingUser || !realData.mosque || !realData.mosque.id) {
       console.log("[DataContext] ⏳ Waiting for auth or mosque data...");
       return;
     }
 
-    // Only load if user changed or not yet loaded for this user
     if (currentUser && lastLoadedUserId.current !== currentUser.id) {
       console.log(`[DataContext] 🔄 Loading data for new user: ${currentUser.id} (role: ${currentUser.role})`);
       lastLoadedUserId.current = currentUser.id;
@@ -588,7 +575,6 @@ export const DataProvider = ({ children }) => {
         loadTeacherInitialData(realData.mosque);
       } else if (currentUser.role === 'parent') {
         console.log("[DataContext] 👨‍👩‍👧‍👦 User is PARENT. Loading parent data with Quran stats.");
-        // ✨ UPDATED: Gebruik nieuwe functie met Qor'aan stats
         setTimeout(() => {
           loadParentInitialDataWithQuranStats(realData.mosque);
         }, 100);
@@ -629,7 +615,6 @@ export const DataProvider = ({ children }) => {
           } else if (currentUser.role === 'teacher') {
             await loadTeacherInitialData(mosqueObject);
           } else if (currentUser.role === 'parent') {
-            // ✨ UPDATED: Gebruik nieuwe functie met Qor'aan stats
             await loadParentInitialDataWithQuranStats(mosqueObject);
           } else {
              setRealData(prev => ({ ...prev, loading: false }));
@@ -652,7 +637,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [loadingUser, currentSubdomain, currentUser, fetchMosqueDataBySubdomain, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialDataWithQuranStats]);
 
-  // ✨ COMPLETE VALUE OBJECT met alle functies
+  // ✅ COMPLETE VALUE OBJECT
   const value = {
     realData,
     loadData: refreshAllData,
@@ -664,7 +649,7 @@ export const DataProvider = ({ children }) => {
     fetchLessonDetailsForAttendance,
     createLesson,
     forceResetDataContext,
-    // ✨ NIEUWE FUNCTIES:
+    // ✅ CORRECTED FUNCTIES:
     addStudentToClass,
     fetchQuranProgressForStudent,
     updateQuranProgress,

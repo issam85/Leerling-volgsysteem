@@ -6,7 +6,7 @@ import { generateTempPassword } from '../../../utils/authHelpers';
 import { calculateParentPaymentStatus } from '../../../utils/financials';
 import Button from '../../../components/Button';
 import AddParentModal from './AddParentModal';
-import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle, KeyRound } from 'lucide-react'; // KeyRound toegevoegd
+import { Users, Plus, Edit3, Trash2, ChevronDown, ChevronUp, AlertCircle, KeyRound } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
@@ -85,15 +85,16 @@ const ParentsTab = () => {
       let result;
       const payloadBase = {
         name: parentDataFromModal.name.trim(),
-        email: parentDataFromModal.email.trim(),
+        email: parentDataFromModal.email.trim().toLowerCase(),
         phone: parentDataFromModal.phone.trim(),
         address: parentDataFromModal.address.trim(),
         city: parentDataFromModal.city.trim(),
-        zipcode: parentDataFromModal.zipcode.trim(),
+        zipcode: parentDataFromModal.zipcode.trim().toUpperCase(),
         role: 'parent',
       };
 
       if (editingParent) {
+        // PUT naar /api/users/:id - Geverifieerd endpoint
         result = await apiCall(`/api/users/${editingParent.id}`, {
           method: 'PUT',
           body: JSON.stringify(payloadBase),
@@ -106,6 +107,7 @@ const ParentsTab = () => {
             mosque_id: mosque.id,
             sendWelcomeEmail: parentDataFromModal.sendEmail 
         };
+        // POST naar /api/users - Geverifieerd endpoint
         result = await apiCall(`/api/users`, { method: 'POST', body: JSON.stringify(payload) });
       }
 
@@ -134,6 +136,7 @@ const ParentsTab = () => {
         confirmMessage += ` Deze ouder heeft ${parentStudents.length} leerling(en) geregistreerd. Deze koppeling(en) zullen verbroken worden en de bijdrage wordt herberekend.`;
     }
     if (!window.confirm(confirmMessage)) return;
+    
     if (!mosque || !mosque.id) { 
       setPageError("Moskee informatie niet beschikbaar. Kan actie niet uitvoeren."); 
       return;
@@ -141,7 +144,9 @@ const ParentsTab = () => {
     setActionLoading(true);
     setPageError('');
     setPageMessage({ type: '', text: '' });
+    
     try {
+      // DELETE naar /api/users/:id - Geverifieerd endpoint
       const result = await apiCall(`/api/users/${parentIdToDelete}`, { method: 'DELETE' });
       if (result.success) {
         await loadData();
@@ -152,8 +157,9 @@ const ParentsTab = () => {
     } catch (err) {
       console.error("Error deleting parent:", err);
       setPageError(`Fout bij verwijderen van ouder: ${err.message}`);
+    } finally {
+      setActionLoading(false);
     }
-    setActionLoading(false);
   };
 
   const handleSendNewPassword = async (parent) => {
@@ -162,8 +168,11 @@ const ParentsTab = () => {
     }
     setActionLoading(true);
     setPageMessage({ type: '', text: '' }); 
+    
     try {
+      // POST naar /api/users/:userId/send-new-password - Geverifieerd endpoint
       const result = await apiCall(`/api/users/${parent.id}/send-new-password`, { method: 'POST' });
+      
       if (result.success) {
         setPageMessage({ type: 'success', text: result.message });
       } else {
@@ -173,11 +182,17 @@ const ParentsTab = () => {
         }
         setPageMessage({ type: 'error', text: errMsg });
       }
+      
+      // Extra check voor handmatige levering (voor development)
+      if (result.details?.newPasswordForManualDelivery) {
+        alert(`Wachtwoord voor handmatige levering: ${result.details.newPasswordForManualDelivery}`);
+      }
     } catch (err) {
       console.error("Error sending new password to parent:", err);
       setPageMessage({ type: 'error', text: `Fout bij versturen nieuw wachtwoord: ${err.message}` });
+    } finally {
+      setActionLoading(false);
     }
-    setActionLoading(false);
   };
 
   const toggleParentDetails = (parentId) => {
@@ -191,15 +206,26 @@ const ParentsTab = () => {
   return (
     <div className="space-y-6">
       {actionLoading && <LoadingSpinner message="Bezig..." />}
+      
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <h2 className="page-title">Ouderbeheer</h2>
-        <Button onClick={handleOpenAddModal} variant="primary" icon={Plus} className="w-full sm:w-auto" disabled={actionLoading}>
+        <Button 
+          onClick={handleOpenAddModal} 
+          variant="primary" 
+          icon={Plus} 
+          className="w-full sm:w-auto" 
+          disabled={actionLoading}
+        >
           Nieuwe Ouder
         </Button>
       </div>
       
       {pageMessage.text && (
-        <div className={`my-4 p-3 rounded-md text-sm ${pageMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <div className={`my-4 p-3 rounded-md text-sm ${
+          pageMessage.type === 'success' 
+            ? 'bg-green-50 text-green-700 border border-green-200' 
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
           {pageMessage.text}
         </div>
       )}
@@ -229,25 +255,47 @@ const ParentsTab = () => {
             else if (paymentInfo.paymentStatus === 'openstaand') statusColorClass = 'text-red-700 bg-red-100';
 
             return (
-              <div key={parent.id} className={`border-b border-gray-200 last:border-b-0 transition-all duration-300 ease-in-out ${isExpanded ? 'bg-emerald-50 shadow-inner' : 'hover:bg-gray-50'}`}>
-                <div className="px-4 py-3 sm:px-6 grid grid-cols-12 gap-x-4 gap-y-2 items-center cursor-pointer" onClick={() => toggleParentDetails(parent.id)}>
+              <div 
+                key={parent.id} 
+                className={`border-b border-gray-200 last:border-b-0 transition-all duration-300 ease-in-out ${
+                  isExpanded ? 'bg-emerald-50 shadow-inner' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div 
+                  className="px-4 py-3 sm:px-6 grid grid-cols-12 gap-x-4 gap-y-2 items-center cursor-pointer" 
+                  onClick={() => toggleParentDetails(parent.id)}
+                >
                   <div className="col-span-12 lg:col-span-4">
-                    <h3 className="text-md font-semibold text-emerald-700 group-hover:text-emerald-800">{parent.name}</h3>
-                    <p className="text-xs text-gray-500 truncate" title={parent.email}>{parent.email}</p>
+                    <h3 className="text-md font-semibold text-emerald-700 group-hover:text-emerald-800">
+                      {parent.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 truncate" title={parent.email}>
+                      {parent.email}
+                    </p>
                   </div>
+                  
                   <div className="col-span-6 sm:col-span-4 lg:col-span-3 text-xs text-gray-600">
-                    <p className="truncate" title={parent.address}>{parent.address || '-'}</p>
+                    <p className="truncate" title={parent.address}>
+                      {parent.address || '-'}
+                    </p>
                     <p>{parent.zipcode || ''} {parent.city || ''}</p>
                   </div>
+                  
                   <div className="col-span-3 sm:col-span-2 lg:col-span-1 text-sm text-center">
-                    <span className="font-medium">{parentStudents.length}</span> <span className="text-xs">kind(eren)</span>
+                    <span className="font-medium">{parentStudents.length}</span> 
+                    <span className="text-xs"> kind(eren)</span>
                   </div>
+                  
                   <div className={`col-span-3 sm:col-span-2 lg:col-span-2 text-xs font-medium text-center px-2.5 py-1 rounded-full ${statusColorClass} capitalize`}>
                     {paymentInfo.paymentStatus.replace('_', ' ')}
                   </div>
+                  
                   <div className="col-span-12 sm:col-span-4 lg:col-span-2 flex justify-end items-center space-x-1 mt-2 sm:mt-0">
                      <Button 
-                        onClick={(e) => { e.stopPropagation(); handleSendNewPassword(parent);}} 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleSendNewPassword(parent);
+                        }} 
                         variant="ghost" 
                         size="sm" 
                         className="text-orange-600 hover:text-orange-800 p-1.5" 
@@ -256,14 +304,47 @@ const ParentsTab = () => {
                      >
                         <KeyRound size={16} />
                      </Button>
-                     <Button onClick={(e) => { e.stopPropagation(); handleOpenEditModal(parent);}} variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 p-1.5" title="Bewerken" disabled={actionLoading}> <Edit3 size={16} /> </Button>
-                     <Button onClick={(e) => { e.stopPropagation(); handleDeleteParent(parent.id);}} variant="ghost" size="sm" className="text-red-600 hover:text-red-800 p-1.5" title="Verwijderen" disabled={actionLoading}> <Trash2 size={16} /> </Button>
-                     <span className="p-1.5 text-gray-400">{isExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</span>
+                     
+                     <Button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleOpenEditModal(parent);
+                        }} 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-blue-600 hover:text-blue-800 p-1.5" 
+                        title="Bewerken" 
+                        disabled={actionLoading}
+                     > 
+                        <Edit3 size={16} /> 
+                     </Button>
+                     
+                     <Button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleDeleteParent(parent.id);
+                        }} 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-800 p-1.5" 
+                        title="Verwijderen" 
+                        disabled={actionLoading}
+                     > 
+                        <Trash2 size={16} /> 
+                     </Button>
+                     
+                     <span className="p-1.5 text-gray-400">
+                        {isExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
+                     </span>
                   </div>
                 </div>
+                
                 {isExpanded && (
                   <div className="px-4 py-4 sm:px-6 border-t border-emerald-200 bg-white space-y-3">
-                    <h4 className="text-sm font-semibold text-gray-800 mb-1">Details voor {parent.name}:</h4>
+                    <h4 className="text-sm font-semibold text-gray-800 mb-1">
+                      Details voor {parent.name}:
+                    </h4>
+                    
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-xs">
                         <div><strong>Telefoon:</strong> {parent.phone || '-'}</div>
                         <div><strong>Verschuldigd:</strong> €{formatCurrency(paymentInfo.amountDue)}</div>
@@ -271,14 +352,27 @@ const ParentsTab = () => {
                         <div className={parseFloat(paymentInfo.remainingBalance) > 0 ? 'font-semibold text-red-600' : 'text-green-600'}>
                             <strong>Openstaand:</strong> €{formatCurrency(paymentInfo.remainingBalance)}
                         </div>
-                        <div><strong>Account ID:</strong> <span className="font-mono truncate" title={parent.id}>{parent.id ? parent.id.substring(0,8) + '...' : '-'}</span></div>
-                        <div><strong>Geregistreerd op:</strong> {parent.created_at ? new Date(parent.created_at).toLocaleDateString('nl-NL') : '-'}</div>
+                        <div>
+                            <strong>Account ID:</strong> 
+                            <span className="font-mono truncate" title={parent.id}>
+                                {parent.id ? parent.id.substring(0,8) + '...' : '-'}
+                            </span>
+                        </div>
+                        <div>
+                            <strong>Geregistreerd op:</strong> 
+                            {parent.created_at ? new Date(parent.created_at).toLocaleDateString('nl-NL') : '-'}
+                        </div>
                     </div>
+                    
                     {parentStudents.length > 0 && (
                         <div className="mt-2">
-                            <h5 className="text-xs font-semibold text-gray-700 mb-0.5">Gekoppelde Kinderen:</h5>
+                            <h5 className="text-xs font-semibold text-gray-700 mb-0.5">
+                                Gekoppelde Kinderen:
+                            </h5>
                             <ul className="list-disc list-inside text-xs text-gray-600 pl-1">
-                                {parentStudents.map(student => <li key={student.id}>{student.name}</li>)}
+                                {parentStudents.map(student => (
+                                    <li key={student.id}>{student.name}</li>
+                                ))}
                             </ul>
                         </div>
                     )}
@@ -293,7 +387,11 @@ const ParentsTab = () => {
       {showAddParentModal && (
         <AddParentModal
           isOpen={showAddParentModal}
-          onClose={() => { setShowAddParentModal(false); setEditingParent(null); setModalErrorText(''); }}
+          onClose={() => { 
+            setShowAddParentModal(false); 
+            setEditingParent(null); 
+            setModalErrorText(''); 
+          }}
           onSubmit={handleParentSubmit}
           initialData={editingParent}
           modalError={modalErrorText}

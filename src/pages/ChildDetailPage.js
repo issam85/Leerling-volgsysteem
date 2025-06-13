@@ -164,9 +164,10 @@ const RapportView = ({ student }) => {
         setLoading(true);
         setError('');
         
-        // DIT IS DE CORRECTIE:
-        // De 'isDemoMode' check is verwijderd. We roepen nu ALTIJD de echte API aan.
-        const data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
+        // ✅ FIX: Corrected API route
+        // ❌ OLD: `/api/students/${student.id}/report?period=${reportPeriod}`
+        // ✅ NEW: `/api/reports/student/${student.id}?period=${reportPeriod}`
+        const data = await apiCall(`/api/reports/student/${student.id}?period=${reportPeriod}`);
         setReport(data && data.student_id ? data : null);
 
       } catch (err) { 

@@ -1,4 +1,4 @@
-// src/features/teacher/StudentReport.js - DEFINITIEVE COMPLETE VERSIE
+// src/features/teacher/StudentReport.js - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Printer, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import Button from '../../components/Button';
@@ -115,7 +115,6 @@ const StudentReport = ({ student, studentClass, teacher, isEditable, onClose }) 
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
-  // isEditable wordt nu als prop doorgegeven
   
   const reportPeriod = "2024-2025";
   const currentDate = new Date().toLocaleDateString('nl-NL');
@@ -167,28 +166,10 @@ const StudentReport = ({ student, studentClass, teacher, isEditable, onClose }) 
       try {
         setLoading(true);
         
-        // Try to fetch from API first
-        let data;
-        try {
-          data = await apiCall(`/api/students/${student.id}/report?period=${reportPeriod}`);
-        } catch (apiError) {
-          console.warn("API niet beschikbaar, gebruik mock data:", apiError);
-          // Fallback to mock data for development
-          data = {
-            grades: {
-              ar_write: 'G',
-              qu_recite: 'V',
-              att_general: 'G',
-            },
-            comments: '',
-            attendanceStats: {
-              aanwezig: 24,
-              te_laat: 2,
-              afwezig_geoorloofd: 1,
-              afwezig_ongeoorloofd: 0,
-            }
-          };
-        }
+        // ✅ FIX: Corrected API route
+        // ❌ OLD: `/api/students/${student.id}/report?period=${reportPeriod}`
+        // ✅ NEW: `/api/reports/student/${student.id}?period=${reportPeriod}`
+        const data = await apiCall(`/api/reports/student/${student.id}?period=${reportPeriod}`);
         
         setReport(data || { grades: {}, comments: '', attendanceStats: null });
         
@@ -198,6 +179,10 @@ const StudentReport = ({ student, studentClass, teacher, isEditable, onClose }) 
           type: 'error', 
           message: `Fout bij laden rapport: ${error.message}` 
         });
+        
+        // Fallback to empty report structure
+        setReport({ grades: {}, comments: '', attendanceStats: null });
+        
       } finally {
         setLoading(false);
       }

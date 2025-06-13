@@ -1,4 +1,4 @@
-// src/features/teacher/AddStudentModal.js - Modal voor leraar om leerling toe te voegen aan klas
+// src/features/teacher/AddStudentModal.js - FIXED VERSION
 import React, { useState } from 'react';
 import Modal from '../../components/Modal';
 import Input from '../../components/Input';
@@ -6,7 +6,7 @@ import Button from '../../components/Button';
 import { apiCall } from '../../services/api';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserPlus, AlertCircle } from 'lucide-react';
+import { UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
 
 const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
   const { realData, loadData } = useData();
@@ -19,6 +19,7 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,35 +30,58 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
 
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
+      // ✅ FIX 1: Correct API route
+      // ❌ OLD: `/api/mosques/${realData.mosque.id}/students`
+      // ✅ NEW: `/api/students/mosque/${realData.mosque.id}`
+      
+      // ✅ FIX 2: Cleaned up payload - removed added_by_teacher_id and active
       const payload = {
         name: formData.name.trim(),
         class_id: classId,
         date_of_birth: formData.date_of_birth || null,
         notes: formData.notes.trim() || null,
-        parent_email: formData.parent_email.trim() || null,
-        added_by_teacher_id: currentUser.id,
-        active: true
+        parent_email: formData.parent_email.trim() || null
+        // ✅ REMOVED: added_by_teacher_id and active (backend sets these automatically)
       };
 
-      const result = await apiCall(`/api/mosques/${realData.mosque.id}/students`, {
+      const result = await apiCall(`/api/students/mosque/${realData.mosque.id}`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
 
       if (result.success) {
+        // ✅ Enhanced success message based on backend response
+        let message = `${result.student.name} succesvol toegevoegd!`;
+        
+        if (result.parent_created) {
+          message += ` Nieuwe ouder account aangemaakt.`;
+        }
+        
+        if (result.contribution_updated) {
+          message += ` Ouder bijdrage herberekend.`;
+        }
+        
+        setSuccessMessage(message);
+        
         // Refresh data om nieuwe student te tonen
         await loadData();
         
-        // Reset form en sluit modal
+        // Reset form
         setFormData({
           name: '',
           date_of_birth: '',
           notes: '',
           parent_email: ''
         });
-        onClose();
+
+        // Auto-close modal after 2 seconds
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+        
       } else {
         throw new Error(result.error || 'Kon leerling niet toevoegen');
       }
@@ -85,6 +109,7 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
       parent_email: ''
     });
     setError('');
+    setSuccessMessage('');
   };
 
   const handleClose = () => {
@@ -104,6 +129,13 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
             <AlertCircle size={20} className="mr-2 flex-shrink-0" />
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center">
+            <CheckCircle size={20} className="mr-2 flex-shrink-0" />
+            {successMessage}
           </div>
         )}
 
@@ -171,10 +203,10 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <Button
             type="submit"
-            disabled={loading || !formData.name.trim()}
+            disabled={loading || !formData.name.trim() || successMessage}
             className="flex-1 sm:flex-none"
           >
-            {loading ? 'Toevoegen...' : 'Leerling Toevoegen'}
+            {loading ? 'Toevoegen...' : successMessage ? 'Toegevoegd!' : 'Leerling Toevoegen'}
           </Button>
           <Button
             type="button"
@@ -183,7 +215,7 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
             disabled={loading}
             className="flex-1 sm:flex-none"
           >
-            Annuleren
+            {successMessage ? 'Sluiten' : 'Annuleren'}
           </Button>
         </div>
 

@@ -36,7 +36,10 @@ const LandingPage = () => {
             // VERVANG DEZE PRICE_ID MET JOUW STRIPE PRICE_ID:
             const priceId = 'price_1RYa3GFmYwBPXo2HwGl8Ffb5'; // <-- Vervang met jouw echte Stripe Price ID
             
-            const result = await apiCall('/api/stripe/create-checkout-session', {
+            // ✅ FIX: Corrected API route
+            // ❌ OLD: '/api/stripe/create-checkout-session'
+            // ✅ NEW: '/api/payments/stripe/create-checkout-session'
+            const result = await apiCall('/api/payments/stripe/create-checkout-session', {
                 method: 'POST',
                 body: JSON.stringify({ 
                     priceId,
