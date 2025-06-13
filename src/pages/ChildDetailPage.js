@@ -156,7 +156,7 @@ const RapportView = ({ student }) => {
     const fetchReport = async () => {
       if (!student?.id) {
         setLoading(false);
-        setError("Leerling niet gevonden.");
+        setError("Leerling ID ontbreekt.");
         return;
       }
       
@@ -164,11 +164,19 @@ const RapportView = ({ student }) => {
         setLoading(true);
         setError('');
         
-        // ✅ FIX: Corrected API route
-        // ❌ OLD: `/api/students/${student.id}/report?period=${reportPeriod}`
-        // ✅ NEW: `/api/reports/student/${student.id}?period=${reportPeriod}`
+        // ==========================================================
+        // HIER ZIT DE CORRECTIE
+        // De URL is aangepast naar het nieuwe, correcte endpoint.
+        // ==========================================================
         const data = await apiCall(`/api/reports/student/${student.id}?period=${reportPeriod}`);
-        setReport(data && data.student_id ? data : null);
+        
+        // De backend stuurt nu een object met { report: {...}, attendanceStats: {...} }
+        if (data && data.report) {
+            setReport(data);
+        } else {
+            // Geen rapport gevonden, maar misschien wel aanwezigheidsdata
+            setReport({ report: null, attendanceStats: data?.attendanceStats || null });
+        }
 
       } catch (err) { 
         console.error("Fout bij ophalen rapport:", err);

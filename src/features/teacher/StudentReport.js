@@ -165,13 +165,16 @@ const StudentReport = ({ student, studentClass, teacher, isEditable, onClose }) 
     const fetchReport = async () => {
       try {
         setLoading(true);
-        
-        // ✅ FIX: Corrected API route
-        // ❌ OLD: `/api/students/${student.id}/report?period=${reportPeriod}`
-        // ✅ NEW: `/api/reports/student/${student.id}?period=${reportPeriod}`
+        // AANGEPAST: De URL is nu gecorrigeerd.
         const data = await apiCall(`/api/reports/student/${student.id}?period=${reportPeriod}`);
         
-        setReport(data || { grades: {}, comments: '', attendanceStats: null });
+        // De backend stuurt een object met .report en .attendanceStats
+        // Vul de state met de ontvangen data, of met een lege structuur als er niets is.
+        setReport({
+            grades: data?.report?.grades || {},
+            comments: data?.report?.comments || '',
+            attendanceStats: data?.attendanceStats || null
+        });
         
       } catch (error) {
         console.error("Fout bij ophalen rapport:", error);
@@ -179,10 +182,6 @@ const StudentReport = ({ student, studentClass, teacher, isEditable, onClose }) 
           type: 'error', 
           message: `Fout bij laden rapport: ${error.message}` 
         });
-        
-        // Fallback to empty report structure
-        setReport({ grades: {}, comments: '', attendanceStats: null });
-        
       } finally {
         setLoading(false);
       }
