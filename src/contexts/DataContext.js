@@ -160,10 +160,10 @@ export const DataProvider = ({ children }) => {
     try {
       const mosqueId = mosqueForDataLoading.id;
       const [usersRes, classesRes, studentsRes, paymentsRes] = await Promise.all([
-        apiCall(`/api/mosques/${mosqueId}/users`),
-        apiCall(`/api/classes/mosque/${mosqueId}`), // ✅ CORRECTED endpoint
-        apiCall(`/api/students/mosque/${mosqueId}`), // ✅ CORRECTED endpoint  
-        apiCall(`/api/payments/mosque/${mosqueId}`), // ✅ CORRECTED endpoint
+        apiCall(`/api/users/mosque/${mosqueId}`),      // Correct
+        apiCall(`/api/classes/mosque/${mosqueId}`),   // Correct
+        apiCall(`/api/students/mosque/${mosqueId}`),  // Correct
+        apiCall(`/api/payments/mosque/${mosqueId}`), // Correct
       ]);
       
       console.log(`[DataContext] ✅ Admin data loaded successfully for ${mosqueForDataLoading.name}`);
@@ -200,9 +200,9 @@ export const DataProvider = ({ children }) => {
 
     try {
       const [classesRes, studentsRes, usersRes] = await Promise.all([
-        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
-        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`),
+        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // Correct
+        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),// Correct
+        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`),   // Correct
       ]);
       
       const allClasses = classesRes || [];
@@ -241,9 +241,9 @@ export const DataProvider = ({ children }) => {
     try {
       console.log(`[DataContext] 📡 Fetching parent data from API...`);
       const [studentsRes, classesRes, usersRes] = await Promise.all([
-        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
-        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // ✅ CORRECTED
-        apiCall(`/api/mosques/${mosqueForDataLoading.id}/users`)
+        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`), // Correct
+        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // Correct
+        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`)    // Correct
       ]);
       
       const allStudents = studentsRes || [];
