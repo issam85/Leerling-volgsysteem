@@ -147,7 +147,7 @@ const AbsentieOverzichtView = ({ childId }) => {
 
 // De RapportView wordt nu een correcte, zelfstandige weergavecomponent
 const RapportView = ({ student }) => {
-  const [report, setReport] = useState(null);
+  const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const reportPeriod = "2024-2025";
@@ -156,7 +156,7 @@ const RapportView = ({ student }) => {
     const fetchReport = async () => {
       if (!student?.id) {
         setLoading(false);
-        setError("Leerling ID ontbreekt.");
+        setError("Leerling niet gevonden.");
         return;
       }
       
@@ -164,23 +164,23 @@ const RapportView = ({ student }) => {
         setLoading(true);
         setError('');
         
-        // ==========================================================
-        // HIER ZIT DE CORRECTIE
-        // De URL is aangepast naar het nieuwe, correcte endpoint.
-        // ==========================================================
+        console.log(`[RapportView] Fetching report for student ${student.id}...`);
         const data = await apiCall(`/api/reports/student/${student.id}?period=${reportPeriod}`);
         
-        // De backend stuurt nu een object met { report: {...}, attendanceStats: {...} }
-        if (data && data.report) {
-            setReport(data);
+        // LOG DE ONTVANGEN DATA OM TE DEBUGGEN
+        console.log('[RapportView] Data received from API:', JSON.stringify(data, null, 2));
+
+        // Controleer of de data de verwachte structuur heeft
+        if (data && typeof data === 'object') {
+          setReportData(data);
         } else {
-            // Geen rapport gevonden, maar misschien wel aanwezigheidsdata
-            setReport({ report: null, attendanceStats: data?.attendanceStats || null });
+          // Als de API iets onverwachts teruggeeft (bv. geen JSON), behandel als niet gevonden.
+          setReportData(null); 
         }
 
       } catch (err) { 
-        console.error("Fout bij ophalen rapport:", err);
-        setError("Kon het rapport niet laden."); 
+        console.error("[RapportView] Error fetching report:", err);
+        setError(`Kon het rapport niet laden: ${err.message}`); 
       } finally { 
         setLoading(false); 
       }
@@ -191,6 +191,16 @@ const RapportView = ({ student }) => {
 
   if (loading) return <LoadingSpinner message="Rapport laden..." />;
   if (error) return <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>;
+
+  // ==========================================================
+  // DE MEEST BELANGRIJKE WIJZIGING IS HIER: VEILIGE DATA-TOEGANG
+  // ==========================================================
+  
+  // Haal de 'report' en 'attendanceStats' uit de state.
+  // Als reportData null is, zijn deze variabelen undefined.
+  const { report, attendanceStats } = reportData || {};
+
+  // Als er geen rapport is gevonden (report is null of undefined), toon dan de infomelding.
   if (!report) {
     return (
       <div className="p-4 bg-blue-50 text-blue-700 rounded-md text-center">
@@ -199,6 +209,11 @@ const RapportView = ({ student }) => {
       </div>
     );
   }
+
+  // Als we hier komen, weten we dat 'report' een object is.
+  // We kunnen nu veilig de eigenschappen benaderen.
+  const grades = report.grades || {};
+  const comments = report.comments || '';
   
   const GradeDisplay = ({ grade }) => {
     const gradeStyles = {
