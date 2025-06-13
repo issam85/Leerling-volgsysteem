@@ -1,4 +1,4 @@
-// src/features/admin/classes/AddClassModal.js - Met 'Actief' checkbox
+// src/features/admin/classes/AddClassModal.js - Correcte versie met 'Actief' checkbox
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import Input from '../../../components/Input';
@@ -8,7 +8,7 @@ const AddClassModal = ({ isOpen, onClose, onSubmit, teachers, initialData, modal
   const [name, setName] = useState('');
   const [teacherId, setTeacherId] = useState('');
   const [description, setDescription] = useState('');
-  const [isActive, setIsActive] = useState(true); // Nieuwe state voor 'actief' status
+  const [isActive, setIsActive] = useState(true); // State voor 'actief' status
   const [formValidationError, setFormValidationError] = useState('');
 
   useEffect(() => {
@@ -42,13 +42,19 @@ const AddClassModal = ({ isOpen, onClose, onSubmit, teachers, initialData, modal
         <>
           <Button variant="ghost" onClick={onClose} disabled={isLoading}>Annuleren</Button>
           <Button variant="primary" type="submit" form="addClassForm" disabled={isLoading}>
-            {isLoading ? "Opslaan..." : "Wijzigingen Opslaan"}
+            {isLoading ? (initialData ? "Opslaan..." : "Aanmaken...") : (initialData ? "Wijzigingen Opslaan" : "Klas Aanmaken")}
           </Button>
         </>
       }
     >
       <form id="addClassForm" onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Klas Naam" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input 
+          label="Klas Naam" 
+          name="name" 
+          value={name} 
+          onChange={(e) => setName(e.target.value)} 
+          required 
+        />
         <div>
           <label htmlFor="teacher" className="block text-sm font-medium text-gray-700 mb-1">Selecteer Leraar *</label>
           <select id="teacher" name="teacherId" value={teacherId} onChange={(e) => setTeacherId(e.target.value)} required className="input-field">
@@ -56,7 +62,14 @@ const AddClassModal = ({ isOpen, onClose, onSubmit, teachers, initialData, modal
             {teachers.map(teacher => (<option key={teacher.id} value={teacher.id}>{teacher.name}</option>))}
           </select>
         </div>
-        <Input label="Omschrijving" name="description" type="textarea" value={description} onChange={(e) => setDescription(e.target.value)} rows="3" />
+        <Input 
+          label="Omschrijving" 
+          name="description" 
+          type="textarea" 
+          value={description} 
+          onChange={(e) => setDescription(e.target.value)} 
+          rows="3" 
+        />
         
         {/* Nieuwe checkbox, alleen zichtbaar bij bewerken */}
         {initialData && (
@@ -79,3 +92,5 @@ const AddClassModal = ({ isOpen, onClose, onSubmit, teachers, initialData, modal
     </Modal>
   );
 };
+
+export default AddClassModal;
