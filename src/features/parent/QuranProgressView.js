@@ -1,4 +1,8 @@
-// src/features/parent/QuranProgressView.js - Qor'aan voortgang weergave voor ouders
+// ============================================
+// QuranProgressView.js - FIXED VERSION
+// ============================================
+
+// src/features/parent/QuranProgressView.js - CORRECTED API ENDPOINTS
 import React, { useState, useEffect } from 'react';
 import { 
   QURAN_SOERAH_LIST, 
@@ -40,7 +44,8 @@ const QuranProgressView = ({ childId, childName }) => {
   const loadQuranProgress = async () => {
     try {
       setLoading(true);
-      const progress = await apiCall(`/api/mosques/${realData.mosque.id}/students/${childId}/quran-progress`);
+      // ✅ CORRECTED: Use correct backend endpoint
+      const progress = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/${childId}/progress`);
       setProgressData(progress || []);
     } catch (err) {
       console.error('Error loading Quran progress:', err);
@@ -62,10 +67,9 @@ const QuranProgressView = ({ childId, childName }) => {
     );
   }
 
-  // Bereken overall voortgang
+  // Rest of the component remains the same...
   const overallProgress = calculateQuranProgress(progressData);
   
-  // Groepeer soera's per status
   const completedSoerahs = QURAN_SOERAH_LIST.filter(soerah => {
     const progress = progressData.find(p => p.soerah_number === soerah.number);
     return progress?.status === QURAN_PROGRESS_STATUS.COMPLETED;
@@ -81,7 +85,6 @@ const QuranProgressView = ({ childId, childName }) => {
     return progress?.status === QURAN_PROGRESS_STATUS.REVIEWING;
   });
 
-  // Recente voltooide soera's (laatste 5)
   const recentlyCompleted = progressData
     .filter(p => p.status === QURAN_PROGRESS_STATUS.COMPLETED && p.date_completed)
     .sort((a, b) => new Date(b.date_completed) - new Date(a.date_completed))
