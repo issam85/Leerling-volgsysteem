@@ -196,4 +196,8 @@ const ClassesTab = () => {
       )}
     </div>
   );
+
 };
+
+
+export default ClassesTab; // Zorg dat deze export er ook is.
