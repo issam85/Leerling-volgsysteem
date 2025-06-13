@@ -118,19 +118,26 @@ export const DataProvider = ({ children }) => {
     if (!subdomain || subdomain === 'register') return null;
     
     try {
-      console.log(`🔍 [DataContext] Fetching mosque for subdomain: ${subdomain}`);
+      console.log(`[DataContext] Fetching mosque for subdomain: ${subdomain}`);
       const cacheBuster = `timestamp=${Date.now()}`;
-      const endpoint = `/api/mosque/${subdomain}?${cacheBuster}`;
+      
+      // ==========================================================
+      // HIER ZIT DE CORRECTIE
+      // De URL is aangepast naar het nieuwe, correcte endpoint.
+      // ==========================================================
+      const endpoint = `/api/mosques/subdomain/${subdomain}?${cacheBuster}`;
       const mosqueDetails = await apiCall(endpoint);
       
       if (mosqueDetails && mosqueDetails.id) {
         console.log("✅ [DataContext] Mosque found:", mosqueDetails.name);
         return mosqueDetails;
       } else {
+        // Dit kan nu ook gebeuren als de backend een 200 OK geeft maar geen data
         throw new Error(`Moskee voor subdomein '${subdomain}' niet gevonden.`);
       }
     } catch (error) {
-      console.error(`❌ [DataContext] Error fetching mosque for ${subdomain}:`, error);
+      console.error(`❌ [DataContext] Error fetching mosque for ${subdomain}:`, error.message);
+      // Gooi de error opnieuw zodat de aanroepende functie hem kan opvangen
       throw error;
     }
   }, []);
