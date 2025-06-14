@@ -123,6 +123,13 @@ const RegistrationPage = () => {
   const [loginSubdomain, setLoginSubdomain] = useState('');
   // EINDE -- NIEUWE CODE
 
+  // NIEUWE FUNCTIE: Verwijder URL parameters
+  const clearUrlParameters = () => {
+    const url = new URL(window.location.href);
+    url.search = '';
+    window.history.replaceState({}, '', url);
+  };
+
   // Check voor payment parameters bij het laden van de pagina
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -131,6 +138,8 @@ const RegistrationPage = () => {
     
     if (paymentSuccess === 'true' && trackingId) {
       console.log('[Registration] Payment parameters detected:', { paymentSuccess, trackingId });
+      // Verwijder de parameters na het loggen
+      clearUrlParameters();
     }
   }, []);
 
@@ -196,6 +205,8 @@ const RegistrationPage = () => {
       } finally {
         setIsLinkingPayment(false);
         setLinkingComplete(true);
+        // Verwijder de parameters na het verwerken
+        clearUrlParameters();
       }
     }
   };
