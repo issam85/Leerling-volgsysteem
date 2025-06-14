@@ -46,7 +46,7 @@ const StudentsTab = () => {
   // ✅ NIEUWE FILTER EN SORT STATES
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' of 'cards'
   
@@ -95,6 +95,14 @@ const StudentsTab = () => {
         case 'name':
           aValue = a.name || '';
           bValue = b.name || '';
+          break;
+        case 'first_name':
+          aValue = a.first_name || a.name?.split(' ')[0] || '';
+          bValue = b.first_name || b.name?.split(' ')[0] || '';
+          break;
+        case 'last_name':
+          aValue = a.last_name || a.name?.split(' ').slice(1).join(' ') || '';
+          bValue = b.last_name || b.name?.split(' ').slice(1).join(' ') || '';
           break;
         case 'class':
           aValue = a.class?.name || '';
@@ -147,7 +155,7 @@ const StudentsTab = () => {
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedClassFilter('');
-    setSortConfig({ key: 'name', direction: 'asc' });
+    setSortConfig({ key: 'first_name', direction: 'asc' });
   };
 
   // Bestaande functies (ongewijzigd)
@@ -456,11 +464,20 @@ const StudentsTab = () => {
                   </th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort('first_name')}
                   >
                     <div className="flex items-center">
-                      Naam Leerling
-                      {renderSortIcon('name')}
+                      Voornaam
+                      {renderSortIcon('first_name')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('last_name')}
+                  >
+                    <div className="flex items-center">
+                      Achternaam
+                      {renderSortIcon('last_name')}
                     </div>
                   </th>
                   <th 
@@ -515,12 +532,19 @@ const StudentsTab = () => {
                         {student.id ? student.id.substring(0,8) + '...' : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.first_name || student.name?.split(' ')[0] || '-'}
+                        </div>
                         {student.date_of_birth && (
                           <div className="text-xs text-gray-500">
                             {new Date().getFullYear() - new Date(student.date_of_birth).getFullYear()} jaar
                           </div>
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.last_name || (student.name?.split(' ').slice(1).join(' ')) || '-'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         <span className="flex items-center">
