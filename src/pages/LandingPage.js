@@ -493,21 +493,22 @@ const LandingPage = () => {
                         Klaar om uw onderwijs te digitaliseren?
                     </h2>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button 
+                        {/* ✅ EERSTE KNOP - Was missing! */}
+                        <button 
                             onClick={handleStartDemo}
-                            size="xl" 
-                            className="bg-white text-emerald-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold"
+                            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-emerald-600 bg-white border border-transparent rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
                         >
-                            Gratis Registreren <ArrowRight className="w-5 h-5 ml-2" />
-                        </Button>
+                            Gratis Registreren 
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                        </button>
+                        
+                        {/* ✅ TWEEDE KNOP - Nu correct gestructureerd */}
                         <a href="mailto:i.abdellaoui@gmail.com">
-                            <Button 
-                                variant="ghost" 
-                                size="xl" 
-                                className="border-white text-white hover:bg-white/10 px-8 py-4 text-lg"
+                            <button 
+                                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-transparent border-2 border-white rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
                             >
                                 📞 Plan een demo gesprek
-                            </Button>
+                            </button>
                         </a>
                     </div>
                 </div>
