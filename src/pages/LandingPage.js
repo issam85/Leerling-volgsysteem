@@ -1,51 +1,33 @@
-// src/pages/LandingPage.js
+// src/pages/LandingPage.js - Complete versie
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import appLogo from '../assets/logo-mijnlvs.png';
 import Button from '../components/Button';
 import { CheckCircle, BookOpen, Users, BarChart3, Building, ArrowRight } from 'lucide-react';
 
-// VOEG DEZE IMPORT TOE ALS JE EEN APARTE API SERVICE HEBT
-// import { apiCall } from '../services/api';
+// Import je bestaande API service
+import { apiCall } from '../services/api';
 
 const LandingPage = () => {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-
-    // API Call functie (vervang door jouw eigen implementatie indien nodig)
-    const apiCall = async (url, options = {}) => {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-            ...options,
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-        
-        return response.json();
-    };
 
     // Stripe Checkout Handler voor Professioneel Plan
     const handleChooseProfessional = async () => {
         setIsProcessingPayment(true);
         try {
-            // VERVANG DEZE PRICE_ID MET JOUW STRIPE PRICE_ID:
-            const priceId = 'price_1RYa3GFmYwBPXo2HwGl8Ffb5'; // <-- Vervang met jouw echte Stripe Price ID
+            // Je product ID: prod_STX7QxkdnAG0dP
+            // Price ID van je €25/maand professional plan
+            const priceId = 'price_1RYa3GFmYwBPXo2HwGl8Ffb5';
             
-            // ✅ FIX: Corrected API route
-            // ❌ OLD: '/api/stripe/create-checkout-session'
-            // ✅ NEW: '/api/payments/stripe/create-checkout-session'
+            // Gebruik de bestaande API service
             const result = await apiCall('/api/payments/stripe/create-checkout-session', {
                 method: 'POST',
                 body: JSON.stringify({ 
                     priceId,
                     metadata: {
                         plan_type: 'professional',
-                        source: 'landing_page'
+                        source: 'landing_page',
+                        product_id: 'prod_STX7QxkdnAG0dP'
                     }
                 })
             });
@@ -58,7 +40,16 @@ const LandingPage = () => {
             }
         } catch (error) {
             console.error('Stripe checkout error:', error);
-            alert(`Er ging iets mis bij het starten van de betaling: ${error.message}`);
+            
+            // Betere error handling
+            let errorMessage = 'Er ging iets mis bij het starten van de betaling.';
+            if (error.message.includes('fetch')) {
+                errorMessage = 'Kan geen verbinding maken met de server. Controleer je internetverbinding.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            alert(errorMessage);
             setIsProcessingPayment(false);
         }
     };
@@ -79,9 +70,9 @@ const LandingPage = () => {
             priceSuffix: '/ maand',
             features: ['Onbeperkt Aantal Leerlingen', 'Financieel Beheer', 'Qor\'aan Voortgang', 'Rapporten Module', 'Email Communicatie', 'Standaard Support'],
             cta: 'Kies Professioneel',
-            handler: handleChooseProfessional, // Gebruik handler in plaats van link
+            handler: handleChooseProfessional,
             isFeatured: true,
-            isStripeCheckout: true, // Flag om te weten dat dit een Stripe checkout is
+            isStripeCheckout: true,
         },
         {
             name: 'Compleet',
@@ -150,9 +141,9 @@ const LandingPage = () => {
                                     <button 
                                         onClick={handleChooseProfessional}
                                         disabled={isProcessingPayment}
-                                        className="text-emerald-600 hover:underline ml-1 font-medium disabled:opacity-50"
+                                        className="text-emerald-600 hover:underline ml-1 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {isProcessingPayment ? 'laden...' : 'Professioneel Plan (€25/maand)'}
+                                        {isProcessingPayment ? 'Bezig met laden...' : 'Professioneel Plan (€25/maand)'}
                                     </button>
                                 </p>
                             </div>
@@ -493,7 +484,6 @@ const LandingPage = () => {
                         Klaar om uw onderwijs te digitaliseren?
                     </h2>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        {/* ✅ EERSTE KNOP - Was missing! */}
                         <button 
                             onClick={handleStartDemo}
                             className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-emerald-600 bg-white border border-transparent rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
@@ -502,7 +492,6 @@ const LandingPage = () => {
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </button>
                         
-                        {/* ✅ TWEEDE KNOP - Nu correct gestructureerd */}
                         <a href="mailto:i.abdellaoui@gmail.com">
                             <button 
                                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-transparent border-2 border-white rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
@@ -514,7 +503,7 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Betere Footer */}
+            {/* Footer */}
             <footer className="bg-gray-900 text-white">
                 <div className="container mx-auto px-6 py-8">
                     <div className="flex flex-col md:flex-row justify-between items-center">
