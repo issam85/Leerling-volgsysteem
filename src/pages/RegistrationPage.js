@@ -1,13 +1,13 @@
 // src/pages/RegistrationPage.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
 import appLogo from '../assets/logo-mijnlvs.png';
-import { Building, UserCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Building, UserCircle, CheckCircle, ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 
 // De Stepper Component
 const Stepper = ({ currentStep }) => {
@@ -45,6 +45,60 @@ const Stepper = ({ currentStep }) => {
   );
 };
 
+// Payment Status Component
+const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
+  if (status === 'success') {
+    return (
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start">
+          <CheckCircle className="w-5 h-5 text-emerald-600 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h4 className="text-emerald-800 font-medium">🎉 Professional Account Actief!</h4>
+            <p className="text-emerald-700 text-sm mt-1">{message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start">
+          <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+          <div className="flex-1">
+            <h4 className="text-yellow-800 font-medium">Betaling wordt nog verwerkt</h4>
+            <p className="text-yellow-700 text-sm mt-1">{message}</p>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="text-yellow-800 underline text-sm mt-2 hover:text-yellow-900"
+              >
+                Opnieuw proberen
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start">
+          <CreditCard className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0 animate-pulse" />
+          <div>
+            <h4 className="text-blue-800 font-medium">Betaling controleren...</h4>
+            <p className="text-blue-700 text-sm mt-1">We controleren of uw betaling succesvol is verwerkt.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
 
 // De Hoofdcomponent
 const RegistrationPage = () => {
@@ -56,12 +110,29 @@ const RegistrationPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [registeredMosque, setRegisteredMosque] = useState(null);
   const { switchSubdomain } = useAuth();
+
+  // Payment linking state
+  const [isLinkingPayment, setIsLinkingPayment] = useState(false);
+  const [linkingComplete, setLinkingComplete] = useState(false);
 
   // START -- NIEUWE CODE: State voor de slimme login link
   const [showSubdomainInput, setShowSubdomainInput] = useState(false);
   const [loginSubdomain, setLoginSubdomain] = useState('');
   // EINDE -- NIEUWE CODE
+
+  // Check voor payment parameters bij het laden van de pagina
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment_success');
+    const trackingId = urlParams.get('tracking_id');
+    
+    if (paymentSuccess === 'true' && trackingId) {
+      console.log('[Registration] Payment parameters detected:', { paymentSuccess, trackingId });
+    }
+  }, []);
 
   const nextStep = () => setStep(prev => prev + 1);
   const prevStep = () => setStep(prev => prev - 1);
@@ -79,14 +150,74 @@ const RegistrationPage = () => {
   };
   // EINDE -- NIEUWE CODE
 
+  // Functie om payment linking te proberen
+  const attemptPaymentLinking = async (mosqueData) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const trackingId = urlParams.get('tracking_id');
+    const paymentSuccess = urlParams.get('payment_success');
+
+    if (paymentSuccess === 'true' && trackingId) {
+      console.log('[Registration] Attempting payment linking with tracking ID:', trackingId);
+      
+      setIsLinkingPayment(true);
+      
+      try {
+        const result = await apiCall('/api/payments/stripe/link-pending-payment', {
+          method: 'POST',
+          body: JSON.stringify({
+            mosqueId: mosqueData.id,
+            userEmail: mosqueData.admin_email,
+            trackingId: trackingId
+          })
+        });
+
+        if (result.success) {
+          console.log('[Registration] Payment linked successfully!');
+          setPaymentStatus({
+            status: 'success',
+            message: result.message,
+            subscriptionStatus: result.subscription_status
+          });
+        } else {
+          console.warn('[Registration] Payment linking failed:', result.message);
+          setPaymentStatus({
+            status: 'failed',
+            message: result.message || 'Betaling wordt nog verwerkt. Probeer over een paar minuten opnieuw in te loggen.',
+            suggestion: result.suggestion
+          });
+        }
+      } catch (error) {
+        console.error('[Registration] Error linking payment:', error);
+        setPaymentStatus({
+          status: 'failed',
+          message: 'Er was een probleem bij het verwerken van uw betaling. Uw account is aangemaakt, maar probeer over een paar minuten opnieuw in te loggen.',
+          suggestion: 'Als het probleem aanhoudt, neem dan contact met ons op.'
+        });
+      } finally {
+        setIsLinkingPayment(false);
+        setLinkingComplete(true);
+      }
+    }
+  };
+
+  // Retry payment linking
+  const retryPaymentLinking = async () => {
+    if (registeredMosque) {
+      await attemptPaymentLinking(registeredMosque);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
     // Validatie op de laatste stap
     if (formData.adminPassword !== formData.confirmPassword) {
-      setError('Wachtwoorden komen niet overeen.'); return;
+      setError('Wachtwoorden komen niet overeen.'); 
+      return;
     }
     if (formData.adminPassword.length < 8) {
-      setError('Wachtwoord moet minimaal 8 karakters lang zijn.'); return;
+      setError('Wachtwoord moet minimaal 8 karakters lang zijn.'); 
+      return;
     }
 
     setLoading(true);
@@ -115,8 +246,18 @@ const RegistrationPage = () => {
       });
       
       if (result.success) {
-        setSuccessMessage(`Registratie succesvol voor ${result.mosque.name}! U kunt nu inloggen op https://${result.mosque.subdomain}.mijnlvs.nl met de admin gegevens.`);
-        nextStep(); // Ga naar de succes-stap
+        const mosqueData = result.mosque;
+        setRegisteredMosque(mosqueData);
+        
+        // Basis success message
+        setSuccessMessage(`Welkom bij MijnLVS, ${mosqueData.name}! Uw account is succesvol aangemaakt.`);
+        
+        // Ga naar succes stap
+        nextStep();
+        
+        // Probeer payment linking als er payment parameters zijn
+        await attemptPaymentLinking(mosqueData);
+        
       } else { 
         throw new Error(result.error || 'Registratie mislukt.'); 
       }
@@ -158,16 +299,63 @@ const RegistrationPage = () => {
         );
       case 3:
         return (
-            <div className="text-center py-10">
-                <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Registratie succesvol!</h2>
-                <p className="text-gray-600 max-w-lg mx-auto">{successMessage}</p>
-                <div className="mt-8">
-                    <Button onClick={() => switchSubdomain(formData.subdomain.trim().toLowerCase())} variant="primary" size="lg">
-                        Direct naar Inloggen
-                    </Button>
-                </div>
+          <div className="text-center py-10">
+            <CheckCircle className="w-20 h-20 text-emerald-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Registratie succesvol!</h2>
+            <p className="text-gray-600 max-w-lg mx-auto mb-6">{successMessage}</p>
+            
+            {/* Payment Status Display */}
+            {isLinkingPayment && (
+              <PaymentStatusCard 
+                isLoading={true}
+              />
+            )}
+            
+            {linkingComplete && paymentStatus && (
+              <PaymentStatusCard 
+                status={paymentStatus.status}
+                message={paymentStatus.message}
+                onRetry={paymentStatus.status === 'failed' ? retryPaymentLinking : null}
+              />
+            )}
+            
+            {/* Login Button */}
+            <div className="mt-8">
+              <Button 
+                onClick={() => switchSubdomain(formData.subdomain.trim().toLowerCase())} 
+                variant="primary" 
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                {paymentStatus?.status === 'success' ? 'Ga naar Professional Dashboard' : 'Ga naar Inloggen'}
+              </Button>
             </div>
+            
+            {/* Additional Info for Payment Cases */}
+            {linkingComplete && paymentStatus?.status === 'success' && (
+              <div className="mt-6 p-4 bg-emerald-50 rounded-lg text-left">
+                <h4 className="font-medium text-emerald-800 mb-2">🚀 Uw Professional Account is actief!</h4>
+                <ul className="text-sm text-emerald-700 space-y-1">
+                  <li>✅ Onbeperkt aantal leerlingen</li>
+                  <li>✅ Volledige financieel beheer</li>
+                  <li>✅ Qor'aan voortgang tracking</li>
+                  <li>✅ Professionele rapporten</li>
+                  <li>✅ E-mail communicatie met ouders</li>
+                </ul>
+              </div>
+            )}
+            
+            {linkingComplete && paymentStatus?.status === 'failed' && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg text-left">
+                <h4 className="font-medium text-blue-800 mb-2">💡 Wat nu?</h4>
+                <div className="text-sm text-blue-700 space-y-2">
+                  <p>• Uw account is aangemaakt en u kunt direct beginnen met de gratis proefperiode</p>
+                  <p>• Als u heeft betaald, wordt uw Professional account automatisch geactiveerd zodra de betaling is verwerkt</p>
+                  <p>• Log over een paar minuten opnieuw in om de status te controleren</p>
+                </div>
+              </div>
+            )}
+          </div>
         );
       default:
         return null;
@@ -262,51 +450,46 @@ const RegistrationPage = () => {
               </div>
             )}
           </form>
-
-          {/* ======================================================= */}
-          {/* START VERVANGING: Dit is de nieuwe, slimme login sectie */}
-          {/* ======================================================= */}
-          <div className="text-center mt-8">
-            {!showSubdomainInput ? (
-              <p className="text-sm text-gray-600">
-                Al een account?{' '}
-                <button
-                  onClick={() => setShowSubdomainInput(true)}
-                  className="font-medium text-emerald-600 hover:text-emerald-500 focus:outline-none focus:underline"
-                >
-                  Ga naar inloggen
-                </button>
-              </p>
-            ) : (
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <label htmlFor="login-subdomain" className="block text-sm font-medium text-gray-700 mb-2">
-                  Wat is het subdomein van uw organisatie?
-                </label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="login-subdomain"
-                    name="loginSubdomain"
-                    value={loginSubdomain}
-                    onChange={(e) => setLoginSubdomain(e.target.value)}
-                    placeholder="bijv. al-noor"
-                    className="flex-grow"
-                  />
-                  <Button onClick={handleSwitchToLogin} disabled={!loginSubdomain.trim()}>
-                    Ga verder
-                  </Button>
+          {step < 3 && (
+            <div className="text-center mt-8">
+              {!showSubdomainInput ? (
+                <p className="text-sm text-gray-600">
+                  Al een account?{' '}
+                  <button
+                    onClick={() => setShowSubdomainInput(true)}
+                    className="font-medium text-emerald-600 hover:text-emerald-500 focus:outline-none focus:underline"
+                  >
+                    Ga naar inloggen
+                  </button>
+                </p>
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <label htmlFor="login-subdomain" className="block text-sm font-medium text-gray-700 mb-2">
+                    Wat is het subdomein van uw organisatie?
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="login-subdomain"
+                      name="loginSubdomain"
+                      value={loginSubdomain}
+                      onChange={(e) => setLoginSubdomain(e.target.value)}
+                      placeholder="bijv. al-noor"
+                      className="flex-grow"
+                    />
+                    <Button onClick={handleSwitchToLogin} disabled={!loginSubdomain.trim()}>
+                      Ga verder
+                    </Button>
+                  </div>
+                  <button
+                    onClick={() => setShowSubdomainInput(false)}
+                    className="text-xs text-gray-500 hover:underline mt-2"
+                  >
+                    Annuleren
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowSubdomainInput(false)}
-                  className="text-xs text-gray-500 hover:underline mt-2"
-                >
-                  Annuleren
-                </button>
-              </div>
-            )}
-          </div>
-          {/* ======================================================= */}
-          {/* EINDE VERVANGING                                      */}
-          {/* ======================================================= */}
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
