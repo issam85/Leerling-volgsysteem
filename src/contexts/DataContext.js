@@ -659,13 +659,61 @@ export const DataProvider = ({ children }) => {
     }
   }, [loadingUser, currentSubdomain, currentUser, fetchMosqueDataBySubdomain, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialDataWithQuranStats]);
 
+  // ✅ NIEUWE FUNCTIE: Refresh na M365 configuratie update
+  const refreshAfterM365Update = useCallback(async () => {
+    console.log("[DataContext] 🔄 Refreshing after M365 configuration update with cache-busting...");
+    
+    if (!currentSubdomain || currentSubdomain === 'register') {
+      console.log("[DataContext] ❌ Cannot refresh M365 data - no subdomain");
+      return;
+    }
+
+    try {
+      setRealData(prev => ({ ...prev, loading: true, error: null }));
+      
+      // Gebruik extra sterke cache-busting voor moskee data na M365 update
+      const cacheBuster = `_fresh=${new Date().getTime()}&_m365update=true`;
+      const separator = `/api/mosques/subdomain/${currentSubdomain}`.includes('?') ? '&' : '?';
+      const freshEndpoint = `/api/mosques/subdomain/${currentSubdomain}${separator}${cacheBuster}`;
+      
+      console.log("[DataContext] 🚀 Fetching FRESH mosque data after M365 update:", freshEndpoint);
+      
+      const freshMosqueData = await apiCall(freshEndpoint, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-None-Match': '*', // Force fresh response, no 304
+        }
+      });
+      
+      if (freshMosqueData && freshMosqueData.id) {
+        console.log("[DataContext] ✅ Fresh mosque data received. M365 Configured:", freshMosqueData.m365_configured);
+        setRealData(prev => ({ 
+          ...prev, 
+          mosque: freshMosqueData, 
+          loading: false, 
+          error: null 
+        }));
+        return freshMosqueData;
+      } else {
+        throw new Error("Fresh mosque data not received after M365 update");
+      }
+    } catch (error) {
+      console.error("[DataContext] ❌ Error refreshing after M365 update:", error);
+      setRealData(prev => ({ ...prev, loading: false, error: error.message }));
+      throw error;
+    }
+  }, [currentSubdomain]);
+
   // ✅ COMPLETE VALUE OBJECT
   const value = {
     realData,
     loadData: refreshAllData,
     currentUser,
-    // Mosque functie
+    // Mosque functies
     fetchMosqueDataBySubdomain,
+    refreshAfterM365Update, // ✅ NIEUWE FUNCTIE voor M365 updates
     // Lesson functies
     fetchLessonsForClass,
     fetchAttendanceForLesson,
