@@ -101,17 +101,9 @@ const ParentsTab = () => {
   const [expandedParentId, setExpandedParentId] = useState(null);
   const [pageMessage, setPageMessage] = useState({ type: '', text: '' });
   
-  // ✅ UITGEBREIDE FILTER EN SORT STATES - NU MET ALLE GEWENSTE FILTERS
+  // ✅ VEREENVOUDIGDE FILTER STATES - Alleen zoekbalk en multi-select betalingsstatus
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    firstName: '',      // ✅ NIEUW: Specifieke voornaam filter
-    lastName: '',       // ✅ NIEUW: Specifieke achternaam filter
-    email: '',
-    address: '',        // ✅ NIEUW: Specifieke adres filter
-    zipcode: '',
-    city: '',
-    paymentStatus: ''
-  });
+  const [selectedPaymentStatuses, setSelectedPaymentStatuses] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
   const [showFilters, setShowFilters] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -128,7 +120,7 @@ const ParentsTab = () => {
     }
   }, [dataError]);
 
-  // ✅ VOLLEDIG UITGEBREIDE FILTER EN SORT LOGICA
+  // ✅ VEREENVOUDIGDE FILTER LOGICA
   const filteredAndSortedParents = useMemo(() => {
     if (!parents || parents.length === 0) return [];
 
@@ -163,46 +155,10 @@ const ParentsTab = () => {
       );
     });
 
-    // Step 2: Specifieke filters (✅ NU UITGEBREID MET ALLE GEWENSTE FILTERS)
-    if (filters.firstName) {
+    // Step 2: Filter op betalingsstatus (multi-select)
+    if (selectedPaymentStatuses.length > 0) {
       filtered = filtered.filter(parent => 
-        parent.first_name?.toLowerCase().includes(filters.firstName.toLowerCase())
-      );
-    }
-    
-    if (filters.lastName) {
-      filtered = filtered.filter(parent => 
-        parent.last_name?.toLowerCase().includes(filters.lastName.toLowerCase())
-      );
-    }
-    
-    if (filters.email) {
-      filtered = filtered.filter(parent => 
-        parent.email?.toLowerCase().includes(filters.email.toLowerCase())
-      );
-    }
-    
-    if (filters.address) {
-      filtered = filtered.filter(parent => 
-        parent.address?.toLowerCase().includes(filters.address.toLowerCase())
-      );
-    }
-    
-    if (filters.zipcode) {
-      filtered = filtered.filter(parent => 
-        parent.zipcode?.toLowerCase().includes(filters.zipcode.toLowerCase())
-      );
-    }
-    
-    if (filters.city) {
-      filtered = filtered.filter(parent => 
-        parent.city?.toLowerCase().includes(filters.city.toLowerCase())
-      );
-    }
-    
-    if (filters.paymentStatus) {
-      filtered = filtered.filter(parent => 
-        parent.paymentInfo?.paymentStatus === filters.paymentStatus
+        selectedPaymentStatuses.includes(parent.paymentInfo?.paymentStatus || 'nvt')
       );
     }
 
@@ -266,7 +222,7 @@ const ParentsTab = () => {
     });
 
     return filtered;
-  }, [parents, students, payments, users, searchQuery, filters, sortConfig]);
+  }, [parents, students, payments, users, searchQuery, selectedPaymentStatuses, sortConfig]);
 
   // ✅ SORT FUNCTIE
   const handleSort = (key) => {
@@ -286,27 +242,28 @@ const ParentsTab = () => {
       : <ArrowDown size={14} className="ml-1 text-blue-600" />;
   };
 
-  // ✅ CLEAR FILTERS
+  // ✅ CLEAR FILTERS (vereenvoudigd)
   const clearFilters = () => {
     setSearchQuery('');
-    setFilters({
-      firstName: '',
-      lastName: '',
-      email: '',
-      address: '',
-      zipcode: '',
-      city: '',
-      paymentStatus: ''
-    });
+    setSelectedPaymentStatuses([]);
     setSortConfig({ key: 'first_name', direction: 'asc' });
   };
 
-  // ✅ CSV EXPORT FUNCTIE
+  // ✅ PAYMENT STATUS TOGGLE voor multi-select
+  const handlePaymentStatusToggle = (status) => {
+    setSelectedPaymentStatuses(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  // ✅ CSV EXPORT FUNCTIE (aangepast voor nieuwe filters)
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
       const dataToExport = filteredAndSortedParents;
-      const hasFilters = searchQuery || Object.values(filters).some(f => f);
+      const hasFilters = searchQuery || selectedPaymentStatuses.length > 0;
       const filename = `ouders-export${hasFilters ? '-gefilterd' : ''}`;
       exportToCSV(dataToExport, filename);
       
@@ -478,7 +435,7 @@ const ParentsTab = () => {
     return <LoadingSpinner message="Ouders laden..." />;
   }
 
-  const hasActiveFilters = searchQuery || Object.values(filters).some(f => f) || sortConfig.key !== 'first_name' || sortConfig.direction !== 'asc';
+  const hasActiveFilters = searchQuery || selectedPaymentStatuses.length > 0 || sortConfig.key !== 'first_name' || sortConfig.direction !== 'asc';
 
   return (
     <div className="space-y-6">
@@ -540,7 +497,7 @@ const ParentsTab = () => {
         </div>
       )}
 
-      {/* ✅ VOLLEDIG UITGEBREIDE FILTER SECTIE */}
+      {/* ✅ VEREENVOUDIGDE FILTER SECTIE - Alleen zoekbalk en betalingsstatus */}
       {showFilters && (
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           {/* Algemene Zoekbalk */}
@@ -568,74 +525,49 @@ const ParentsTab = () => {
             </div>
           </div>
 
-          {/* Specifieke Filters */}
-          <div className="border-t pt-4">
+          {/* Multi-Select Betalingsstatus */}
+          <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Specifieke Filters
+              Betalingsstatus (meerdere selecties mogelijk)
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-              {/* ✅ NIEUWE SPECIFIEKE FILTERS */}
-              <Input
-                label="Voornaam bevat"
-                value={filters.firstName}
-                onChange={(e) => setFilters(prev => ({ ...prev, firstName: e.target.value }))}
-                placeholder="bijv. Jan"
-              />
-
-              <Input
-                label="Achternaam bevat"
-                value={filters.lastName}
-                onChange={(e) => setFilters(prev => ({ ...prev, lastName: e.target.value }))}
-                placeholder="bijv. Jansen"
-              />
-
-              <Input
-                label="Email bevat"
-                value={filters.email}
-                onChange={(e) => setFilters(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="bijv. gmail.com"
-              />
-
-              <Input
-                label="Adres bevat"
-                value={filters.address}
-                onChange={(e) => setFilters(prev => ({ ...prev, address: e.target.value }))}
-                placeholder="bijv. Hoofdstraat"
-              />
-
-              <Input
-                label="Postcode bevat"
-                value={filters.zipcode}
-                onChange={(e) => setFilters(prev => ({ ...prev, zipcode: e.target.value }))}
-                placeholder="bijv. 3135"
-              />
-
-              <Input
-                label="Woonplaats bevat"
-                value={filters.city}
-                onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
-                placeholder="bijv. Amsterdam"
-              />
-
-              {/* Betalingsstatus Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Betalingsstatus</label>
-                <select
-                  value={filters.paymentStatus}
-                  onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
-                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                >
-                  <option value="">Alle statussen</option>
-                  <option value="betaald">Betaald</option>
-                  <option value="deels_betaald">Deels Betaald</option>
-                  <option value="openstaand">Openstaand</option>
-                </select>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { value: 'betaald', label: 'Betaald', color: 'bg-green-100 text-green-800 border-green-200' },
+                { value: 'deels_betaald', label: 'Deels Betaald', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                { value: 'openstaand', label: 'Openstaand', color: 'bg-red-100 text-red-800 border-red-200' },
+                { value: 'nvt', label: 'Nvt', color: 'bg-gray-100 text-gray-800 border-gray-200' }
+              ].map(status => (
+                <label key={status.value} className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedPaymentStatuses.includes(status.value)}
+                    onChange={() => handlePaymentStatusToggle(status.value)}
+                    className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mr-2"
+                  />
+                  <span className={`px-2.5 py-1 inline-flex text-xs leading-tight font-semibold rounded-full border ${status.color}`}>
+                    {status.label}
+                  </span>
+                </label>
+              ))}
             </div>
+            
+            {selectedPaymentStatuses.length > 0 && (
+              <div className="mt-2 text-sm text-gray-600">
+                Geselecteerd: {selectedPaymentStatuses.map(s => {
+                  const statusLabels = {
+                    'betaald': 'Betaald',
+                    'deels_betaald': 'Deels Betaald', 
+                    'openstaand': 'Openstaand',
+                    'nvt': 'Nvt'
+                  };
+                  return statusLabels[s];
+                }).join(', ')}
+              </div>
+            )}
           </div>
 
           {/* Filter Acties */}
-          <div className="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t">
             <div className="text-sm text-gray-600">
               <span className="font-medium">{filteredAndSortedParents.length}</span> resultaten gevonden
               {hasActiveFilters && (
