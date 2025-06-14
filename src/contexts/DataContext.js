@@ -1,4 +1,4 @@
-// src/contexts/DataContext.js - CORRECTED VERSION met juiste API endpoints
+// src/contexts/DataContext.js - VOLLEDIG GECORRIGEERDE VERSIE met juiste API endpoints
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { apiCall } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -114,6 +114,7 @@ export const DataProvider = ({ children }) => {
     };
   }, [realData.loading, forceResetDataContext]);
 
+  // ✅ CORRECT: Mosque data fetching
   const fetchMosqueDataBySubdomain = useCallback(async (subdomain) => {
     if (!subdomain || subdomain === 'register') return null;
     
@@ -121,10 +122,7 @@ export const DataProvider = ({ children }) => {
       console.log(`[DataContext] Fetching mosque for subdomain: ${subdomain}`);
       const cacheBuster = `timestamp=${Date.now()}`;
       
-      // ==========================================================
-      // HIER ZIT DE CORRECTIE
-      // De URL is aangepast naar het nieuwe, correcte endpoint.
-      // ==========================================================
+      // ✅ CORRECT ENDPOINT
       const endpoint = `/api/mosques/subdomain/${subdomain}?${cacheBuster}`;
       const mosqueDetails = await apiCall(endpoint);
       
@@ -132,16 +130,15 @@ export const DataProvider = ({ children }) => {
         console.log("✅ [DataContext] Mosque found:", mosqueDetails.name);
         return mosqueDetails;
       } else {
-        // Dit kan nu ook gebeuren als de backend een 200 OK geeft maar geen data
         throw new Error(`Moskee voor subdomein '${subdomain}' niet gevonden.`);
       }
     } catch (error) {
       console.error(`❌ [DataContext] Error fetching mosque for ${subdomain}:`, error.message);
-      // Gooi de error opnieuw zodat de aanroepende functie hem kan opvangen
       throw error;
     }
   }, []);
 
+  // ✅ CORRECT: Admin data loading
   const loadAdminDetailedData = useCallback(async (mosqueForDataLoading) => {
     if (!currentUser || currentUser.role !== 'admin' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
       console.log("[DataContext] loadAdminDetailedData: Pre-conditions not met for admin. Skipping.");
@@ -159,11 +156,13 @@ export const DataProvider = ({ children }) => {
 
     try {
       const mosqueId = mosqueForDataLoading.id;
+      
+      // ✅ CORRECT ENDPOINTS - these are all correct already
       const [usersRes, classesRes, studentsRes, paymentsRes] = await Promise.all([
-        apiCall(`/api/users/mosque/${mosqueId}`),      // Correct
-        apiCall(`/api/classes/mosque/${mosqueId}`),   // Correct
-        apiCall(`/api/students/mosque/${mosqueId}`),  // Correct
-        apiCall(`/api/payments/mosque/${mosqueId}`), // Correct
+        apiCall(`/api/users/mosque/${mosqueId}`),
+        apiCall(`/api/classes/mosque/${mosqueId}`),
+        apiCall(`/api/students/mosque/${mosqueId}`),
+        apiCall(`/api/payments/mosque/${mosqueId}`),
       ]);
       
       console.log(`[DataContext] ✅ Admin data loaded successfully for ${mosqueForDataLoading.name}`);
@@ -182,6 +181,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
+  // ✅ CORRECT: Teacher data loading
   const loadTeacherInitialData = useCallback(async (mosqueForDataLoading) => {
     if (!currentUser || currentUser.role !== 'teacher' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
       console.log("[DataContext] loadTeacherInitialData: Pre-conditions not met for teacher. Skipping.");
@@ -199,10 +199,11 @@ export const DataProvider = ({ children }) => {
     setRealData(prev => ({ ...prev, mosque: mosqueForDataLoading, loading: true, error: null }));
 
     try {
+      // ✅ CORRECT ENDPOINTS - these are all correct already
       const [classesRes, studentsRes, usersRes] = await Promise.all([
-        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // Correct
-        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),// Correct
-        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`),   // Correct
+        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`),
+        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),
+        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`),
       ]);
       
       const allClasses = classesRes || [];
@@ -227,7 +228,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  // ✅ CORRECTED: Enhanced parent data loading met JUISTE Qor'aan endpoints
+  // ✅ CORRECTED: Parent data loading with FIXED Qor'aan endpoints
   const loadParentInitialDataWithQuranStats = useCallback(async (mosqueForDataLoading) => {
     if (!currentUser || currentUser.role !== 'parent' || !mosqueForDataLoading || !mosqueForDataLoading.id) {
       console.log("[DataContext] loadParentInitialDataWithQuranStats: Pre-conditions not met for parent. Skipping.");
@@ -240,10 +241,12 @@ export const DataProvider = ({ children }) => {
 
     try {
       console.log(`[DataContext] 📡 Fetching parent data from API...`);
+      
+      // ✅ CORRECT ENDPOINTS - these are all correct already
       const [studentsRes, classesRes, usersRes] = await Promise.all([
-        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`), // Correct
-        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`), // Correct
-        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`)    // Correct
+        apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),
+        apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`),
+        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`)
       ]);
       
       const allStudents = studentsRes || [];
@@ -262,7 +265,7 @@ export const DataProvider = ({ children }) => {
         const childIds = parentChildren.map(child => child.id);
         
         try {
-          // ✅ CORRECTED: Attendance stats endpoint
+          // ✅ CORRECT ENDPOINT - attendance stats
           console.log(`[DataContext] 📈 Loading attendance stats for children...`);
           const statsRes = await apiCall(`/api/students/mosque/${mosqueForDataLoading.id}/attendance-stats`, {
             method: 'POST',
@@ -275,9 +278,9 @@ export const DataProvider = ({ children }) => {
         }
 
         try {
-          // ✅ CORRECTED: Qor'aan stats endpoint  
+          // ✅ CORRECTED: Simplified Qor'aan stats endpoint
           console.log(`[DataContext] 📖 Loading Quran stats for children...`);
-          const quranStatsRes = await apiCall(`/api/quran/mosque/${mosqueForDataLoading.id}/students/stats`, {
+          const quranStatsRes = await apiCall(`/api/quran/students/stats`, {
             method: 'POST',
             body: JSON.stringify({ student_ids: childIds })
           });
@@ -311,24 +314,25 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  // ===== CORRECTED FUNCTIES VOOR QOR'AAN & LEERLING BEHEER =====
+  // ===== GECORRIGEERDE FUNCTIES VOOR QOR'AAN & LEERLING BEHEER =====
 
-  // ✅ LEERLING TOEVOEGEN (ALLEEN VOOR LERAREN)
-  const addStudentToClass = useCallback(async (classId, studentData) => {
+  // ✅ CORRECTED: Student toevoegen (SIMPLIFIED endpoint)
+  const addStudentToClass = useCallback(async (studentData) => {
     if (!currentUser || currentUser.role !== 'teacher' || !realData.mosque?.id) {
       throw new Error('Alleen leraren kunnen leerlingen toevoegen');
     }
 
     try {
-      console.log(`[DataContext] Adding student to class ${classId}`);
+      console.log(`[DataContext] Adding student to system`);
       
       const payload = {
         ...studentData,
+        mosque_id: realData.mosque.id, // mosqueId goes in payload now
         added_by_teacher_id: currentUser.id
       };
 
-      // ✅ CORRECTED: Use new teacher endpoint for adding students
-      const result = await apiCall(`/api/students/mosque/${realData.mosque.id}`, {
+      // ✅ CORRECTED: Simplified endpoint without mosqueId in URL
+      const result = await apiCall(`/api/students`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -346,28 +350,28 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser, realData.mosque?.id]);
 
-  // ✅ QOR'AAN VOORTGANG OPHALEN - CORRECTED ENDPOINT
+  // ✅ CORRECTED: Qor'aan voortgang ophalen - SIMPLIFIED endpoint
   const fetchQuranProgressForStudent = useCallback(async (studentId) => {
-    if (!currentUser || !realData.mosque?.id || !studentId) {
+    if (!currentUser || !studentId) {
       return [];
     }
 
     try {
       console.log(`[DataContext] Fetching Quran progress for student ${studentId}`);
       
-      // ✅ CORRECTED: Use correct backend endpoint
-      const progress = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/${studentId}/progress`);
+      // ✅ CORRECTED: Simplified endpoint without mosqueId in URL
+      const progress = await apiCall(`/api/quran/student/${studentId}/progress`);
       return progress || [];
     } catch (error) {
       console.error('[DataContext] Error fetching Quran progress:', error);
       setRealData(prev => ({ ...prev, error: error.message }));
       return [];
     }
-  }, [currentUser, realData.mosque?.id]);
+  }, [currentUser]);
 
-  // ✅ QOR'AAN VOORTGANG BIJWERKEN - CORRECTED ENDPOINT
+  // ✅ CORRECTED: Qor'aan voortgang bijwerken - SIMPLIFIED endpoint
   const updateQuranProgress = useCallback(async (studentId, progressData) => {
-    if (!currentUser || currentUser.role !== 'teacher' || !realData.mosque?.id || !studentId) {
+    if (!currentUser || currentUser.role !== 'teacher' || !studentId) {
       throw new Error('Alleen leraren kunnen Qor\'aan voortgang bijwerken');
     }
 
@@ -379,8 +383,8 @@ export const DataProvider = ({ children }) => {
         updated_by_teacher_id: currentUser.id
       };
 
-      // ✅ CORRECTED: Use correct backend endpoint
-      const result = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/${studentId}/progress`, {
+      // ✅ CORRECTED: Simplified endpoint without mosqueId in URL
+      const result = await apiCall(`/api/quran/student/${studentId}/progress`, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
@@ -396,19 +400,19 @@ export const DataProvider = ({ children }) => {
       setRealData(prev => ({ ...prev, error: error.message }));
       throw error;
     }
-  }, [currentUser, realData.mosque?.id]);
+  }, [currentUser]);
 
-  // ✅ BULK QOR'AAN STATISTIEKEN - CORRECTED ENDPOINT
+  // ✅ CORRECTED: Bulk Qor'aan statistieken - SIMPLIFIED endpoint
   const fetchQuranStatsForChildren = useCallback(async (studentIds) => {
-    if (!currentUser || currentUser.role !== 'parent' || !realData.mosque?.id || !studentIds?.length) {
+    if (!currentUser || currentUser.role !== 'parent' || !studentIds?.length) {
       return {};
     }
 
     try {
       console.log(`[DataContext] Fetching Quran stats for ${studentIds.length} children`);
       
-      // ✅ CORRECTED: Use correct backend endpoint
-      const stats = await apiCall(`/api/quran/mosque/${realData.mosque.id}/students/stats`, {
+      // ✅ CORRECTED: Simplified endpoint without mosqueId in URL
+      const stats = await apiCall(`/api/quran/students/stats`, {
         method: 'POST',
         body: JSON.stringify({ student_ids: studentIds })
       });
@@ -418,16 +422,18 @@ export const DataProvider = ({ children }) => {
       console.error('[DataContext] Error fetching Quran stats:', error);
       return {};
     }
-  }, [currentUser, realData.mosque?.id]);
+  }, [currentUser]);
 
-  // ===== BESTAANDE FUNCTIES =====
+  // ===== GECORRIGEERDE LESSON FUNCTIES =====
 
+  // ✅ CORRECTED: Lessons ophalen - SIMPLIFIED endpoint
   const fetchLessonsForClass = useCallback(async (classId, startDate, endDate) => {
-    if (!currentUser || !realData.mosque?.id || !classId) return [];
-    console.log(`[DataContext] fetchLessonsForClass: Fetching for class ${classId}, mosque ${realData.mosque.id}`);
+    if (!currentUser || !classId) return [];
+    console.log(`[DataContext] fetchLessonsForClass: Fetching for class ${classId}`);
     
     try {
-      const lessons = await apiCall(`/api/mosques/${realData.mosque.id}/classes/${classId}/lessons?startDate=${startDate}&endDate=${endDate}`);
+      // ✅ CORRECTED: Simplified endpoint - no mosqueId needed
+      const lessons = await apiCall(`/api/lessons/class/${classId}?startDate=${startDate}&endDate=${endDate}`);
       setRealData(prev => ({ ...prev, currentClassLessons: lessons || [] }));
       return lessons || [];
     } catch (error) {
@@ -435,13 +441,15 @@ export const DataProvider = ({ children }) => {
       setRealData(prev => ({ ...prev, currentClassLessons: [], error: error.message }));
       return [];
     }
-  }, [currentUser, realData.mosque?.id]);
+  }, [currentUser]);
 
+  // ✅ CORRECTED: Lesson details ophalen - SIMPLIFIED endpoint
   const fetchLessonDetailsForAttendance = useCallback(async (lessonId) => {
       if(!lessonId) return null;
       
       try {
-          const lessonDetails = await apiCall(`/api/lessen/${lessonId}/details-for-attendance`);
+          // ✅ CORRECTED: Updated endpoint path
+          const lessonDetails = await apiCall(`/api/lessons/${lessonId}/details-for-attendance`);
           return lessonDetails;
       } catch (error) {
           console.error("[DataContext] Error fetching lesson details for attendance:", error);
@@ -450,11 +458,13 @@ export const DataProvider = ({ children }) => {
       }
   }, []);
 
+  // ✅ CORRECTED: Attendance ophalen - SIMPLIFIED endpoint
   const fetchAttendanceForLesson = useCallback(async (lessonId) => {
     if (!lessonId) return [];
     
     try {
-      const attendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
+      // ✅ CORRECTED: Updated endpoint path
+      const attendance = await apiCall(`/api/lessons/${lessonId}/absenties`);
       setRealData(prev => ({ ...prev, currentLessonAttendance: attendance || [] }));
       return attendance || [];
     } catch (error) {
@@ -464,6 +474,7 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
+  // ✅ CORRECTED: Attendance opslaan - SIMPLIFIED endpoint
   const saveAttendanceForLesson = useCallback(async (lessonId, attendancePayload) => {
     if (!lessonId || !attendancePayload || !currentUser?.id) return false;
     
@@ -473,7 +484,8 @@ export const DataProvider = ({ children }) => {
     }));
     
     try {
-      const result = await apiCall(`/api/lessen/${lessonId}/absenties`, {
+      // ✅ CORRECTED: Updated endpoint path
+      const result = await apiCall(`/api/lessons/${lessonId}/absenties`, {
         method: 'POST',
         body: JSON.stringify(payloadWithTeacher)
       });
@@ -481,7 +493,7 @@ export const DataProvider = ({ children }) => {
       if (result.success) {
         try {
           console.log("[DataContext] Save successful, refreshing attendance from database...");
-          const freshAttendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
+          const freshAttendance = await apiCall(`/api/lessons/${lessonId}/absenties`);
           setRealData(prev => ({ ...prev, currentLessonAttendance: freshAttendance || [] }));
           console.log("[DataContext] Fresh attendance data loaded:", freshAttendance?.length || 0, "records");
           return { success: true, freshData: freshAttendance || [] };
@@ -498,11 +510,13 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser?.id]);
 
-  const createLesson = useCallback(async (mosqueId, classId, lessonData) => {
-      if (!mosqueId || !classId || !lessonData) return null;
+  // ✅ CORRECTED: Lesson aanmaken - SIMPLIFIED endpoint
+  const createLesson = useCallback(async (lessonData) => {
+      if (!lessonData) return null;
       
       try {
-          const result = await apiCall(`/api/mosques/${mosqueId}/classes/${classId}/lessons`, {
+          // ✅ CORRECTED: Simplified endpoint - mosqueId and classId now in payload
+          const result = await apiCall(`/api/lessons`, {
               method: 'POST',
               body: JSON.stringify(lessonData)
           });
@@ -602,6 +616,7 @@ export const DataProvider = ({ children }) => {
     }
   }, [currentUser?.id, realData.mosque?.id, loadingUser, loadAdminDetailedData, loadTeacherInitialData, loadParentInitialDataWithQuranStats]);
 
+  // ✅ REFRESH ALL DATA functie
   const refreshAllData = useCallback(async () => {
     console.log("[DataContext] 🔄 RefreshAllData called.");
     if (loadingUser || !currentSubdomain || currentSubdomain === 'register') {
@@ -649,18 +664,22 @@ export const DataProvider = ({ children }) => {
     realData,
     loadData: refreshAllData,
     currentUser,
-    // Bestaande functies
+    // Mosque functie
+    fetchMosqueDataBySubdomain,
+    // Lesson functies
     fetchLessonsForClass,
     fetchAttendanceForLesson,
     saveAttendanceForLesson,
     fetchLessonDetailsForAttendance,
     createLesson,
-    forceResetDataContext,
-    // ✅ CORRECTED FUNCTIES:
+    // Student functie
     addStudentToClass,
+    // Qor'aan functies
     fetchQuranProgressForStudent,
     updateQuranProgress,
     fetchQuranStatsForChildren,
+    // Utility functies
+    forceResetDataContext,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

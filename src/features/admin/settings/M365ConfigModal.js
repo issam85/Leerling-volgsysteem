@@ -20,9 +20,12 @@ const M365ConfigModal = ({ isOpen, onClose, onSubmit, initialConfig, isLoading, 
       setConfigForm({
         tenantId: initialConfig?.tenantId || '',
         clientId: initialConfig?.clientId || '',
-        clientSecret: '',
-        senderEmail: initialConfig?.senderEmail || `noreply@${(mosqueName || 'jouwmoskee').toLowerCase().replace(/\s+/g, '')}.nl`,
+        senderEmail: initialConfig?.senderEmail || '',
+        // BELANGRIJK: De clientSecret wordt ALTIJD gereset naar een lege string.
+        // De gebruiker moet deze expliciet invoeren als ze hem willen wijzigen.
+        clientSecret: '', 
       });
+      // De rest blijft hetzelfde...
       setTestEmailAddress(initialConfig?.senderEmail || `admin@${(mosqueName || 'jouwmoskee').toLowerCase().replace(/\s+/g, '')}.com`);
       setFormValidationError('');
       setTestEmailStatus({ type: '', message: '' });
