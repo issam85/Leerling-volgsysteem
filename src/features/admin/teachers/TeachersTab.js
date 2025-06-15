@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import { generateTempPassword } from '../../../utils/authHelpers'; // Als je ook hier een welkomstmail zou sturen
+import AdminLayout from '../../../layouts/AdminLayout';
 import Button from '../../../components/Button';
 import AddTeacherModal from './AddTeacherModal'; // Aangenomen dat je deze hebt
 import { Users, Plus, Edit3, Trash2, KeyRound, AlertCircle } from 'lucide-react'; // KeyRound toegevoegd
@@ -166,84 +167,86 @@ const TeachersTab = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {actionLoading && <LoadingSpinner message="Bezig..." />}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <h2 className="page-title">Leraren Beheer</h2>
-        <Button onClick={handleOpenAddModal} variant="primary" icon={Plus} className="w-full sm:w-auto" disabled={actionLoading}>
-          Nieuwe Leraar
-        </Button>
-      </div>
-
-      {pageMessage.text && (
-        <div className={`my-4 p-3 rounded-md text-sm ${pageMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-          {pageMessage.text}
+    <AdminLayout>
+      <div className="space-y-6">
+        {actionLoading && <LoadingSpinner message="Bezig..." />}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <h2 className="page-title">Leraren Beheer</h2>
+          <Button onClick={handleOpenAddModal} variant="primary" icon={Plus} className="w-full sm:w-auto" disabled={actionLoading}>
+            Nieuwe Leraar
+          </Button>
         </div>
-      )}
 
-      {pageError && (
-        <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
-          <AlertCircle size={20} className="mr-2" /> {pageError}
-        </div>
-      )}
+        {pageMessage.text && (
+          <div className={`my-4 p-3 rounded-md text-sm ${pageMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            {pageMessage.text}
+          </div>
+        )}
 
-      {!dataLoading && teachers && teachers.length === 0 ? (
-        <div className="card text-center">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen leraren</h3>
-          <p className="text-gray-600">Voeg leraren toe om klassen aan te kunnen maken.</p>
-        </div>
-      ) : teachers && teachers.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-md overflow-x-auto border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefoon</th>
-                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Acties</span></th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {teachers.map(teacher => (
-                <tr key={teacher.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono" title={teacher.id}>{teacher.id.substring(0,8)}...</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{teacher.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{teacher.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{teacher.phone || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
-                    <Button 
-                        onClick={() => handleSendNewPassword(teacher)} 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-orange-600 hover:text-orange-800 p-1.5" 
-                        title="Nieuw wachtwoord sturen"
-                        disabled={actionLoading}
-                    >
-                        <KeyRound size={16} />
-                    </Button>
-                    <Button onClick={() => handleOpenEditModal(teacher)} variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 p-1.5" title="Bewerken" disabled={actionLoading}> <Edit3 size={16} /> </Button>
-                    <Button onClick={() => handleDeleteTeacher(teacher.id)} variant="ghost" size="sm" className="text-red-600 hover:text-red-800 p-1.5" title="Verwijderen" disabled={actionLoading}> <Trash2 size={16} /> </Button>
-                  </td>
+        {pageError && (
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
+            <AlertCircle size={20} className="mr-2" /> {pageError}
+          </div>
+        )}
+
+        {!dataLoading && teachers && teachers.length === 0 ? (
+          <div className="card text-center">
+            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen leraren</h3>
+            <p className="text-gray-600">Voeg leraren toe om klassen aan te kunnen maken.</p>
+          </div>
+        ) : teachers && teachers.length > 0 ? (
+          <div className="bg-white rounded-xl shadow-md overflow-x-auto border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Naam</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefoon</th>
+                  <th scope="col" className="relative px-6 py-3"><span className="sr-only">Acties</span></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {teachers.map(teacher => (
+                  <tr key={teacher.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono" title={teacher.id}>{teacher.id.substring(0,8)}...</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{teacher.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{teacher.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{teacher.phone || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                      <Button 
+                          onClick={() => handleSendNewPassword(teacher)} 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-orange-600 hover:text-orange-800 p-1.5" 
+                          title="Nieuw wachtwoord sturen"
+                          disabled={actionLoading}
+                      >
+                          <KeyRound size={16} />
+                      </Button>
+                      <Button onClick={() => handleOpenEditModal(teacher)} variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 p-1.5" title="Bewerken" disabled={actionLoading}> <Edit3 size={16} /> </Button>
+                      <Button onClick={() => handleDeleteTeacher(teacher.id)} variant="ghost" size="sm" className="text-red-600 hover:text-red-800 p-1.5" title="Verwijderen" disabled={actionLoading}> <Trash2 size={16} /> </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
-      {showAddTeacherModal && (
-        <AddTeacherModal
-          isOpen={showAddTeacherModal}
-          onClose={() => { setShowAddTeacherModal(false); setEditingTeacher(null); setModalErrorText(''); }}
-          onSubmit={handleTeacherSubmit}
-          initialData={editingTeacher}
-          modalError={modalErrorText} // Property naam consistent houden
-          isLoading={actionLoading}
-        />
-      )}
-    </div>
+        {showAddTeacherModal && (
+          <AddTeacherModal
+            isOpen={showAddTeacherModal}
+            onClose={() => { setShowAddTeacherModal(false); setEditingTeacher(null); setModalErrorText(''); }}
+            onSubmit={handleTeacherSubmit}
+            initialData={editingTeacher}
+            modalError={modalErrorText} // Property naam consistent houden
+            isLoading={actionLoading}
+          />
+        )}
+      </div>
+    </AdminLayout>
   );
 };
 

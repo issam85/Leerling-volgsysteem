@@ -4,6 +4,7 @@ import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import { generateTempPassword } from '../../../utils/authHelpers';
 import { calculateParentPaymentStatus } from '../../../utils/financials';
+import AdminLayout from '../../../layouts/AdminLayout'; // ✅ TOEGEVOEGD
 import Button from '../../../components/Button';
 import Input from '../../../components/Input';
 import AddParentModal from './AddParentModal';
@@ -438,408 +439,410 @@ const ParentsTab = () => {
   const hasActiveFilters = searchQuery || selectedPaymentStatuses.length > 0 || sortConfig.key !== 'first_name' || sortConfig.direction !== 'asc';
 
   return (
-    <div className="space-y-6">
-      {actionLoading && <LoadingSpinner message="Bezig..." />}
-      
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
-        <div>
-          <h2 className="page-title">Ouderbeheer</h2>
-          <p className="text-gray-600 text-sm mt-1">
-            {filteredAndSortedParents.length} van {parents?.length || 0} ouders
-            {hasActiveFilters && ' (gefilterd)'}
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button 
-            onClick={handleExportCSV}
-            variant="secondary"
-            icon={Download}
-            disabled={isExporting || filteredAndSortedParents.length === 0}
-            className="min-w-max"
-          >
-            {isExporting ? 'Exporteren...' : `Exporteer CSV (${filteredAndSortedParents.length})`}
-          </Button>
-          <Button 
-            onClick={() => setShowFilters(!showFilters)}
-            variant="secondary"
-            icon={Filter}
-            className={hasActiveFilters ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-          >
-            {showFilters ? 'Verberg Filters' : 'Toon Filters'}
-            {hasActiveFilters && <span className="ml-1 bg-blue-600 text-white rounded-full px-2 py-0.5 text-xs">!</span>}
-          </Button>
-          <Button 
-            onClick={handleOpenAddModal} 
-            variant="primary" 
-            icon={Plus} 
-            disabled={actionLoading}
-          >
-            Nieuwe Ouder
-          </Button>
-        </div>
-      </div>
-      
-      {/* Messages */}
-      {pageMessage.text && (
-        <div className={`p-4 rounded-md text-sm flex items-center ${
-          pageMessage.type === 'success' 
-            ? 'bg-green-50 text-green-700 border border-green-200' 
-            : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
-          {pageMessage.type === 'success' ? '✅' : '❌'} {pageMessage.text}
-        </div>
-      )}
-
-      {pageError && (
-        <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
-          <AlertCircle size={20} className="mr-2" /> {pageError}
-        </div>
-      )}
-
-      {/* ✅ VEREENVOUDIGDE FILTER SECTIE - Alleen zoekbalk en betalingsstatus */}
-      {showFilters && (
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          {/* Algemene Zoekbalk */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Algemene Zoekterm
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Zoek op naam, email, telefoon, adres of woonplaats..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        {actionLoading && <LoadingSpinner message="Bezig..." />}
+        
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+          <div>
+            <h2 className="page-title">Ouderbeheer</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              {filteredAndSortedParents.length} van {parents?.length || 0} ouders
+              {hasActiveFilters && ' (gefilterd)'}
+            </p>
           </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleExportCSV}
+              variant="secondary"
+              icon={Download}
+              disabled={isExporting || filteredAndSortedParents.length === 0}
+              className="min-w-max"
+            >
+              {isExporting ? 'Exporteren...' : `Exporteer CSV (${filteredAndSortedParents.length})`}
+            </Button>
+            <Button 
+              onClick={() => setShowFilters(!showFilters)}
+              variant="secondary"
+              icon={Filter}
+              className={hasActiveFilters ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+            >
+              {showFilters ? 'Verberg Filters' : 'Toon Filters'}
+              {hasActiveFilters && <span className="ml-1 bg-blue-600 text-white rounded-full px-2 py-0.5 text-xs">!</span>}
+            </Button>
+            <Button 
+              onClick={handleOpenAddModal} 
+              variant="primary" 
+              icon={Plus} 
+              disabled={actionLoading}
+            >
+              Nieuwe Ouder
+            </Button>
+          </div>
+        </div>
+        
+        {/* Messages */}
+        {pageMessage.text && (
+          <div className={`p-4 rounded-md text-sm flex items-center ${
+            pageMessage.type === 'success' 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {pageMessage.type === 'success' ? '✅' : '❌'} {pageMessage.text}
+          </div>
+        )}
 
-          {/* Multi-Select Betalingsstatus */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Betalingsstatus (meerdere selecties mogelijk)
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { value: 'betaald', label: 'Betaald', color: 'bg-green-100 text-green-800 border-green-200' },
-                { value: 'deels_betaald', label: 'Deels Betaald', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-                { value: 'openstaand', label: 'Openstaand', color: 'bg-red-100 text-red-800 border-red-200' },
-                { value: 'nvt', label: 'Nvt', color: 'bg-gray-100 text-gray-800 border-gray-200' }
-              ].map(status => (
-                <label key={status.value} className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedPaymentStatuses.includes(status.value)}
-                    onChange={() => handlePaymentStatusToggle(status.value)}
-                    className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mr-2"
-                  />
-                  <span className={`px-2.5 py-1 inline-flex text-xs leading-tight font-semibold rounded-full border ${status.color}`}>
-                    {status.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-            
-            {selectedPaymentStatuses.length > 0 && (
-              <div className="mt-2 text-sm text-gray-600">
-                Geselecteerd: {selectedPaymentStatuses.map(s => {
-                  const statusLabels = {
-                    'betaald': 'Betaald',
-                    'deels_betaald': 'Deels Betaald', 
-                    'openstaand': 'Openstaand',
-                    'nvt': 'Nvt'
-                  };
-                  return statusLabels[s];
-                }).join(', ')}
+        {pageError && (
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
+            <AlertCircle size={20} className="mr-2" /> {pageError}
+          </div>
+        )}
+
+        {/* ✅ VEREENVOUDIGDE FILTER SECTIE - Alleen zoekbalk en betalingsstatus */}
+        {showFilters && (
+          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+            {/* Algemene Zoekbalk */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Algemene Zoekterm
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Zoek op naam, email, telefoon, adres of woonplaats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Filter Acties */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t">
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">{filteredAndSortedParents.length}</span> resultaten gevonden
-              {hasActiveFilters && (
-                <span className="ml-2 text-blue-600">
-                  • Filters actief
-                </span>
+            {/* Multi-Select Betalingsstatus */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Betalingsstatus (meerdere selecties mogelijk)
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { value: 'betaald', label: 'Betaald', color: 'bg-green-100 text-green-800 border-green-200' },
+                  { value: 'deels_betaald', label: 'Deels Betaald', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                  { value: 'openstaand', label: 'Openstaand', color: 'bg-red-100 text-red-800 border-red-200' },
+                  { value: 'nvt', label: 'Nvt', color: 'bg-gray-100 text-gray-800 border-gray-200' }
+                ].map(status => (
+                  <label key={status.value} className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPaymentStatuses.includes(status.value)}
+                      onChange={() => handlePaymentStatusToggle(status.value)}
+                      className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mr-2"
+                    />
+                    <span className={`px-2.5 py-1 inline-flex text-xs leading-tight font-semibold rounded-full border ${status.color}`}>
+                      {status.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              
+              {selectedPaymentStatuses.length > 0 && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Geselecteerd: {selectedPaymentStatuses.map(s => {
+                    const statusLabels = {
+                      'betaald': 'Betaald',
+                      'deels_betaald': 'Deels Betaald', 
+                      'openstaand': 'Openstaand',
+                      'nvt': 'Nvt'
+                    };
+                    return statusLabels[s];
+                  }).join(', ')}
+                </div>
               )}
             </div>
-            <div className="flex gap-2">
-              {hasActiveFilters && (
+
+            {/* Filter Acties */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">{filteredAndSortedParents.length}</span> resultaten gevonden
+                {hasActiveFilters && (
+                  <span className="ml-2 text-blue-600">
+                    • Filters actief
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {hasActiveFilters && (
+                  <Button
+                    onClick={clearFilters}
+                    variant="ghost"
+                    size="sm"
+                    icon={FilterX}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    Alle filters wissen
+                  </Button>
+                )}
                 <Button
-                  onClick={clearFilters}
-                  variant="ghost"
+                  onClick={handleExportCSV}
+                  variant="secondary"
                   size="sm"
-                  icon={FilterX}
-                  className="text-gray-500 hover:text-gray-700"
+                  icon={FileText}
+                  disabled={isExporting || filteredAndSortedParents.length === 0}
                 >
-                  Alle filters wissen
+                  Exporteer deze resultaten
                 </Button>
-              )}
-              <Button
-                onClick={handleExportCSV}
-                variant="secondary"
-                size="sm"
-                icon={FileText}
-                disabled={isExporting || filteredAndSortedParents.length === 0}
-              >
-                Exporteer deze resultaten
-              </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Content - Tabel of Lege Staten */}
-      {!dataLoading && parents && parents.length === 0 ? (
-        <div className="card text-center">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen ouders</h3>
-          <p className="text-gray-600">Voeg ouders toe om leerlingen te kunnen koppelen en betalingen te beheren.</p>
-        </div>
-      ) : filteredAndSortedParents.length === 0 && hasActiveFilters ? (
-        <div className="card text-center">
-          <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Geen resultaten</h3>
-          <p className="text-gray-600 mb-4">Geen ouders gevonden met de huidige filters.</p>
-          <Button onClick={clearFilters} variant="secondary">
-            Filters wissen
-          </Button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('first_name')}
-                  >
-                    <div className="flex items-center">
-                      Voornaam
-                      {renderSortIcon('first_name')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('last_name')}
-                  >
-                    <div className="flex items-center">
-                      Achternaam
-                      {renderSortIcon('last_name')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('email')}
-                  >
-                    <div className="flex items-center">
-                      Email
-                      {renderSortIcon('email')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('city')}
-                  >
-                    <div className="flex items-center">
-                      Woonplaats
-                      {renderSortIcon('city')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('childCount')}
-                  >
-                    <div className="flex items-center">
-                      Kinderen
-                      {renderSortIcon('childCount')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => handleSort('paymentStatus')}
-                  >
-                    <div className="flex items-center">
-                      Status
-                      {renderSortIcon('paymentStatus')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acties
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedParents.map(parent => {
-                  const isExpanded = expandedParentId === parent.id;
-                  let statusColorClass = 'text-gray-600 bg-gray-100';
-                  if (parent.paymentInfo?.paymentStatus === 'betaald') statusColorClass = 'text-green-700 bg-green-100';
-                  else if (parent.paymentInfo?.paymentStatus === 'deels_betaald') statusColorClass = 'text-yellow-700 bg-yellow-100';
-                  else if (parent.paymentInfo?.paymentStatus === 'openstaand') statusColorClass = 'text-red-700 bg-red-100';
+        {/* Content - Tabel of Lege Staten */}
+        {!dataLoading && parents && parents.length === 0 ? (
+          <div className="card text-center">
+            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen ouders</h3>
+            <p className="text-gray-600">Voeg ouders toe om leerlingen te kunnen koppelen en betalingen te beheren.</p>
+          </div>
+        ) : filteredAndSortedParents.length === 0 && hasActiveFilters ? (
+          <div className="card text-center">
+            <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Geen resultaten</h3>
+            <p className="text-gray-600 mb-4">Geen ouders gevonden met de huidige filters.</p>
+            <Button onClick={clearFilters} variant="secondary">
+              Filters wissen
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('first_name')}
+                    >
+                      <div className="flex items-center">
+                        Voornaam
+                        {renderSortIcon('first_name')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('last_name')}
+                    >
+                      <div className="flex items-center">
+                        Achternaam
+                        {renderSortIcon('last_name')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('email')}
+                    >
+                      <div className="flex items-center">
+                        Email
+                        {renderSortIcon('email')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('city')}
+                    >
+                      <div className="flex items-center">
+                        Woonplaats
+                        {renderSortIcon('city')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('childCount')}
+                    >
+                      <div className="flex items-center">
+                        Kinderen
+                        {renderSortIcon('childCount')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('paymentStatus')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {renderSortIcon('paymentStatus')}
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Acties
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredAndSortedParents.map(parent => {
+                    const isExpanded = expandedParentId === parent.id;
+                    let statusColorClass = 'text-gray-600 bg-gray-100';
+                    if (parent.paymentInfo?.paymentStatus === 'betaald') statusColorClass = 'text-green-700 bg-green-100';
+                    else if (parent.paymentInfo?.paymentStatus === 'deels_betaald') statusColorClass = 'text-yellow-700 bg-yellow-100';
+                    else if (parent.paymentInfo?.paymentStatus === 'openstaand') statusColorClass = 'text-red-700 bg-red-100';
 
-                  return (
-                    <React.Fragment key={parent.id}>
-                      <tr 
-                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${
-                          isExpanded ? 'bg-emerald-50' : ''
-                        }`}
-                        onClick={() => toggleParentDetails(parent.id)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {parent.first_name || '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {parent.last_name || '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{parent.email}</div>
-                          <div className="text-xs text-gray-500">{parent.phone || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{parent.city || '-'}</div>
-                          <div className="text-xs text-gray-500">{parent.zipcode || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className="text-sm font-medium">{parent.childCount}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`px-2.5 py-1 inline-flex text-xs leading-tight font-semibold rounded-full ${statusColorClass} capitalize`}>
-                            {parent.paymentInfo?.paymentStatus?.replace('_', ' ') || 'nvt'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
-                          <Button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleSendNewPassword(parent);
-                            }} 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-orange-600 hover:text-orange-800 p-1.5" 
-                            title="Nieuw wachtwoord sturen"
-                            disabled={actionLoading}
-                          >
-                            <KeyRound size={16} />
-                          </Button>
-                          <Button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleOpenEditModal(parent);
-                            }} 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-blue-600 hover:text-blue-800 p-1.5" 
-                            title="Bewerken" 
-                            disabled={actionLoading}
-                          > 
-                            <Edit3 size={16} /> 
-                          </Button>
-                          <Button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              handleDeleteParent(parent.id);
-                            }} 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-800 p-1.5" 
-                            title="Verwijderen" 
-                            disabled={actionLoading}
-                          > 
-                            <Trash2 size={16} /> 
-                          </Button>
-                          <span className="p-1.5 text-gray-400">
-                            {isExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
-                          </span>
-                        </td>
-                      </tr>
-                      
-                      {/* Expanded Details Row */}
-                      {isExpanded && (
-                        <tr className="bg-emerald-50 border-t border-emerald-200">
-                          <td colSpan="7" className="px-6 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <h4 className="font-semibold text-gray-700 mb-2">Contactgegevens</h4>
-                                <p><strong>Telefoon:</strong> {parent.phone || '-'}</p>
-                                <p><strong>Adres:</strong> {parent.address || '-'}</p>
-                                <p><strong>Postcode:</strong> {parent.zipcode || '-'}</p>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-gray-700 mb-2">Financieel</h4>
-                                <p><strong>Verschuldigd:</strong> €{formatCurrency(parent.paymentInfo?.amountDue || 0)}</p>
-                                <p><strong>Betaald:</strong> €{formatCurrency(parent.paymentInfo?.totalPaid || 0)}</p>
-                                <p className={parseFloat(parent.paymentInfo?.remainingBalance || 0) > 0 ? 'font-semibold text-red-600' : 'text-green-600'}>
-                                  <strong>Openstaand:</strong> €{formatCurrency(parent.paymentInfo?.remainingBalance || 0)}
-                                </p>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-gray-700 mb-2">Account Info</h4>
-                                <p><strong>Account ID:</strong> {parent.id?.substring(0,8)}...</p>
-                                <p><strong>Aangemaakt:</strong> {new Date(parent.created_at).toLocaleDateString('nl-NL')}</p>
-                              </div>
+                    return (
+                      <React.Fragment key={parent.id}>
+                        <tr 
+                          className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                            isExpanded ? 'bg-emerald-50' : ''
+                          }`}
+                          onClick={() => toggleParentDetails(parent.id)}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {parent.first_name || '-'}
                             </div>
-                            
-                            {parent.childCount > 0 && (
-                              <div className="mt-4">
-                                <h4 className="font-semibold text-gray-700 mb-2">Gekoppelde Kinderen ({parent.childCount})</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {students?.filter(s => String(s.parent_id) === String(parent.id)).map(student => (
-                                    <span 
-                                      key={student.id} 
-                                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
-                                    >
-                                      {student.name}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {parent.last_name || '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{parent.email}</div>
+                            <div className="text-xs text-gray-500">{parent.phone || '-'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{parent.city || '-'}</div>
+                            <div className="text-xs text-gray-500">{parent.zipcode || '-'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className="text-sm font-medium">{parent.childCount}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className={`px-2.5 py-1 inline-flex text-xs leading-tight font-semibold rounded-full ${statusColorClass} capitalize`}>
+                              {parent.paymentInfo?.paymentStatus?.replace('_', ' ') || 'nvt'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                            <Button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleSendNewPassword(parent);
+                              }} 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-orange-600 hover:text-orange-800 p-1.5" 
+                              title="Nieuw wachtwoord sturen"
+                              disabled={actionLoading}
+                            >
+                              <KeyRound size={16} />
+                            </Button>
+                            <Button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleOpenEditModal(parent);
+                              }} 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-blue-600 hover:text-blue-800 p-1.5" 
+                              title="Bewerken" 
+                              disabled={actionLoading}
+                            > 
+                              <Edit3 size={16} /> 
+                            </Button>
+                            <Button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleDeleteParent(parent.id);
+                              }} 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-600 hover:text-red-800 p-1.5" 
+                              title="Verwijderen" 
+                              disabled={actionLoading}
+                            > 
+                              <Trash2 size={16} /> 
+                            </Button>
+                            <span className="p-1.5 text-gray-400">
+                              {isExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
+                            </span>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                        
+                        {/* Expanded Details Row */}
+                        {isExpanded && (
+                          <tr className="bg-emerald-50 border-t border-emerald-200">
+                            <td colSpan="7" className="px-6 py-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <h4 className="font-semibold text-gray-700 mb-2">Contactgegevens</h4>
+                                  <p><strong>Telefoon:</strong> {parent.phone || '-'}</p>
+                                  <p><strong>Adres:</strong> {parent.address || '-'}</p>
+                                  <p><strong>Postcode:</strong> {parent.zipcode || '-'}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-700 mb-2">Financieel</h4>
+                                  <p><strong>Verschuldigd:</strong> €{formatCurrency(parent.paymentInfo?.amountDue || 0)}</p>
+                                  <p><strong>Betaald:</strong> €{formatCurrency(parent.paymentInfo?.totalPaid || 0)}</p>
+                                  <p className={parseFloat(parent.paymentInfo?.remainingBalance || 0) > 0 ? 'font-semibold text-red-600' : 'text-green-600'}>
+                                    <strong>Openstaand:</strong> €{formatCurrency(parent.paymentInfo?.remainingBalance || 0)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-700 mb-2">Account Info</h4>
+                                  <p><strong>Account ID:</strong> {parent.id?.substring(0,8)}...</p>
+                                  <p><strong>Aangemaakt:</strong> {new Date(parent.created_at).toLocaleDateString('nl-NL')}</p>
+                                </div>
+                              </div>
+                              
+                              {parent.childCount > 0 && (
+                                <div className="mt-4">
+                                  <h4 className="font-semibold text-gray-700 mb-2">Gekoppelde Kinderen ({parent.childCount})</h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {students?.filter(s => String(s.parent_id) === String(parent.id)).map(student => (
+                                      <span 
+                                        key={student.id} 
+                                        className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+                                      >
+                                        {student.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modals */}
-      {showAddParentModal && (
-        <AddParentModal
-          isOpen={showAddParentModal}
-          onClose={() => { 
-            setShowAddParentModal(false); 
-            setEditingParent(null); 
-            setModalErrorText(''); 
-          }}
-          onSubmit={handleParentSubmit}
-          initialData={editingParent}
-          modalError={modalErrorText}
-          isLoading={actionLoading}
-        />
-      )}
-    </div>
+        {/* Modals */}
+        {showAddParentModal && (
+          <AddParentModal
+            isOpen={showAddParentModal}
+            onClose={() => { 
+              setShowAddParentModal(false); 
+              setEditingParent(null); 
+              setModalErrorText(''); 
+            }}
+            onSubmit={handleParentSubmit}
+            initialData={editingParent}
+            modalError={modalErrorText}
+            isLoading={actionLoading}
+          />
+        )}
+      </div>
+    </AdminLayout>
   );
 };
 

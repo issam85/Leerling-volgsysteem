@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../../../utils/financials';
+import AdminLayout from '../../../layouts/AdminLayout';
 import Button from '../../../components/Button';
 import AddPaymentModal from './AddPaymentModal';
 import { DollarSign, Plus, CheckCircle, XCircle, AlertTriangle, Info, Users as UsersIcon, AlertCircle as AlertCircleIcon } from 'lucide-react';
@@ -104,139 +105,141 @@ const PaymentsTab = () => {
   });
 
   return (
-    <div className="space-y-6">
-      {actionLoading && <LoadingSpinner message="Bezig..." />}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <h2 className="page-title">Betalingenbeheer</h2>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <select
-                onChange={(e) => {
-                    const parent = parents.find(p => String(p.id) === e.target.value);
-                    if(parent) handleOpenAddModal(parent);
-                    e.target.value = "";
-                }}
-                className="input-field sm:min-w-[200px] py-2.5"
-                defaultValue=""
-                disabled={actionLoading || parents.length === 0}
-            >
-                <option value="" disabled>{parents.length === 0 ? "Eerst ouders toevoegen" : "Snelle betaling voor..."}</option>
-                {parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <Button onClick={() => handleOpenAddModal()} variant="primary" icon={Plus} className="w-full sm:w-auto" disabled={actionLoading || parents.length === 0}>
-                Nieuwe Betaling
-            </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card"><h4 className="text-sm text-gray-500 mb-0.5">Totaal Openstaand</h4><p className="text-3xl font-bold text-red-600">€{financialMetrics.totalOutstanding}</p></div>
-        <div className="card"><h4 className="text-sm text-gray-500 mb-0.5">Totaal Betaald</h4><p className="text-3xl font-bold text-green-600">€{financialMetrics.totalPaid}</p></div>
-        <div className="card"><h4 className="text-sm text-gray-500 mb-0.5">% Betaald</h4><p className="text-3xl font-bold text-blue-600">{financialMetrics.percentagePaid}%</p></div>
-      </div>
-
-      {pageError && (
-        <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
-            <AlertCircleIcon size={20} className="mr-2" /> {pageError}
-        </div>
-        )}
-
-      {parents.length === 0 && !dataLoading && payments.length === 0 && (
-     <div className="card text-center">
-          <UsersIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Voeg eerst ouders toe</h3>
-          <p className="text-gray-600">Om betalingen te registreren, dient u eerst ouders aan het systeem toe te voegen.</p>
-          <Button onClick={() => navigate('/admin/parents')} variant="primary" className="mt-4">Naar Ouderbeheer</Button>
-      </div>
-)}
-
-      {sortedPayments.length === 0 && !dataLoading && parents.length > 0 ? (
-        <div className="card text-center">
-          <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen betalingen</h3>
-          <p className="text-gray-600">Registreer de eerste betaling om het financiële overzicht te starten.</p>
-        </div>
-      ) : sortedPayments.length > 0 && (
-        <div className="table-responsive-wrapper bg-white rounded-xl shadow border">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ouder</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bedrag</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Methode</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notitie</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Ouder</th>
-                {/* ❌ REMOVED: Actions column since we can't edit/delete */}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedPayments.map(payment => {
-                const parentName = payment.parent?.name || <span className="italic text-gray-400">Onbekend</span>;
-                const parentPaymentInfo = payment.parent_id ? calculateParentPaymentStatus(payment.parent_id, users, payments) : null;
-                
-                let statusColorClass = 'text-gray-600 bg-gray-100';
-                if (parentPaymentInfo?.paymentStatus === 'betaald') statusColorClass = 'text-green-700 bg-green-100';
-                else if (parentPaymentInfo?.paymentStatus === 'deels_betaald') statusColorClass = 'text-yellow-700 bg-yellow-100';
-                else if (parentPaymentInfo?.paymentStatus === 'openstaand') statusColorClass = 'text-red-700 bg-red-100';
-
-                return (
-                  <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {new Date(payment.payment_date || payment.created_at).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{parentName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">€{parseFloat(payment.amount).toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">{payment.payment_method}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={payment.notes || payment.description}>
-                        {payment.notes || payment.description || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {parentPaymentInfo ? (
-                        <span className={`inline-flex items-center px-2.5 py-1 text-xs leading-tight font-semibold rounded-full ${statusColorClass} capitalize`}>
-                          {getPaymentStatusIcon(parentPaymentInfo.paymentStatus)}
-                          {parentPaymentInfo.paymentStatus.replace('_', ' ')}
-                        </span>
-                      ) : (
-                        <span className="italic text-gray-400">-</span>
-                      )}
-                    </td>
-                    {/* ❌ REMOVED: Action buttons column */}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ✅ Notice about payment limitations */}
-      {sortedPayments.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md text-sm">
-          <div className="flex items-center">
-            <Info size={16} className="mr-2 flex-shrink-0" />
-            <p>
-              <strong>Let op:</strong> Betalingen kunnen niet bewerkt of verwijderd worden voor administratieve integriteit. 
-              Neem contact op met de systeembeheerder als correcties nodig zijn.
-            </p>
+    <AdminLayout>
+      <div className="space-y-6">
+        {actionLoading && <LoadingSpinner message="Bezig..." />}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <h2 className="page-title">Betalingenbeheer</h2>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <select
+                  onChange={(e) => {
+                      const parent = parents.find(p => String(p.id) === e.target.value);
+                      if(parent) handleOpenAddModal(parent);
+                      e.target.value = "";
+                  }}
+                  className="input-field sm:min-w-[200px] py-2.5"
+                  defaultValue=""
+                  disabled={actionLoading || parents.length === 0}
+              >
+                  <option value="" disabled>{parents.length === 0 ? "Eerst ouders toevoegen" : "Snelle betaling voor..."}</option>
+                  {parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <Button onClick={() => handleOpenAddModal()} variant="primary" icon={Plus} className="w-full sm:w-auto" disabled={actionLoading || parents.length === 0}>
+                  Nieuwe Betaling
+              </Button>
           </div>
         </div>
-      )}
 
-      {showAddPaymentModal && (
-        <AddPaymentModal
-          isOpen={showAddPaymentModal}
-          onClose={() => { setShowAddPaymentModal(false); setSelectedParentForPaymentModal(null); setModalErrorText(''); }}
-          onSubmit={handlePaymentSubmit}
-          initialData={null} // ❌ Always null since we can't edit
-          parents={parents}
-          selectedParentProp={selectedParentForPaymentModal}
-          modalError={modalErrorText}
-          isLoading={actionLoading}
-          usersFromDataContext={users}
-          paymentsFromDataContext={payments}
-        />
-      )}
-    </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="card"><h4 className="text-sm text-gray-500 mb-0.5">Totaal Openstaand</h4><p className="text-3xl font-bold text-red-600">€{financialMetrics.totalOutstanding}</p></div>
+          <div className="card"><h4 className="text-sm text-gray-500 mb-0.5">Totaal Betaald</h4><p className="text-3xl font-bold text-green-600">€{financialMetrics.totalPaid}</p></div>
+          <div className="card"><h4 className="text-sm text-gray-500 mb-0.5">% Betaald</h4><p className="text-3xl font-bold text-blue-600">{financialMetrics.percentagePaid}%</p></div>
+        </div>
+
+        {pageError && (
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md flex items-center">
+              <AlertCircleIcon size={20} className="mr-2" /> {pageError}
+          </div>
+          )}
+
+        {parents.length === 0 && !dataLoading && payments.length === 0 && (
+      <div className="card text-center">
+            <UsersIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Voeg eerst ouders toe</h3>
+            <p className="text-gray-600">Om betalingen te registreren, dient u eerst ouders aan het systeem toe te voegen.</p>
+            <Button onClick={() => navigate('/admin/parents')} variant="primary" className="mt-4">Naar Ouderbeheer</Button>
+        </div>
+  )}
+
+        {sortedPayments.length === 0 && !dataLoading && parents.length > 0 ? (
+          <div className="card text-center">
+            <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen betalingen</h3>
+            <p className="text-gray-600">Registreer de eerste betaling om het financiële overzicht te starten.</p>
+          </div>
+        ) : sortedPayments.length > 0 && (
+          <div className="table-responsive-wrapper bg-white rounded-xl shadow border">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ouder</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bedrag</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Methode</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notitie</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Ouder</th>
+                  {/* ❌ REMOVED: Actions column since we can't edit/delete */}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sortedPayments.map(payment => {
+                  const parentName = payment.parent?.name || <span className="italic text-gray-400">Onbekend</span>;
+                  const parentPaymentInfo = payment.parent_id ? calculateParentPaymentStatus(payment.parent_id, users, payments) : null;
+                  
+                  let statusColorClass = 'text-gray-600 bg-gray-100';
+                  if (parentPaymentInfo?.paymentStatus === 'betaald') statusColorClass = 'text-green-700 bg-green-100';
+                  else if (parentPaymentInfo?.paymentStatus === 'deels_betaald') statusColorClass = 'text-yellow-700 bg-yellow-100';
+                  else if (parentPaymentInfo?.paymentStatus === 'openstaand') statusColorClass = 'text-red-700 bg-red-100';
+
+                  return (
+                    <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {new Date(payment.payment_date || payment.created_at).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{parentName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">€{parseFloat(payment.amount).toFixed(2)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 capitalize">{payment.payment_method}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={payment.notes || payment.description}>
+                          {payment.notes || payment.description || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {parentPaymentInfo ? (
+                          <span className={`inline-flex items-center px-2.5 py-1 text-xs leading-tight font-semibold rounded-full ${statusColorClass} capitalize`}>
+                            {getPaymentStatusIcon(parentPaymentInfo.paymentStatus)}
+                            {parentPaymentInfo.paymentStatus.replace('_', ' ')}
+                          </span>
+                        ) : (
+                          <span className="italic text-gray-400">-</span>
+                        )}
+                      </td>
+                      {/* ❌ REMOVED: Action buttons column */}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ✅ Notice about payment limitations */}
+        {sortedPayments.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md text-sm">
+            <div className="flex items-center">
+              <Info size={16} className="mr-2 flex-shrink-0" />
+              <p>
+                <strong>Let op:</strong> Betalingen kunnen niet bewerkt of verwijderd worden voor administratieve integriteit. 
+                Neem contact op met de systeembeheerder als correcties nodig zijn.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {showAddPaymentModal && (
+          <AddPaymentModal
+            isOpen={showAddPaymentModal}
+            onClose={() => { setShowAddPaymentModal(false); setSelectedParentForPaymentModal(null); setModalErrorText(''); }}
+            onSubmit={handlePaymentSubmit}
+            initialData={null} // ❌ Always null since we can't edit
+            parents={parents}
+            selectedParentProp={selectedParentForPaymentModal}
+            modalError={modalErrorText}
+            isLoading={actionLoading}
+            usersFromDataContext={users}
+            paymentsFromDataContext={payments}
+          />
+        )}
+      </div>
+    </AdminLayout>
   );
 };
 
