@@ -1,5 +1,7 @@
 // src/pages/DashboardPage.js - MODERNE EN PROFESSIONELE VERSIE
 import React, { useState } from 'react';
+import TrialBanner from '../components/TrialBanner';
+import { useTrialStatus } from '../hooks/useTrialStatus';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../utils/financials';
@@ -25,6 +27,7 @@ import { useNavigate, Link } from 'react-router-dom';
 const DashboardPage = () => {
   const { currentUser } = useAuth();
   const { realData } = useData();
+  const { trialStatus } = useTrialStatus();
   const { users, students, classes, payments, mosque, loading: dataLoading, error: dataError } = realData;
   const navigate = useNavigate();
 
@@ -163,6 +166,7 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-8">
+      <TrialBanner trialStatus={trialStatus} />
       {/* Moderne Welkomstbanner met meer visuele impact */}
       <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-8 text-white shadow-2xl">
         {/* Decoratieve elementen */}
