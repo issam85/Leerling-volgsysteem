@@ -1,10 +1,10 @@
-// src/features/admin/settings/SettingsTab.js - BIJGEWERKT MET TRIAL BANNER
+// src/features/admin/settings/SettingsTab.js - VOLLEDIG GECORRIGEERD
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import Button from '../../../components/Button';
 import M365ConfigModal from './M365ConfigModal';
-import AdminLayout from '../../../layouts/AdminLayout'; // ✅ TOEGEVOEGD
+import AdminLayout from '../../../layouts/AdminLayout';
 import { Building, Mail, ServerCog, CheckCircle, XCircle, Edit, AlertCircle, Save, SlidersHorizontal, Users } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Input from '../../../components/Input';
@@ -220,7 +220,7 @@ const SettingsTab = () => {
   if (!mosque) return <div className="card text-orange-600"><AlertCircle className="inline mr-2"/>Moskee informatie niet gevonden. Kan instellingen niet tonen.</div>;
 
   return (
-    <AdminLayout> {/* ✅ GEWRAPT IN ADMINLAYOUT */}
+    <AdminLayout>
       <div className="space-y-8 max-w-3xl mx-auto pb-10">
         {actionLoading && <LoadingSpinner message="Bezig met opslaan..." />}
         <h2 className="page-title">Systeem Instellingen</h2>
@@ -250,7 +250,7 @@ const SettingsTab = () => {
               <Input label="Stad" name="city" value={mosqueDetailsForm.city} onChange={handleMosqueDetailsChange} />
               <Input label="Postcode" name="zipcode" value={mosqueDetailsForm.zipcode} onChange={handleMosqueDetailsChange} />
             </div>
-             <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               <Input label="Telefoon" name="phone" type="tel" value={mosqueDetailsForm.phone} onChange={handleMosqueDetailsChange} />
               <Input label="Contact Email" name="email" type="email" value={mosqueDetailsForm.email} onChange={handleMosqueDetailsChange} />
             </div>
@@ -375,7 +375,7 @@ const SettingsTab = () => {
           />
         )}
       </div>
-    </AdminLayout> {/* ✅ EINDE ADMINLAYOUT */}
+    </AdminLayout>
   );
 };
 
