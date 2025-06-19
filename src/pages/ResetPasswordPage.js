@@ -1,34 +1,7 @@
 // src/pages/ResetPasswordPage.js
+// ✅ VERSIE MET ECHTE SUPABASE INTEGRATIE
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // Zorg dat dit pad klopt
-
-// ✅ FALLBACK: Gebruik basis HTML elementen als componenten niet bestaan
-const Input = ({ label, type, value, onChange, required, disabled, placeholder }) => (
-  <div className="mb-4">
-    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-    <input
-      type={type}
-      value={value}
-      onChange={onChange}
-      required={required}
-      disabled={disabled}
-      placeholder={placeholder}
-      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-    />
-  </div>
-);
-
-const Button = ({ children, type, fullWidth, disabled, onClick }) => (
-  <button
-    type={type}
-    onClick={onClick}
-    disabled={disabled}
-    className={`${fullWidth ? 'w-full' : ''} py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed`}
-  >
-    {children}
-  </button>
-);
+import { supabase } from '../supabaseClient'; // ✅ Correct pad naar jouw supabaseClient
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState('');
@@ -36,110 +9,81 @@ const ResetPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [isValidToken, setIsValidToken] = useState(false);
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [debugInfo, setDebugInfo] = useState('');
+  const [tokenStatus, setTokenStatus] = useState('checking'); // 'checking', 'valid', 'invalid'
 
-  // ✅ DEBUG: Log alles wat er gebeurt
   useEffect(() => {
-    console.log('🔧 [RESET PASSWORD] Component mounted');
-    console.log('🔧 [RESET PASSWORD] Current URL:', window.location.href);
-    console.log('🔧 [RESET PASSWORD] Search params:', window.location.search);
-    console.log('🔧 [RESET PASSWORD] Hash:', window.location.hash);
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const type = urlParams.get('type');
+    const urlError = urlParams.get('error');
     
-    const error = searchParams.get('error');
-    const errorCode = searchParams.get('error_code');
-    const errorDescription = searchParams.get('error_description');
-    const token = searchParams.get('token');
-    const type = searchParams.get('type');
+    const info = `
+      URL: ${window.location.href}
+      Token: ${token ? 'Aanwezig' : 'Niet gevonden'}
+      Type: ${type || 'Niet gevonden'}
+      URL Error: ${urlError || 'Geen'}
+    `;
+    
+    setDebugInfo(info);
+    console.log('🔧 [RESET PASSWORD] Debug info:', info);
 
-    console.log('🔧 [RESET PASSWORD] URL Params:', { error, errorCode, errorDescription, token, type });
-
-    if (error) {
-      console.log('❌ [RESET PASSWORD] URL Error detected:', { error, errorCode, errorDescription });
-      
-      if (errorCode === 'otp_expired') {
-        setError('De reset link is verlopen of ongeldig. Vraag een nieuwe password reset aan.');
-      } else {
-        setError(`Fout: ${errorDescription || error}`);
-      }
+    if (urlError) {
+      setError(`URL bevat error: ${urlError}`);
+      setTokenStatus('invalid');
       return;
     }
 
-    // Check for token in URL params (query string method)
-    if (token && type === 'recovery') {
-      console.log('✅ [RESET PASSWORD] Valid recovery token found in URL params');
-      setIsValidToken(true);
+    if (!token || type !== 'recovery') {
+      setError('Geen geldige reset token gevonden in URL');
+      setTokenStatus('invalid');
+      return;
+    }
+
+    // ✅ ECHTE SUPABASE TOKEN VERIFICATIE
+    verifyResetToken(token);
+  }, []);
+
+  const verifyResetToken = async (token) => {
+    try {
+      console.log('🔧 [RESET PASSWORD] Verifying token with Supabase...');
       
-      // Set session with the token - Supabase should handle this automatically
-      supabase.auth.verifyOtp({
+      // ✅ Probeer de token te verifiëren
+      const { data, error } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: 'recovery'
-      }).then(({ data, error }) => {
-        if (error) {
-          console.error('❌ [RESET PASSWORD] Error verifying token:', error);
-          setError('Er is een fout opgetreden bij het valideren van de reset link.');
-        } else {
-          console.log('✅ [RESET PASSWORD] Token verified successfully:', data);
-          setIsValidToken(true);
-        }
       });
-      return;
-    }
 
-    // Check for access_token and refresh_token in URL (hash-based - fallback)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    const hashType = hashParams.get('type');
-
-    console.log('🔧 [RESET PASSWORD] Hash Params:', { accessToken: accessToken?.substring(0, 20) + '...', refreshToken: refreshToken?.substring(0, 20) + '...', hashType });
-
-    if (accessToken && hashType === 'recovery') {
-      console.log('✅ [RESET PASSWORD] Valid recovery token found in URL hash');
-      setIsValidToken(true);
-      
-      // Set the session with the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      }).then(({ error }) => {
-        if (error) {
-          console.error('❌ [RESET PASSWORD] Error setting session:', error);
-          setError('Er is een fout opgetreden bij het valideren van de reset link.');
+      if (error) {
+        console.error('❌ [RESET PASSWORD] Token verification failed:', error);
+        
+        if (error.message.includes('expired')) {
+          setError('De reset link is verlopen. Vraag een nieuwe reset link aan.');
+        } else if (error.message.includes('invalid')) {
+          setError('De reset link is ongeldig. Vraag een nieuwe reset link aan.');
         } else {
-          console.log('✅ [RESET PASSWORD] Session set successfully');
+          setError(`Token verificatie fout: ${error.message}`);
         }
-      });
-    } else {
-      console.log('⚠️ [RESET PASSWORD] No valid token found, waiting for auth state change...');
-    }
-  }, [searchParams]);
-
-  // Luister naar auth state changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state change:', event, session?.user?.email);
-      
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log("Password recovery event gedetecteerd");
-        setIsValidToken(true);
-      } else if (event === 'SIGNED_IN' && session) {
-        console.log("User signed in during password recovery");
-        setIsValidToken(true);
+        setTokenStatus('invalid');
+        return;
       }
-    });
 
-    return () => subscription.unsubscribe();
-  }, []);
+      console.log('✅ [RESET PASSWORD] Token verified successfully:', data);
+      setTokenStatus('valid');
+      setSuccess('Reset token is geldig! Je kunt nu een nieuw wachtwoord instellen.');
+      
+    } catch (err) {
+      console.error('❌ [RESET PASSWORD] Unexpected error during token verification:', err);
+      setError(`Onverwachte fout: ${err.message}`);
+      setTokenStatus('invalid');
+    }
+  };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
 
-    // Validatie
     if (password.length < 8) {
       setError("Wachtwoord moet minimaal 8 karakters lang zijn.");
       setLoading(false);
@@ -153,132 +97,469 @@ const ResetPasswordPage = () => {
     }
 
     try {
-      // Update het wachtwoord
-      const { error: updateError } = await supabase.auth.updateUser({
+      console.log('🔧 [RESET PASSWORD] Updating password...');
+      
+      // ✅ ECHTE SUPABASE PASSWORD UPDATE
+      const { data, error } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (updateError) {
-        throw updateError;
+      if (error) {
+        throw error;
       }
 
-      setSuccess("Je wachtwoord is succesvol gewijzigd! Je wordt doorgeleid...");
+      console.log('✅ [RESET PASSWORD] Password updated successfully:', data);
+      setSuccess("Wachtwoord succesvol gewijzigd! Je wordt doorgeleid naar de login pagina...");
       
-      // Wacht even en leid door naar login
-      setTimeout(async () => {
-        // Sign out de gebruiker na successful password reset
-        await supabase.auth.signOut();
-        
-        // Bepaal waar je de gebruiker naartoe wilt sturen
-        const currentDomain = window.location.hostname;
-        
-        if (currentDomain.includes('mijnlvs.nl') && currentDomain !== 'mijnlvs.nl') {
-          // Als we op een subdomein zijn, ga terug naar dat subdomein's login
-          window.location.href = `https://${currentDomain}/login`;
-        } else {
-          // Anders ga naar het hoofddomein
-          window.location.href = 'https://mijnlvs.nl/login';
-        }
-      }, 2000);
-
-    } catch (error) {
-      console.error('Password reset error:', error);
-      setError(`Fout bij het wijzigen van het wachtwoord: ${error.message}`);
+      setTimeout(() => {
+        // Sign out na successful password reset
+        supabase.auth.signOut().then(() => {
+          window.location.href = '/login';
+        });
+      }, 3000);
+      
+    } catch (err) {
+      console.error('❌ [RESET PASSWORD] Password update failed:', err);
+      setError(`Fout bij het wijzigen van het wachtwoord: ${err.message}`);
     }
 
     setLoading(false);
   };
 
   const requestNewReset = () => {
-    // Leid door naar de forgot password pagina
-    const currentDomain = window.location.hostname;
-    if (currentDomain.includes('mijnlvs.nl') && currentDomain !== 'mijnlvs.nl') {
-      window.location.href = `https://${currentDomain}/forgot-password`;
-    } else {
-      window.location.href = 'https://mijnlvs.nl/forgot-password';
-    }
+    // Redirect naar login om nieuwe reset aan te vragen
+    window.location.href = '/login';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
-        {/* ✅ EENVOUDIGE HEADER ZONDER LOGO (voor debugging) */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-blue-600">MijnLVS</h1>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '16px'
+    }}>
+      <div style={{
+        maxWidth: '400px',
+        width: '100%',
+        backgroundColor: 'white',
+        padding: '32px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2563eb', margin: 0 }}>
+            MijnLVS
+          </h1>
         </div>
         
-        <h2 className="text-2xl font-bold text-center text-gray-900 mb-4">
+        <h2 style={{ 
+          fontSize: '24px', 
+          fontWeight: 'bold', 
+          textAlign: 'center', 
+          color: '#1f2937',
+          marginBottom: '16px'
+        }}>
           Nieuw Wachtwoord Instellen
         </h2>
 
-        {/* ✅ DEBUG INFORMATIE (tijdelijk) */}
-        <div className="mb-4 p-3 bg-gray-100 text-xs rounded">
-          <strong>Debug Info:</strong><br/>
-          URL: {window.location.href}<br/>
-          Valid Token: {isValidToken ? 'Ja' : 'Nee'}<br/>
-          Loading: {loading ? 'Ja' : 'Nee'}<br/>
-          Error: {error || 'Geen'}<br/>
-          Success: {success || 'Geen'}
+        {/* ✅ DEBUG SECTIE */}
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px',
+          backgroundColor: '#f3f4f6',
+          fontSize: '12px',
+          borderRadius: '6px',
+          whiteSpace: 'pre-line'
+        }}>
+          <strong>Debug Info:</strong>
+          {debugInfo}
+          <br/>
+          <strong>Token Status:</strong> {tokenStatus}
         </div>
         
         {error && (
-          <div className="p-3 bg-red-100 text-red-700 rounded-md mb-4">
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#fef2f2',
+            color: '#dc2626',
+            borderRadius: '6px',
+            marginBottom: '16px'
+          }}>
             {error}
-            {error.includes('verlopen') && (
-              <button 
-                onClick={requestNewReset}
-                className="block w-full mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
-              >
-                Nieuwe reset link aanvragen
-              </button>
+            {(error.includes('verlopen') || error.includes('ongeldig')) && (
+              <div style={{ marginTop: '8px' }}>
+                <button 
+                  onClick={requestNewReset}
+                  style={{
+                    fontSize: '14px',
+                    color: '#2563eb',
+                    background: 'none',
+                    border: 'none',
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Nieuwe reset link aanvragen
+                </button>
+              </div>
             )}
           </div>
         )}
         
         {success && (
-          <div className="p-3 bg-green-100 text-green-700 rounded-md mb-4">
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#f0fdf4',
+            color: '#16a34a',
+            borderRadius: '6px',
+            marginBottom: '16px'
+          }}>
             {success}
           </div>
         )}
 
-        {!error && !success && !isValidToken && (
-          <div className="p-3 bg-blue-100 text-blue-700 rounded-md mb-4">
+        {tokenStatus === 'checking' && (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#eff6ff',
+            color: '#2563eb',
+            borderRadius: '6px',
+            marginBottom: '16px'
+          }}>
             Bezig met valideren van reset link...
           </div>
         )}
 
-        {isValidToken && !success && (
-          <form onSubmit={handleResetPassword} className="space-y-6">
-            <Input
-              label="Nieuw wachtwoord"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-              placeholder="Minimaal 8 karakters"
-            />
+        {tokenStatus === 'valid' && (
+          <form onSubmit={handleResetPassword}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Nieuw wachtwoord
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                placeholder="Minimaal 8 karakters"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
             
-            <Input
-              label="Bevestig nieuw wachtwoord"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              disabled={loading}
-              placeholder="Herhaal je nieuwe wachtwoord"
-            />
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Bevestig nieuw wachtwoord
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={loading}
+                placeholder="Herhaal je nieuwe wachtwoord"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
             
-            <Button type="submit" fullWidth disabled={loading}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                backgroundColor: loading ? '#9ca3af' : '#2563eb',
+                color: 'white',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
               {loading ? 'Bezig met opslaan...' : 'Wachtwoord Opslaan'}
-            </Button>
+            </button>
           </form>
         )}
 
-        <div className="mt-6 text-center">
+        <div style={{ marginTop: '24px', textAlign: 'center' }}>
           <button 
-            onClick={() => window.location.href = 'https://mijnlvs.nl/login'}
-            className="text-sm text-blue-600 hover:text-blue-800"
+            onClick={() => window.location.href = '/login'}
+            style={{
+              fontSize: '14px',
+              color: '#2563eb',
+              background: 'none',
+              border: 'none',
+              textDecoration: 'underline',
+              cursor: 'pointer'
+            }}
+          >
+            Terug naar inloggen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ResetPasswordPage;const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
+
+  useEffect(() => {
+    // ✅ BASIS DEBUG - GEEN SUPABASE NOG
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const type = urlParams.get('type');
+    const error = urlParams.get('error');
+    
+    const info = `
+      URL: ${window.location.href}
+      Token: ${token ? 'Aanwezig' : 'Niet gevonden'}
+      Type: ${type || 'Niet gevonden'}
+      Error: ${error || 'Geen'}
+    `;
+    
+    setDebugInfo(info);
+    console.log('🔧 [RESET PASSWORD] Debug info:', info);
+
+    if (error) {
+      setError(`URL bevat error: ${error}`);
+    } else if (token && type === 'recovery') {
+      console.log('✅ [RESET PASSWORD] Valid token found');
+      // Voor nu accepteren we de token zonder validatie
+      setSuccess('Token gevonden! Password reset formulier geladen.');
+    } else {
+      setError('Geen geldige reset token gevonden in URL');
+    }
+  }, []);
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    if (password.length < 8) {
+      setError("Wachtwoord moet minimaal 8 karakters lang zijn.");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Wachtwoorden komen niet overeen.");
+      setLoading(false);
+      return;
+    }
+
+    // ✅ PLACEHOLDER - ECHTE SUPABASE CALL KOMT LATER
+    try {
+      console.log('🔧 [RESET PASSWORD] Would reset password to:', password);
+      
+      // Simuleer een API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setSuccess("Wachtwoord zou succesvol zijn gewijzigd! (Placeholder functie)");
+      
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+      
+    } catch (err) {
+      setError(`Fout: ${err.message}`);
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '16px'
+    }}>
+      <div style={{
+        maxWidth: '400px',
+        width: '100%',
+        backgroundColor: 'white',
+        padding: '32px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2563eb', margin: 0 }}>
+            MijnLVS
+          </h1>
+        </div>
+        
+        <h2 style={{ 
+          fontSize: '24px', 
+          fontWeight: 'bold', 
+          textAlign: 'center', 
+          color: '#1f2937',
+          marginBottom: '16px'
+        }}>
+          Nieuw Wachtwoord Instellen
+        </h2>
+
+        {/* ✅ DEBUG SECTIE */}
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px',
+          backgroundColor: '#f3f4f6',
+          fontSize: '12px',
+          borderRadius: '6px',
+          whiteSpace: 'pre-line'
+        }}>
+          <strong>Debug Info:</strong>
+          {debugInfo}
+        </div>
+        
+        {error && (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#fef2f2',
+            color: '#dc2626',
+            borderRadius: '6px',
+            marginBottom: '16px'
+          }}>
+            {error}
+          </div>
+        )}
+        
+        {success && (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#f0fdf4',
+            color: '#16a34a',
+            borderRadius: '6px',
+            marginBottom: '16px'
+          }}>
+            {success}
+          </div>
+        )}
+
+        {success && !error && (
+          <form onSubmit={handleResetPassword}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Nieuw wachtwoord
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                placeholder="Minimaal 8 karakters"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Bevestig nieuw wachtwoord
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={loading}
+                placeholder="Herhaal je nieuwe wachtwoord"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                backgroundColor: loading ? '#9ca3af' : '#2563eb',
+                color: 'white',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading ? 'Bezig met opslaan...' : 'Wachtwoord Opslaan (Test)'}
+            </button>
+          </form>
+        )}
+
+        <div style={{ marginTop: '24px', textAlign: 'center' }}>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            style={{
+              fontSize: '14px',
+              color: '#2563eb',
+              background: 'none',
+              border: 'none',
+              textDecoration: 'underline',
+              cursor: 'pointer'
+            }}
           >
             Terug naar inloggen
           </button>
