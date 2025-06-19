@@ -5,10 +5,12 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 
 import MainLayout from './layouts/MainLayout';
-import LandingPage from './pages/LandingPage'; // NIEUWE IMPORT
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegistrationPage from './pages/RegistrationPage';
+import ResetPasswordPage from './pages/ResetPasswordPage'; // ✅ NIEUWE IMPORT
 import DashboardPage from './pages/DashboardPage';
+
 // Admin Pages
 import ClassesPage from './pages/ClassesPage';
 import TeachersPage from './pages/TeachersPage';
@@ -16,9 +18,11 @@ import ParentsPage from './pages/ParentsPage';
 import StudentsPage from './pages/StudentsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SettingsPage from './pages/SettingsPage';
+
 // Parent Pages
 import MyChildrenPage from './pages/MyChildrenPage';
 import ChildDetailPage from './pages/ChildDetailPage';
+
 // Teacher Pages
 import TeacherMyClassesPage from './pages/TeacherMyClassesPage';
 import TeacherClassAttendancePage from './pages/TeacherClassAttendancePage';
@@ -52,7 +56,7 @@ const ProtectedRoute = ({ children, adminOnly = false, teacherOnly = false, pare
   return children;
 };
 
-// AANGEPASTE AppRoutes component
+// ✅ AANGEPASTE AppRoutes component met ResetPasswordPage
 const AppRoutes = () => {
   const { currentUser, loadingUser, currentSubdomain } = useAuth();
   const location = useLocation();
@@ -66,6 +70,8 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegistrationPage />} />
+        {/* ✅ NIEUWE ROUTE: Password reset ook op hoofddomein */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* Vang alle andere paden af en stuur ze naar de hoofdpagina */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -83,14 +89,16 @@ const AppRoutes = () => {
   if (currentSubdomain === 'register') {
     // Als we op het register subdomein zijn, maar nog niet op /register pad, redirect.
     // Dit gebeurt nadat loadingUser false is, dus currentSubdomain is betrouwbaar.
-    if (location.pathname !== '/register') {
+    if (location.pathname !== '/register' && location.pathname !== '/reset-password') {
         // Zorg dat de state meegaat als die er was, anders geen state
         return <Navigate to="/register" state={location.state ? { from: location } : undefined} replace />;
     }
-    // Render alleen de registratie routes
+    // Render alleen de registratie en reset routes
     return (
       <Routes>
         <Route path="/register" element={<RegistrationPage />} />
+        {/* ✅ NIEUWE ROUTE: Password reset ook op register subdomein */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/register" replace />} /> 
       </Routes>
     );
@@ -115,6 +123,9 @@ const AppRoutes = () => {
           </div>
       )}
       <Routes>
+        {/* ✅ NIEUWE ROUTE: Password reset op alle klant subdomeinen */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        
         {/* LoginPage heeft nu toegang tot de data uit DataProvider */}
         <Route path="/login" element={<LoginPage />} />
         
