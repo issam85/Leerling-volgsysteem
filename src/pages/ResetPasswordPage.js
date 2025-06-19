@@ -1,7 +1,12 @@
 // src/pages/ResetPasswordPage.js
-// ✅ VERSIE MET ECHTE SUPABASE INTEGRATIE
+// ✅ CONSISTENT MET JOUW DESIGN STYLE
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient'; // ✅ Correct pad naar jouw supabaseClient
+import { supabase } from '../supabaseClient';
+import Input from '../components/Input';
+import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
+import appLogo from '../assets/logo-mijnlvs.png';
+import { Shield, ArrowRight } from 'lucide-react';
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState('');
@@ -10,8 +15,8 @@ const ResetPasswordPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
-  const [tokenStatus, setTokenStatus] = useState('checking'); // 'checking', 'valid', 'invalid'
-  const [passwordChanged, setPasswordChanged] = useState(false); // ✅ NIEUW: Track of wachtwoord is gewijzigd
+  const [tokenStatus, setTokenStatus] = useState('checking');
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   useEffect(() => {
     // ✅ CHECK BEIDE: URL PARAMS EN HASH PARAMS
@@ -102,7 +107,6 @@ const ResetPasswordPage = () => {
     try {
       console.log('🔧 [RESET PASSWORD] Verifying token with Supabase...');
       
-      // ✅ Probeer de token te verifiëren
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: 'recovery'
@@ -153,7 +157,6 @@ const ResetPasswordPage = () => {
     try {
       console.log('🔧 [RESET PASSWORD] Updating password...');
       
-      // ✅ ECHTE SUPABASE PASSWORD UPDATE
       const { data, error } = await supabase.auth.updateUser({
         password: password
       });
@@ -163,27 +166,22 @@ const ResetPasswordPage = () => {
       }
 
       console.log('✅ [RESET PASSWORD] Password updated successfully:', data);
-      setPasswordChanged(true); // ✅ NIEUW: Markeer als succesvol gewijzigd
+      setPasswordChanged(true);
       setSuccess("🎉 Wachtwoord succesvol gewijzigd! Je wordt over 5 seconden doorgeleid naar de login pagina...");
       
       setTimeout(() => {
-        // Sign out na successful password reset
         supabase.auth.signOut().then(() => {
-          // ✅ VERBETERD: Intelligente redirect gebaseerd op huidige domein
           const currentHostname = window.location.hostname;
           
           if (currentHostname === 'mijnlvs.nl' || currentHostname === 'www.mijnlvs.nl') {
-            // Als we op het hoofddomein zijn, blijf daar maar ga naar login
             window.location.href = 'https://mijnlvs.nl/login';
           } else if (currentHostname.includes('mijnlvs.nl')) {
-            // Als we op een subdomein zijn, ga naar dat subdomein's login
             window.location.href = `https://${currentHostname}/login`;
           } else {
-            // Fallback naar hoofddomein login
             window.location.href = 'https://mijnlvs.nl/login';
           }
         });
-      }, 5000); // ✅ VERHOOGD: 5 seconden i.p.v. 3
+      }, 5000);
       
     } catch (err) {
       console.error('❌ [RESET PASSWORD] Password update failed:', err);
@@ -194,207 +192,179 @@ const ResetPasswordPage = () => {
   };
 
   const requestNewReset = () => {
-    // Redirect naar login om nieuwe reset aan te vragen
-    window.location.href = '/login';
+    const currentHostname = window.location.hostname;
+    if (currentHostname.includes('mijnlvs.nl') && currentHostname !== 'mijnlvs.nl') {
+      window.location.href = `https://${currentHostname}/login`;
+    } else {
+      window.location.href = 'https://mijnlvs.nl/login';
+    }
   };
 
+  // Loading state voor token verificatie
+  if (tokenStatus === 'checking') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-md text-center">
+          <LoadingSpinner message="Reset link valideren..." />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f9fafb',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: '16px'
-    }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
-        backgroundColor: 'white',
-        padding: '32px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2563eb', margin: 0 }}>
-            MijnLVS
+    <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
+      {/* KOLOM 1: Premium Branding Sectie */}
+      <div className="hidden lg:flex lg:flex-col justify-between bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12">
+        <div>
+          <div className="flex items-center text-lg font-medium">
+            <Shield className="w-8 h-8 mr-3 bg-white/20 p-1.5 rounded-lg" />
+            <span>Veilig wachtwoord resetten</span>
+          </div>
+          <h1 className="mt-4 text-5xl font-bold tracking-tight">
+            Nieuw Wachtwoord
           </h1>
-        </div>
-        
-        <h2 style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold', 
-          textAlign: 'center', 
-          color: '#1f2937',
-          marginBottom: '16px'
-        }}>
-          Nieuw Wachtwoord Instellen
-        </h2>
-
-        {/* ✅ DEBUG SECTIE */}
-        <div style={{
-          marginBottom: '16px',
-          padding: '12px',
-          backgroundColor: '#f3f4f6',
-          fontSize: '12px',
-          borderRadius: '6px',
-          whiteSpace: 'pre-line'
-        }}>
-          <strong>Debug Info:</strong>
-          {debugInfo}
-          <br/>
-          <strong>Token Status:</strong> {tokenStatus}
-        </div>
-        
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fef2f2',
-            color: '#dc2626',
-            borderRadius: '6px',
-            marginBottom: '16px'
-          }}>
-            {error}
-            {(error.includes('verlopen') || error.includes('ongeldig')) && (
-              <div style={{ marginTop: '8px' }}>
-                <button 
-                  onClick={requestNewReset}
-                  style={{
-                    fontSize: '14px',
-                    color: '#2563eb',
-                    background: 'none',
-                    border: 'none',
-                    textDecoration: 'underline',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Nieuwe reset link aanvragen
-                </button>
+          <p className="mt-2 text-2xl text-emerald-200">
+            Stel een nieuw, veilig wachtwoord in
+          </p>
+          
+          <div className="mt-12 space-y-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
+              <div>
+                <h3 className="text-lg font-semibold">Beveiligde verbinding</h3>
+                <p className="text-emerald-100 text-sm">Je wachtwoord wordt veilig versleuteld opgeslagen</p>
               </div>
-            )}
+            </div>
+            <div className="flex items-start">
+              <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
+              <div>
+                <h3 className="text-lg font-semibold">Eenmalige link</h3>
+                <p className="text-emerald-100 text-sm">Deze reset link is slechts eenmaal te gebruiken</p>
+              </div>
+            </div>
+            <div className="flex items-start">
+              <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
+              <div>
+                <h3 className="text-lg font-semibold">Direct toegang</h3>
+                <p className="text-emerald-100 text-sm">Na het resetten kun je direct inloggen</p>
+              </div>
+            </div>
           </div>
-        )}
-        
-        {success && (
-          <div style={{
-            padding: '16px', // ✅ Meer padding voor success bericht
-            backgroundColor: passwordChanged ? '#dcfce7' : '#f0fdf4', // ✅ Andere kleur voor definitieve success
-            color: passwordChanged ? '#15803d' : '#16a34a',
-            borderRadius: '6px',
-            marginBottom: '16px',
-            border: passwordChanged ? '2px solid #16a34a' : 'none', // ✅ Border voor extra nadruk
-            textAlign: 'center',
-            fontSize: passwordChanged ? '16px' : '14px' // ✅ Groter font voor success
-          }}>
-            {success}
-          </div>
-        )}
+        </div>
+        <div className="text-sm text-emerald-300">
+          <p>Mogelijk gemaakt door MijnLVS</p>
+        </div>
+      </div>
 
-        {tokenStatus === 'checking' && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#eff6ff',
-            color: '#2563eb',
-            borderRadius: '6px',
-            marginBottom: '16px'
-          }}>
-            Bezig met valideren van reset link...
+      {/* KOLOM 2: Reset Formulier */}
+      <div className="flex flex-col items-center justify-center px-6 py-12 lg:px-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <img className="mx-auto h-16 w-auto mb-6" src={appLogo} alt="MijnLVS Logo" />
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Nieuw Wachtwoord
+            </h2>
+            <p className="text-gray-600">
+              Stel een nieuw, veilig wachtwoord in voor uw account
+            </p>
           </div>
-        )}
 
-        {tokenStatus === 'valid' && (
-          <form onSubmit={handleResetPassword}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '500', 
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Nieuw wachtwoord
-              </label>
-              <input
+          {/* Debug info - alleen in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-xs text-gray-700 font-semibold mb-2">🔧 Debug Info:</p>
+              <pre className="text-xs text-gray-600 whitespace-pre-wrap">{debugInfo}</pre>
+              <p className="text-xs text-gray-600 mt-2"><strong>Token Status:</strong> {tokenStatus}</p>
+            </div>
+          )}
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+              {(error.includes('verlopen') || error.includes('ongeldig')) && (
+                <div className="mt-3">
+                  <Button
+                    onClick={requestNewReset}
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-700 hover:text-red-900 border border-red-300 hover:border-red-400"
+                  >
+                    Nieuwe reset link aanvragen
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {success && (
+            <div className={`mb-6 p-4 border rounded-lg text-center ${
+              passwordChanged 
+                ? 'bg-green-50 border-green-200 text-green-700' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            }`}>
+              <p className={passwordChanged ? 'text-base font-medium' : 'text-sm'}>{success}</p>
+            </div>
+          )}
+
+          {tokenStatus === 'valid' && !passwordChanged && (
+            <form onSubmit={handleResetPassword} className="space-y-6">
+              <Input
+                label="Nieuw wachtwoord"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
                 placeholder="Minimaal 8 karakters"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
+                autoComplete="new-password"
               />
-            </div>
-            
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '500', 
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Bevestig nieuw wachtwoord
-              </label>
-              <input
+              
+              <Input
+                label="Bevestig nieuw wachtwoord"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading}
                 placeholder="Herhaal je nieuwe wachtwoord"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
+                autoComplete="new-password"
               />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '10px 16px',
-                backgroundColor: loading ? '#9ca3af' : '#2563eb',
-                color: 'white',
-                borderRadius: '6px',
-                border: 'none',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {loading ? 'Bezig met opslaan...' : 'Wachtwoord Opslaan'}
-            </button>
-          </form>
-        )}
+              
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                size="lg"
+                disabled={loading}
+                className="py-4 text-lg font-semibold"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Wachtwoord wordt opgeslagen...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    🔐 Wachtwoord Opslaan
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </span>
+                )}
+              </Button>
+            </form>
+          )}
 
-        <div style={{ marginTop: '24px', textAlign: 'center' }}>
-          <button 
-            onClick={() => window.location.href = '/login'}
-            style={{
-              fontSize: '14px',
-              color: '#2563eb',
-              background: 'none',
-              border: 'none',
-              textDecoration: 'underline',
-              cursor: 'pointer'
-            }}
-          >
-            Terug naar inloggen
-          </button>
+          {/* Back to login link */}
+          <div className="mt-8 text-center">
+            <button
+              onClick={requestNewReset}
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+            >
+              ← Terug naar inloggen
+            </button>
+          </div>
         </div>
       </div>
     </div>

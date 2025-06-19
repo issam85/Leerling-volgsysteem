@@ -1,23 +1,30 @@
-// src/pages/LoginPage.js
+// src/pages/LoginPage.js - Met Wachtwoord Vergeten functionaliteit
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { supabase } from '../supabaseClient'; // ✅ TOEGEVOEGD voor password reset
 import Input from '../components/Input';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
-import appLogo from '../assets/logo-mijnlvs.png'; // MijnLVS logo
-import { Building, ArrowRight } from 'lucide-react'; // Building icoon
+import appLogo from '../assets/logo-mijnlvs.png';
+import { Building, ArrowRight, Mail } from 'lucide-react';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [showEmergencyReset, setShowEmergencyReset] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, hardResetAuth } = useAuth();
+    // ✅ NIEUWE STATE VOOR WACHTWOORD RESET
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
+    const [resetSuccess, setResetSuccess] = useState('');
+    const [resetError, setResetError] = useState('');
+    
+    const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain } = useAuth();
     const { realData } = useData(); 
     const navigate = useNavigate();
     const location = useLocation();
@@ -31,28 +38,9 @@ const LoginPage = () => {
         }
     }, [currentUser, loadingUser, navigate, from]);
 
-    // Timer voor emergency reset knop
-    useEffect(() => {
-        let timer;
-        if (loadingUser) {
-            timer = setTimeout(() => {
-                setShowEmergencyReset(true);
-            }, 3000);
-        } else {
-            setShowEmergencyReset(false);
-        }
-        
-        return () => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-        };
-    }, [loadingUser]);
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        setShowEmergencyReset(false);
         setIsSubmitting(true);
         
         try {
@@ -60,7 +48,6 @@ const LoginPage = () => {
             await login(email, password);
             console.log("[LoginPage] Login successful - setting backup navigation");
             
-            // Backup navigation na 1 seconde als auth listener faalt
             setTimeout(() => {
                 if (window.location.pathname === '/login') {
                     console.log("[LoginPage] BACKUP navigation to dashboard");
@@ -75,18 +62,59 @@ const LoginPage = () => {
         }
     };
 
-    const handleEmergencyReset = () => {
-        console.log("[LoginPage] Emergency reset triggered by user");
-        setError('');
-        setShowEmergencyReset(false);
-        
-        if (hardResetAuth) {
-            hardResetAuth();
+    // ✅ NIEUWE FUNCTIE: Wachtwoord reset
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        setResetLoading(true);
+        setResetError('');
+        setResetSuccess('');
+
+        if (!resetEmail) {
+            setResetError('Vul uw emailadres in');
+            setResetLoading(false);
+            return;
         }
-        
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+
+        try {
+            console.log('🔧 [FORGOT PASSWORD] Sending reset email to:', resetEmail);
+            
+            // Bepaal de juiste redirect URL gebaseerd op de huidige hostname
+            const currentHostname = window.location.hostname;
+            let redirectUrl;
+            
+            if (currentHostname === 'mijnlvs.nl' || currentHostname === 'www.mijnlvs.nl') {
+                redirectUrl = 'https://mijnlvs.nl/reset-password';
+            } else if (currentHostname.includes('mijnlvs.nl')) {
+                redirectUrl = `https://${currentHostname}/reset-password`;
+            } else {
+                // Voor development/localhost
+                redirectUrl = `${window.location.origin}/reset-password`;
+            }
+
+            const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                redirectTo: redirectUrl
+            });
+
+            if (error) {
+                throw error;
+            }
+
+            console.log('✅ [FORGOT PASSWORD] Reset email sent successfully');
+            setResetSuccess(`Een reset link is verstuurd naar ${resetEmail}. Check uw email en spam folder!`);
+            
+            // Reset form na 8 seconden
+            setTimeout(() => {
+                setShowForgotPassword(false);
+                setResetEmail('');
+                setResetSuccess('');
+            }, 8000);
+            
+        } catch (err) {
+            console.error('❌ [FORGOT PASSWORD] Error:', err);
+            setResetError(err.message || 'Er is een fout opgetreden bij het versturen van de reset email');
+        } finally {
+            setResetLoading(false);
+        }
     };
 
     // Loading state
@@ -95,30 +123,6 @@ const LoginPage = () => {
             <div className="min-h-screen bg-white flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-md text-center">
                     <LoadingSpinner message="Gebruikerssessie controleren..." />
-                    
-                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800 mb-3">💡 Laden duurt lang?</p>
-                        <Button
-                            onClick={handleEmergencyReset}
-                            variant="ghost"
-                            className="text-blue-700 hover:text-blue-900 border border-blue-300 hover:border-blue-400 bg-blue-100 hover:bg-blue-200 text-sm py-2 px-4"
-                        >
-                            🔄 Reset en probeer opnieuw
-                        </Button>
-                    </div>
-                    
-                    {showEmergencyReset && (
-                        <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                            <p className="text-sm text-orange-800 mb-3">⚠️ Nog steeds aan het laden?</p>
-                            <Button
-                                onClick={handleEmergencyReset}
-                                variant="ghost"
-                                className="text-orange-700 hover:text-orange-900 border border-orange-300 hover:border-orange-400 bg-orange-100 hover:bg-orange-200 text-sm py-2 px-4"
-                            >
-                                🔄 Reset inlogstatus
-                            </Button>
-                        </div>
-                    )}
                 </div>
             </div>
         );
@@ -145,7 +149,6 @@ const LoginPage = () => {
                         {realData.mosque?.city || 'Uw Stad'}
                     </p>
                     
-                    {/* Toegevoegde content om het professioneler te maken */}
                     <div className="mt-12 space-y-6">
                         <div className="flex items-start">
                             <div className="flex-shrink-0 w-2 h-2 bg-emerald-300 rounded-full mt-2 mr-4"></div>
@@ -175,78 +178,165 @@ const LoginPage = () => {
                 </div>
             </div>
 
-            {/* KOLOM 2: Login Formulier */}
+            {/* KOLOM 2: Login/Reset Formulier */}
             <div className="flex flex-col items-center justify-center px-6 py-12 lg:px-12">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8">
                         <img className="mx-auto h-16 w-auto mb-6" src={appLogo} alt="MijnLVS Logo" />
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                            Welkom terug
+                            {showForgotPassword ? 'Wachtwoord Vergeten?' : 'Welkom terug'}
                         </h2>
                         <p className="text-gray-600">
-                            Log in op uw {realData.mosque?.name || 'organisatie'} account
+                            {showForgotPassword 
+                                ? 'Vul uw emailadres in om een reset link te ontvangen'
+                                : `Log in op uw ${realData.mosque?.name || 'organisatie'} account`
+                            }
                         </p>
                         {/* Subtitel voor mobiele weergave */}
-                        <p className="lg:hidden mt-4 text-sm text-gray-500 p-4 bg-emerald-50 rounded-lg">
-                            📚 Portaal voor {realData.mosque?.name || 'uw organisatie'}
-                        </p>
+                        {!showForgotPassword && (
+                            <p className="lg:hidden mt-4 text-sm text-gray-500 p-4 bg-emerald-50 rounded-lg">
+                                📚 Portaal voor {realData.mosque?.name || 'uw organisatie'}
+                            </p>
+                        )}
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <Input
-                            label="Emailadres" 
-                            id="email" 
-                            type="email" 
-                            value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
-                            required
-                            placeholder="uwnaam@example.com" 
-                            autoComplete="email"
-                        />
-                        <Input
-                            label="Wachtwoord" 
-                            id="password" 
-                            type="password" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            required
-                            placeholder="Uw wachtwoord" 
-                            autoComplete="current-password"
-                        />
-                        
-                        {error && (
-                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-red-700 text-sm text-center">{error}</p>
-                            </div>
-                        )}
+                    {/* ✅ WACHTWOORD VERGETEN FORMULIER */}
+                    {showForgotPassword ? (
+                        <div className="space-y-6">
+                            <form onSubmit={handleForgotPassword} className="space-y-6">
+                                <Input
+                                    label="Emailadres"
+                                    type="email"
+                                    value={resetEmail}
+                                    onChange={(e) => setResetEmail(e.target.value)}
+                                    required
+                                    placeholder="uw@email.com"
+                                    autoComplete="email"
+                                />
 
-                        <Button 
-                            type="submit" 
-                            variant="primary" 
-                            fullWidth 
-                            size="lg" 
-                            disabled={isSubmitting || loadingUser}
-                            className="py-4 text-lg font-semibold"
-                        >
-                            {isSubmitting || loadingUser ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Bezig met inloggen...
-                                </span>
-                            ) : (
-                                <span className="flex items-center justify-center">
-                                    🔐 Veilig Inloggen
-                                    <ArrowRight className="w-5 h-5 ml-2" />
-                                </span>
+                                {resetError && (
+                                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-red-700 text-sm text-center">{resetError}</p>
+                                    </div>
+                                )}
+
+                                {resetSuccess && (
+                                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                        <p className="text-green-700 text-sm text-center">{resetSuccess}</p>
+                                        <p className="text-green-600 text-xs text-center mt-2">
+                                            💡 Tip: Check ook uw spam/ongewenste mail folder
+                                        </p>
+                                    </div>
+                                )}
+
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    fullWidth
+                                    size="lg"
+                                    disabled={resetLoading}
+                                    className="py-4 text-lg font-semibold"
+                                >
+                                    {resetLoading ? (
+                                        <span className="flex items-center justify-center">
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Reset link versturen...
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center justify-center">
+                                            <Mail className="w-5 h-5 mr-2" />
+                                            Reset Link Versturen
+                                        </span>
+                                    )}
+                                </Button>
+                            </form>
+
+                            <div className="text-center">
+                                <button
+                                    onClick={() => {
+                                        setShowForgotPassword(false);
+                                        setResetEmail('');
+                                        setResetError('');
+                                        setResetSuccess('');
+                                    }}
+                                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                                >
+                                    ← Terug naar inloggen
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* ✅ NORMALE LOGIN FORMULIER */
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <Input
+                                label="Emailadres" 
+                                id="email" 
+                                type="email" 
+                                value={email} 
+                                onChange={(e) => setEmail(e.target.value)} 
+                                required
+                                placeholder="uwnaam@example.com" 
+                                autoComplete="email"
+                            />
+                            <Input
+                                label="Wachtwoord" 
+                                id="password" 
+                                type="password" 
+                                value={password} 
+                                onChange={(e) => setPassword(e.target.value)} 
+                                required
+                                placeholder="Uw wachtwoord" 
+                                autoComplete="current-password"
+                            />
+                            
+                            {error && (
+                                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-red-700 text-sm text-center">{error}</p>
+                                </div>
                             )}
-                        </Button>
-                    </form>
+
+                            <Button 
+                                type="submit" 
+                                variant="primary" 
+                                fullWidth 
+                                size="lg" 
+                                disabled={isSubmitting || loadingUser}
+                                className="py-4 text-lg font-semibold"
+                            >
+                                {isSubmitting || loadingUser ? (
+                                    <span className="flex items-center justify-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Bezig met inloggen...
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center justify-center">
+                                        🔐 Veilig Inloggen
+                                        <ArrowRight className="w-5 h-5 ml-2" />
+                                    </span>
+                                )}
+                            </Button>
+
+                            {/* ✅ WACHTWOORD VERGETEN LINK */}
+                            <div className="text-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowForgotPassword(true)}
+                                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                                >
+                                    Wachtwoord vergeten?
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
                     {/* Development Demo Info */}
-                    {process.env.NODE_ENV === 'development' && currentSubdomain !== 'register' && (
+                    {process.env.NODE_ENV === 'development' && currentSubdomain !== 'register' && !showForgotPassword && (
                         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                             <p className="text-xs text-blue-700 font-semibold mb-2">🔧 Ontwikkeling: Demo Account ({currentSubdomain})</p>
                             <div className="text-xs space-y-1 text-blue-600">
@@ -257,27 +347,22 @@ const LoginPage = () => {
                         </div>
                     )}
 
-                    {/* Action Links */}
-                    <div className="mt-8 space-y-4 text-center">
-                        <button
-                            onClick={handleEmergencyReset}
-                            className="text-sm text-gray-500 hover:text-emerald-600 font-medium transition-colors"
-                        >
-                            🔄 Problemen met inloggen? Reset sessie
-                        </button>
-                        
-                        <div className="flex flex-col space-y-2">
-                            <button 
-                                onClick={() => switchSubdomain('register')} 
-                                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
-                            >
-                                ➕ Nieuwe organisatie registreren
-                            </button>
-                            <p className="text-xs text-gray-400">
-                                Of schakel naar een andere bestaande organisatie
-                            </p>
+                    {/* Action Links - alleen tonen bij normale login view */}
+                    {!showForgotPassword && (
+                        <div className="mt-8 space-y-4 text-center">
+                            <div className="flex flex-col space-y-2">
+                                <button 
+                                    onClick={() => switchSubdomain('register')} 
+                                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                                >
+                                    ➕ Nieuwe organisatie registreren
+                                </button>
+                                <p className="text-xs text-gray-400">
+                                    Of schakel naar een andere bestaande organisatie
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
