@@ -11,15 +11,28 @@ const ResetPasswordPage = () => {
   const [success, setSuccess] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
   const [tokenStatus, setTokenStatus] = useState('checking'); // 'checking', 'valid', 'invalid'
+  const [passwordChanged, setPasswordChanged] = useState(false); // ✅ NIEUW: Track of wachtwoord is gewijzigd
 
   useEffect(() => {
+    // ✅ CHECK BEIDE: URL PARAMS EN HASH PARAMS
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const type = urlParams.get('type');
-    const urlError = urlParams.get('error');
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    // Check URL parameters eerst
+    let token = urlParams.get('token');
+    let type = urlParams.get('type');
+    let urlError = urlParams.get('error');
+    
+    // Als niet gevonden, check hash parameters
+    if (!token) {
+      token = hashParams.get('access_token');
+      type = hashParams.get('type');
+    }
     
     const info = `
       URL: ${window.location.href}
+      URL Hash: ${window.location.hash}
+      URL Search: ${window.location.search}
       Token: ${token ? 'Aanwezig' : 'Niet gevonden'}
       Type: ${type || 'Niet gevonden'}
       URL Error: ${urlError || 'Geen'}
@@ -34,15 +47,56 @@ const ResetPasswordPage = () => {
       return;
     }
 
-    if (!token || type !== 'recovery') {
+    if (!token) {
       setError('Geen geldige reset token gevonden in URL');
       setTokenStatus('invalid');
       return;
     }
 
-    // ✅ ECHTE SUPABASE TOKEN VERIFICATIE
-    verifyResetToken(token);
+    // ✅ VERSCHILLENDE VERIFICATIE METHODES PROBEREN
+    if (hashParams.get('access_token')) {
+      // Hash-based token (access_token + refresh_token)
+      verifyHashToken(hashParams);
+    } else if (urlParams.get('token')) {
+      // Query parameter token
+      verifyResetToken(token);
+    } else {
+      setError('Onbekend token formaat');
+      setTokenStatus('invalid');
+    }
   }, []);
+
+  const verifyHashToken = async (hashParams) => {
+    try {
+      console.log('🔧 [RESET PASSWORD] Verifying hash-based token...');
+      
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      
+      if (!accessToken || !refreshToken) {
+        throw new Error('Access token of refresh token ontbreekt');
+      }
+      
+      // Set session met de tokens uit de URL
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('✅ [RESET PASSWORD] Hash token verified successfully:', data);
+      setTokenStatus('valid');
+      setSuccess('Reset token is geldig! Je kunt nu een nieuw wachtwoord instellen.');
+      
+    } catch (err) {
+      console.error('❌ [RESET PASSWORD] Hash token verification failed:', err);
+      setError(`Hash token verificatie fout: ${err.message}`);
+      setTokenStatus('invalid');
+    }
+  };
 
   const verifyResetToken = async (token) => {
     try {
@@ -109,14 +163,27 @@ const ResetPasswordPage = () => {
       }
 
       console.log('✅ [RESET PASSWORD] Password updated successfully:', data);
-      setSuccess("Wachtwoord succesvol gewijzigd! Je wordt doorgeleid naar de login pagina...");
+      setPasswordChanged(true); // ✅ NIEUW: Markeer als succesvol gewijzigd
+      setSuccess("🎉 Wachtwoord succesvol gewijzigd! Je wordt over 5 seconden doorgeleid naar de login pagina...");
       
       setTimeout(() => {
         // Sign out na successful password reset
         supabase.auth.signOut().then(() => {
-          window.location.href = '/login';
+          // ✅ VERBETERD: Intelligente redirect gebaseerd op huidige domein
+          const currentHostname = window.location.hostname;
+          
+          if (currentHostname === 'mijnlvs.nl' || currentHostname === 'www.mijnlvs.nl') {
+            // Als we op het hoofddomein zijn, blijf daar maar ga naar login
+            window.location.href = 'https://mijnlvs.nl/login';
+          } else if (currentHostname.includes('mijnlvs.nl')) {
+            // Als we op een subdomein zijn, ga naar dat subdomein's login
+            window.location.href = `https://${currentHostname}/login`;
+          } else {
+            // Fallback naar hoofddomein login
+            window.location.href = 'https://mijnlvs.nl/login';
+          }
         });
-      }, 3000);
+      }, 5000); // ✅ VERHOOGD: 5 seconden i.p.v. 3
       
     } catch (err) {
       console.error('❌ [RESET PASSWORD] Password update failed:', err);
@@ -211,11 +278,14 @@ const ResetPasswordPage = () => {
         
         {success && (
           <div style={{
-            padding: '12px',
-            backgroundColor: '#f0fdf4',
-            color: '#16a34a',
+            padding: '16px', // ✅ Meer padding voor success bericht
+            backgroundColor: passwordChanged ? '#dcfce7' : '#f0fdf4', // ✅ Andere kleur voor definitieve success
+            color: passwordChanged ? '#15803d' : '#16a34a',
             borderRadius: '6px',
-            marginBottom: '16px'
+            marginBottom: '16px',
+            border: passwordChanged ? '2px solid #16a34a' : 'none', // ✅ Border voor extra nadruk
+            textAlign: 'center',
+            fontSize: passwordChanged ? '16px' : '14px' // ✅ Groter font voor success
           }}>
             {success}
           </div>
