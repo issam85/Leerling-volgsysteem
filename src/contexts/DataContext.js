@@ -118,8 +118,9 @@ export const DataProvider = ({ children }) => {
   const fetchMosqueDataBySubdomain = useCallback(async (subdomain) => {
     if (!subdomain || subdomain === 'register') return null;
     
+    
     try {
-      console.log(`[DataContext] Fetching mosque for subdomain: ${subdomain}`);
+      console.log(`[DataContext] Fetching mosque for subdomain: ${subdomain} (attempt ${retryCount + 1})`);
       const cacheBuster = `timestamp=${Date.now()}`;
       
       // ✅ CORRECT ENDPOINT
@@ -133,7 +134,15 @@ export const DataProvider = ({ children }) => {
         throw new Error(`Moskee voor subdomein '${subdomain}' niet gevonden.`);
       }
     } catch (error) {
-      console.error(`❌ [DataContext] Error fetching mosque for ${subdomain}:`, error.message);
+      console.error(`❌ [DataContext] Error fetching mosque for ${subdomain} (attempt ${retryCount + 1}):`, error.message);
+      
+      // ✅ RETRY LOGIC for 404 errors (likely race condition)
+      if (error.message.includes('niet gevonden') && retryCount < 3) {
+        console.log(`[DataContext] Retrying in ${500 * (retryCount + 1)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+        return fetchMosqueDataBySubdomain(subdomain, retryCount + 1);
+      }
+      
       throw error;
     }
   }, []);

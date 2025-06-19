@@ -314,11 +314,23 @@ const RegistrationPage = () => {
   // ✅ NIEUWE FUNCTIE: Switch naar subdomain via modal
   const handleSwitchToLogin = async (subdomain) => {
     try {
-      await switchSubdomain(subdomain);
+      // Clean subdomain - remove any .nl suffix that might be accidentally added
+      const cleanSubdomain = subdomain.trim().toLowerCase().replace('.nl', '');
+      await switchSubdomain(cleanSubdomain);
       setShowLoginModal(false);
     } catch (error) {
       throw error; // Let modal handle the error
     }
+  };
+
+  // ✅ NIEUWE FUNCTIE: Switch met vertraging voor race condition fix
+  const handleSwitchWithDelay = (subdomain) => {
+    const cleanSubdomain = subdomain.trim().toLowerCase().replace('.nl', '');
+    
+    // Kleine vertraging om race condition te voorkomen
+    setTimeout(() => {
+      switchSubdomain(cleanSubdomain);
+    }, 1000); // 1 seconde vertraging
   };
 
   // Functie om payment linking te proberen
@@ -495,7 +507,7 @@ const RegistrationPage = () => {
             {/* Login Button */}
             <div className="mt-8">
               <Button 
-                onClick={() => switchSubdomain(formData.subdomain.trim().toLowerCase())} 
+                onClick={() => handleSwitchWithDelay(formData.subdomain)}
                 variant="primary" 
                 size="lg"
                 className="w-full sm:w-auto"
