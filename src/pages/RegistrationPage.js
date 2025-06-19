@@ -7,7 +7,169 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
 import appLogo from '../assets/logo-mijnlvs.png';
-import { Building, UserCircle, CheckCircle, ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
+import { Building, UserCircle, CheckCircle, ArrowLeft, CreditCard, AlertCircle, X, LogIn } from 'lucide-react';
+
+// ✅ NIEUWE LOGIN MODAL COMPONENT
+const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
+  const [subdomain, setSubdomain] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Reset modal state when opening/closing
+  useEffect(() => {
+    if (isOpen) {
+      setSubdomain('');
+      setError('');
+      setIsLoading(false);
+    }
+  }, [isOpen]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!subdomain.trim()) {
+      setError('Vul een subdomein in');
+      return;
+    }
+
+    // Basic validation
+    if (!/^[a-zA-Z0-9-]+$/.test(subdomain.trim())) {
+      setError('Subdomein mag alleen letters, cijfers en koppelstreepjes bevatten');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      await onSwitchSubdomain(subdomain.trim().toLowerCase());
+    } catch (err) {
+      setError('Er ging iets mis bij het omschakelen');
+      setIsLoading(false);
+    }
+  };
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in duration-200">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          disabled={isLoading}
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        {/* Header */}
+        <div className="text-center mb-6 pr-8">
+          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LogIn className="w-6 h-6 text-emerald-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            Inloggen bij bestaande organisatie
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Vul het subdomein van uw organisatie in om door te gaan naar de inlogpagina
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Input
+              label="Subdomein van uw organisatie"
+              value={subdomain}
+              onChange={(e) => setSubdomain(e.target.value)}
+              placeholder="bijv. al-noor"
+              disabled={isLoading}
+              autoFocus
+            />
+            {subdomain && (
+              <p className="mt-1 text-xs text-gray-500">
+                🌐 Uw loginpagina: <span className="font-medium">{subdomain.toLowerCase()}.mijnlvs.nl</span>
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              onClick={onClose}
+              variant="secondary"
+              className="flex-1"
+              disabled={isLoading}
+            >
+              Annuleren
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              className="flex-1"
+              disabled={isLoading || !subdomain.trim()}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Omschakelen...
+                </span>
+              ) : (
+                'Ga naar Login'
+              )}
+            </Button>
+          </div>
+        </form>
+
+        {/* Help text */}
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-xs text-gray-500 text-center">
+            💡 Weet je het subdomein niet? Neem contact op met de beheerder van je organisatie.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // De Stepper Component
 const Stepper = ({ currentStep }) => {
@@ -118,10 +280,8 @@ const RegistrationPage = () => {
   const [isLinkingPayment, setIsLinkingPayment] = useState(false);
   const [linkingComplete, setLinkingComplete] = useState(false);
 
-  // START -- NIEUWE CODE: State voor de slimme login link
-  const [showSubdomainInput, setShowSubdomainInput] = useState(false);
-  const [loginSubdomain, setLoginSubdomain] = useState('');
-  // EINDE -- NIEUWE CODE
+  // ✅ NIEUWE STATE: Login modal
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // NIEUWE FUNCTIE: Verwijder URL parameters
   const clearUrlParameters = () => {
@@ -151,13 +311,15 @@ const RegistrationPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // START -- NIEUWE CODE: Functie om naar het ingevoerde subdomein te gaan
-  const handleSwitchToLogin = () => {
-    if (loginSubdomain.trim()) {
-      switchSubdomain(loginSubdomain.trim().toLowerCase());
+  // ✅ NIEUWE FUNCTIE: Switch naar subdomain via modal
+  const handleSwitchToLogin = async (subdomain) => {
+    try {
+      await switchSubdomain(subdomain);
+      setShowLoginModal(false);
+    } catch (error) {
+      throw error; // Let modal handle the error
     }
   };
-  // EINDE -- NIEUWE CODE
 
   // Functie om payment linking te proberen
   const attemptPaymentLinking = async (mosqueData) => {
@@ -377,6 +539,13 @@ const RegistrationPage = () => {
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-5">
       {loading && <LoadingSpinner message="Registratie verwerken..." />}
 
+      {/* ✅ LOGIN MODAL */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchSubdomain={handleSwitchToLogin}
+      />
+
       {/* ==================================================================== */}
       {/* KOLOM 1: De "Banner" - Zichtbaar op grote schermen (NIEUWE VERSIE) */}
       {/* ==================================================================== */}
@@ -461,44 +630,19 @@ const RegistrationPage = () => {
               </div>
             )}
           </form>
+
+          {/* ✅ NIEUWE LOGIN SECTIE - alleen tonen voor stap 1 en 2 */}
           {step < 3 && (
             <div className="text-center mt-8">
-              {!showSubdomainInput ? (
-                <p className="text-sm text-gray-600">
-                  Al een account?{' '}
-                  <button
-                    onClick={() => setShowSubdomainInput(true)}
-                    className="font-medium text-emerald-600 hover:text-emerald-500 focus:outline-none focus:underline"
-                  >
-                    Ga naar inloggen
-                  </button>
-                </p>
-              ) : (
-                <div className="bg-gray-50 p-4 rounded-lg border">
-                  <label htmlFor="login-subdomain" className="block text-sm font-medium text-gray-700 mb-2">
-                    Wat is het subdomein van uw organisatie?
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="login-subdomain"
-                      name="loginSubdomain"
-                      value={loginSubdomain}
-                      onChange={(e) => setLoginSubdomain(e.target.value)}
-                      placeholder="bijv. al-noor"
-                      className="flex-grow"
-                    />
-                    <Button onClick={handleSwitchToLogin} disabled={!loginSubdomain.trim()}>
-                      Ga verder
-                    </Button>
-                  </div>
-                  <button
-                    onClick={() => setShowSubdomainInput(false)}
-                    className="text-xs text-gray-500 hover:underline mt-2"
-                  >
-                    Annuleren
-                  </button>
-                </div>
-              )}
+              <p className="text-sm text-gray-600">
+                Al een account?{' '}
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="font-medium text-emerald-600 hover:text-emerald-500 focus:outline-none focus:underline transition-colors"
+                >
+                  Ga naar inloggen
+                </button>
+              </p>
             </div>
           )}
         </div>
