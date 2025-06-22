@@ -426,7 +426,7 @@ const StudentsTab = () => {
                       ? 'bg-red-600 hover:bg-red-700' 
                       : 'bg-amber-600 hover:bg-amber-700'
                   } text-white`}
-                  onClick={() => navigate('/admin/subscription')}
+                  onClick={() => window.open('https://mijnlvs.nl#prijzen', '_blank')}
                 >
                   {isAtLimit ? 'Upgrade Nu' : 'Bekijk Upgrade Opties'}
                 </Button>
