@@ -690,7 +690,7 @@ const StudentsTab = () => {
                     return (
                       <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          #{student.id}
+                          {index + 1} 
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -712,7 +712,7 @@ const StudentsTab = () => {
                               {student.class?.name || 'Geen klas'}
                             </span>
                           </div>
-                        </td>
+                        </td> 
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {student.parent?.name || 'Geen ouder'}
                         </td>
