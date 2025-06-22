@@ -685,7 +685,7 @@ const StudentsTab = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAndSortedStudents.map((student, index) => {
-                    const studentPaymentStatus = calculateParentPaymentStatus(student.parent, payments);
+                    const studentPaymentStatus = calculateParentPaymentStatus(student.parent_id, users, payments);
                     
                     return (
                       <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
