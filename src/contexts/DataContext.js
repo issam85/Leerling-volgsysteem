@@ -115,15 +115,15 @@ export const DataProvider = ({ children }) => {
   }, [realData.loading, forceResetDataContext]);
 
   // ✅ CORRECT: Mosque data fetching
-  const fetchMosqueDataBySubdomain = useCallback(async (subdomain) => {
+  // ✅ CORRECTIE: Mosque data fetching met default parameter voor retryCount
+  const fetchMosqueDataBySubdomain = useCallback(async (subdomain, retryCount = 0) => { // <-- DE CORRECTIE IS HIER
     if (!subdomain || subdomain === 'register') return null;
     
-    
     try {
+      // Nu is 'retryCount' altijd gedefinieerd (0 bij de eerste aanroep)
       console.log(`[DataContext] Fetching mosque for subdomain: ${subdomain} (attempt ${retryCount + 1})`);
       const cacheBuster = `timestamp=${Date.now()}`;
       
-      // ✅ CORRECT ENDPOINT
       const endpoint = `/api/mosques/subdomain/${subdomain}?${cacheBuster}`;
       const mosqueDetails = await apiCall(endpoint);
       
@@ -136,16 +136,17 @@ export const DataProvider = ({ children }) => {
     } catch (error) {
       console.error(`❌ [DataContext] Error fetching mosque for ${subdomain} (attempt ${retryCount + 1}):`, error.message);
       
-      // ✅ RETRY LOGIC for 404 errors (likely race condition)
+      // De retry logica werkt nu correct
       if (error.message.includes('niet gevonden') && retryCount < 3) {
         console.log(`[DataContext] Retrying in ${500 * (retryCount + 1)}ms...`);
         await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+        // De recursieve aanroep geeft de verhoogde retryCount mee
         return fetchMosqueDataBySubdomain(subdomain, retryCount + 1);
       }
       
       throw error;
     }
-  }, []);
+  }, []); // De dependency array blijft leeg omdat de functie stabiel is door useCallback
 
   // ✅ CORRECT: Admin data loading
   const loadAdminDetailedData = useCallback(async (mosqueForDataLoading) => {
