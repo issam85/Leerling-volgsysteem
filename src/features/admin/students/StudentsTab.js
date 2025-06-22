@@ -1,8 +1,9 @@
-// src/features/admin/students/StudentsTab.js - VOLLEDIG VERBETERDE VERSIE
+// src/features/admin/students/StudentsTab.js - Updated with useTrialStatus Hook
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import { calculateParentPaymentStatus } from '../../../utils/financials';
+import { useTrialStatus } from '../../../hooks/useTrialStatus'; // ✅ ADDED: Trial status hook
 import AdminLayout from '../../../layouts/AdminLayout';
 import Button from '../../../components/Button';
 import Input from '../../../components/Input';
@@ -21,7 +22,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  X
+  X,
+  Crown,
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +33,9 @@ import { useNavigate } from 'react-router-dom';
 const StudentsTab = () => {
   const { realData, loadData } = useData();
   const { users, students, classes, payments, mosque, loading: dataLoading, error: dataError } = realData;
+  
+  // ✅ ADDED: Trial status hook
+  const { trialStatus, loading: trialLoading } = useTrialStatus();
   
   // Modal states
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -44,15 +51,23 @@ const StudentsTab = () => {
   // Attendance data
   const [attendanceHistory, setAttendanceHistory] = useState({});
   
-  // ✅ NIEUWE FILTER EN SORT STATES
+  // Filter en sort states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState('table'); // 'table' of 'cards'
+  const [viewMode, setViewMode] = useState('table');
   
   const navigate = useNavigate();
   const parents = users ? users.filter(u => u.role === 'parent') : [];
+
+  // ✅ UPDATED: Use trial status hook instead of mosque data
+  const isTrialActive = trialStatus && !trialStatus.isProfessional;
+  const maxStudentsForTrial = trialStatus?.maxStudents || 10;
+  const currentStudentCount = students ? students.length : 0;
+  const isAtStudentLimit = isTrialActive && currentStudentCount >= maxStudentsForTrial;
+  const canAddMoreStudents = !isTrialActive || currentStudentCount < maxStudentsForTrial;
+  const studentsRemaining = isTrialActive ? Math.max(0, maxStudentsForTrial - currentStudentCount) : null;
 
   useEffect(() => {
     if (dataError) {
@@ -63,21 +78,17 @@ const StudentsTab = () => {
     }
   }, [dataError]);
 
-  // ✅ GEAVANCEERDE FILTER EN SORT LOGICA
+  // Filter en sort logica
   const filteredAndSortedStudents = useMemo(() => {
     if (!students || students.length === 0) return [];
 
     // Step 1: Filter op zoekterm
     let filtered = students.filter(student => {
-      // Zoek in naam (voornaam, achternaam, volledige naam)
       const nameMatch = student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                        student.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                        student.last_name?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Zoek ook in ouder naam
       const parentMatch = student.parent?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Zoek in klas naam
       const classMatch = student.class?.name?.toLowerCase().includes(searchQuery.toLowerCase());
       
       return nameMatch || parentMatch || classMatch;
@@ -134,7 +145,7 @@ const StudentsTab = () => {
     return filtered;
   }, [students, searchQuery, selectedClassFilter, sortConfig]);
 
-  // ✅ SORT FUNCTIE
+  // Sort functie
   const handleSort = (key) => {
     setSortConfig(prevConfig => ({
       key,
@@ -142,7 +153,7 @@ const StudentsTab = () => {
     }));
   };
 
-  // ✅ RENDER SORT ICON
+  // Render sort icon
   const renderSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) {
       return <ArrowUpDown size={14} className="ml-1 text-gray-400" />;
@@ -152,15 +163,16 @@ const StudentsTab = () => {
       : <ArrowDown size={14} className="ml-1 text-blue-600" />;
   };
 
-  // ✅ CLEAR FILTERS
+  // Clear filters
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedClassFilter('');
     setSortConfig({ key: 'first_name', direction: 'asc' });
   };
 
-  // Bestaande functies (ongewijzigd)
+  // ✅ UPDATED: Enhanced trial limit check with trialLoading
   const handleOpenAddModal = () => {
+    // Check prerequisites first
     if (parents.length === 0) {
       alert('Voeg eerst ouders toe voordat u leerlingen kunt aanmaken.');
       navigate('/admin/parents');
@@ -171,6 +183,16 @@ const StudentsTab = () => {
       navigate('/admin/classes');
       return;
     }
+
+    // ✅ Enhanced trial limit check
+    if (isAtStudentLimit) {
+      setPageMessage({ 
+        type: 'error', 
+        text: `Trial versie beperkt tot maximaal ${maxStudentsForTrial} leerlingen. Upgrade naar een betaald abonnement voor meer leerlingen.` 
+      });
+      return;
+    }
+
     setEditingStudent(null);
     setShowAddStudentModal(true);
     setModalErrorText('');
@@ -201,6 +223,12 @@ const StudentsTab = () => {
 
     if (!mosque || !mosque.id) {
       setModalErrorText("Moskee informatie niet beschikbaar. Kan actie niet uitvoeren.");
+      return false;
+    }
+
+    // ✅ Enhanced trial limit check
+    if (!editingStudent && isAtStudentLimit) {
+      setModalErrorText(`Trial versie beperkt tot maximaal ${maxStudentsForTrial} leerlingen. Upgrade voor meer leerlingen.`);
       return false;
     }
     
@@ -249,7 +277,14 @@ const StudentsTab = () => {
         }
     } catch (err) {
         console.error('Error submitting student:', err);
-        setModalErrorText(err.message || `Fout bij het ${editingStudent ? 'bewerken' : 'toevoegen'} van de leerling.`);
+        
+        // ✅ Enhanced error handling for trial limits
+        if (err.message && (err.message.includes('limiet') || err.message.includes('STUDENT_LIMIT_REACHED'))) {
+          setModalErrorText(`Trial versie beperkt tot maximaal ${maxStudentsForTrial} leerlingen. Upgrade naar een betaald abonnement voor meer leerlingen.`);
+        } else {
+          setModalErrorText(err.message || `Fout bij het ${editingStudent ? 'bewerken' : 'toevoegen'} van de leerling.`);
+        }
+        
         setActionLoading(false);
         return false;
     }
@@ -300,11 +335,115 @@ const StudentsTab = () => {
     }
   };
 
-  if (dataLoading && (!students || students.length === 0)) {
+  // ✅ ENHANCED: Trial limit notice with better status handling
+  const renderTrialLimitNotice = () => {
+    if (!isTrialActive) return null;
+
+    const usagePercentage = (currentStudentCount / maxStudentsForTrial) * 100;
+    const isNearLimit = usagePercentage >= 80;
+    const isAtLimit = isAtStudentLimit;
+
+    return (
+      <div className={`p-4 rounded-lg border-2 mb-6 ${
+        isAtLimit 
+          ? 'bg-red-50 border-red-200' 
+          : isNearLimit 
+            ? 'bg-amber-50 border-amber-200' 
+            : 'bg-blue-50 border-blue-200'
+      }`}>
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            {isAtLimit ? (
+              <Lock className="h-6 w-6 text-red-600" />
+            ) : isNearLimit ? (
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            ) : (
+              <Crown className="h-6 w-6 text-blue-600" />
+            )}
+          </div>
+          <div className="flex-1">
+            <h3 className={`text-sm font-semibold ${
+              isAtLimit 
+                ? 'text-red-800' 
+                : isNearLimit 
+                  ? 'text-amber-800' 
+                  : 'text-blue-800'
+            }`}>
+              Trial Versie - Leerlingen Limiet
+            </h3>
+            <div className="mt-1">
+              <p className={`text-sm ${
+                isAtLimit 
+                  ? 'text-red-700' 
+                  : isNearLimit 
+                    ? 'text-amber-700' 
+                    : 'text-blue-700'
+              }`}>
+                <span className="font-medium">{currentStudentCount} van {maxStudentsForTrial}</span> leerlingen gebruikt.
+                {isAtLimit && ' U heeft de limiet bereikt.'}
+                {!isAtLimit && studentsRemaining && ` Nog ${studentsRemaining} leerlingen beschikbaar.`}
+              </p>
+              {isAtLimit && (
+                <p className="text-sm text-red-700 mt-1">
+                  Upgrade naar een betaald abonnement om meer leerlingen toe te voegen.
+                </p>
+              )}
+              {isNearLimit && !isAtLimit && (
+                <p className="text-sm text-amber-700 mt-1">
+                  U nadert de limiet. Overweeg een upgrade naar een betaald abonnement.
+                </p>
+              )}
+            </div>
+            
+            {/* Progress bar */}
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>Leerlingen gebruikt</span>
+                <span>{currentStudentCount}/{maxStudentsForTrial} ({Math.round(usagePercentage)}%)</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    isAtLimit 
+                      ? 'bg-red-500' 
+                      : isNearLimit 
+                        ? 'bg-amber-500' 
+                        : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${Math.min(usagePercentage, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Upgrade suggestion */}
+            {(isAtLimit || isNearLimit) && (
+              <div className="mt-3">
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  className={`${
+                    isAtLimit 
+                      ? 'bg-red-600 hover:bg-red-700' 
+                      : 'bg-amber-600 hover:bg-amber-700'
+                  } text-white`}
+                  onClick={() => navigate('/admin/subscription')}
+                >
+                  {isAtLimit ? 'Upgrade Nu' : 'Bekijk Upgrade Opties'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ✅ Show loading state when trial data is loading
+  if ((dataLoading || trialLoading) && (!students || students.length === 0)) {
     return <LoadingSpinner message="Leerlingen laden..." />;
   }
 
-  const hasActiveFilters = searchQuery || selectedClassFilter || sortConfig.key !== 'name' || sortConfig.direction !== 'asc';
+  const hasActiveFilters = searchQuery || selectedClassFilter || sortConfig.key !== 'first_name' || sortConfig.direction !== 'asc';
 
   return (
     <AdminLayout>
@@ -318,9 +457,21 @@ const StudentsTab = () => {
             <p className="text-gray-600 text-sm mt-1">
               {filteredAndSortedStudents.length} van {students?.length || 0} leerlingen
               {hasActiveFilters && ' (gefilterd)'}
+              {isTrialActive && (
+                <span className="ml-2 text-xs text-gray-500">
+                  • Trial: {currentStudentCount}/{maxStudentsForTrial} gebruikt
+                </span>
+              )}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
+            {/* ✅ Enhanced trial usage indicator in header */}
+            {isTrialActive && (
+              <div className="text-xs text-gray-600 font-medium self-center bg-gray-100 px-3 py-1 rounded-full">
+                {currentStudentCount}/{maxStudentsForTrial} leerlingen
+              </div>
+            )}
+            
             <Button 
               onClick={() => setShowFilters(!showFilters)}
               variant="secondary"
@@ -330,16 +481,21 @@ const StudentsTab = () => {
               {showFilters ? 'Verberg Filters' : 'Toon Filters'}
               {hasActiveFilters && <span className="ml-1 bg-blue-600 text-white rounded-full px-2 py-0.5 text-xs">!</span>}
             </Button>
+            
             <Button 
               onClick={handleOpenAddModal} 
-              variant="primary" 
-              icon={Plus} 
-              disabled={actionLoading}
+              variant={isAtStudentLimit ? "disabled" : "primary"} 
+              icon={isAtStudentLimit ? Lock : Plus} 
+              disabled={actionLoading || isAtStudentLimit || trialLoading} // ✅ Added trialLoading
+              title={isAtStudentLimit ? `Trial limiet bereikt (${maxStudentsForTrial} leerlingen max)` : "Nieuwe leerling toevoegen"}
             >
-              Nieuwe Leerling
+              {isAtStudentLimit ? 'Limiet Bereikt' : 'Nieuwe Leerling'}
             </Button>
           </div>
         </div>
+
+        {/* ✅ ADDED: Trial limitation notice */}
+        {renderTrialLimitNotice()}
 
         {/* Messages */}
         {pageMessage.text && (
@@ -358,7 +514,7 @@ const StudentsTab = () => {
           </div>
         )}
 
-        {/* ✅ NIEUWE FILTER SECTIE */}
+        {/* Filter sectie */}
         {showFilters && (
           <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -444,7 +600,17 @@ const StudentsTab = () => {
           <div className="card text-center">
             <StudentIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Nog geen leerlingen</h3>
-            <p className="text-gray-600">Voeg leerlingen toe en koppel ze aan ouders en klassen.</p>
+            <p className="text-gray-600">
+              {isTrialActive 
+                ? `Voeg tot ${maxStudentsForTrial} leerlingen toe in de trial versie.`
+                : "Voeg leerlingen toe en koppel ze aan ouders en klassen."
+              }
+            </p>
+            {isTrialActive && studentsRemaining && (
+              <p className="text-sm text-blue-600 mt-2">
+                Nog {studentsRemaining} leerlingen beschikbaar in uw trial.
+              </p>
+            )}
           </div>
         ) : filteredAndSortedStudents.length === 0 && hasActiveFilters ? (
           <div className="card text-center">
@@ -518,94 +684,85 @@ const StudentsTab = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAndSortedStudents.map(student => {
-                    const parentName = student.parent?.name || <span className="italic text-red-500">Geen</span>;
-                    const className = student.class?.name || <span className="italic text-gray-400">Geen</span>;
-                    const paymentInfo = student.parent_id ? calculateParentPaymentStatus(student.parent_id, users, payments) : null;
+                  {filteredAndSortedStudents.map((student, index) => {
+                    const studentPaymentStatus = calculateParentPaymentStatus(student.parent, payments);
                     
-                    let statusColorClass = 'text-gray-600 bg-gray-100';
-                    if (paymentInfo?.paymentStatus === 'betaald') statusColorClass = 'text-green-700 bg-green-100';
-                    else if (paymentInfo?.paymentStatus === 'deels_betaald') statusColorClass = 'text-yellow-700 bg-yellow-100';
-                    else if (paymentInfo?.paymentStatus === 'openstaand') statusColorClass = 'text-red-700 bg-red-100';
-
                     return (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate" title={student.id}>
-                          {student.id ? student.id.substring(0,8) + '...' : '-'}
+                      <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          #{student.id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {student.first_name || student.name?.split(' ')[0] || '-'}
-                          </div>
-                          {student.date_of_birth && (
-                            <div className="text-xs text-gray-500">
-                              {new Date().getFullYear() - new Date(student.date_of_birth).getFullYear()} jaar
+                          <div className="flex items-center">
+                            <UserCircle className="h-8 w-8 text-gray-400 mr-3" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {student.first_name || student.name?.split(' ')[0] || 'Onbekend'}
+                              </div>
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {student.last_name || student.name?.split(' ').slice(1).join(' ') || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <ClassIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <span className="text-sm text-gray-900">
+                              {student.class?.name || 'Geen klas'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {student.parent?.name || 'Geen ouder'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {student.date_of_birth ? (
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                              {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                            </div>
+                          ) : (
+                            '-'
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {student.last_name || (student.name?.split(' ').slice(1).join(' ')) || '-'}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            studentPaymentStatus === 'up_to_date' 
+                              ? 'bg-green-100 text-green-800' 
+                              : studentPaymentStatus === 'overdue'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {studentPaymentStatus === 'up_to_date' ? 'Betaald' : 
+                             studentPaymentStatus === 'overdue' ? 'Achterstallig' : 'Onbekend'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => viewAttendanceHistory(student.id)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors"
+                              title="Bekijk aanwezigheid"
+                            >
+                              <Calendar size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditModal(student)}
+                              className="text-emerald-600 hover:text-emerald-900 p-1 rounded-md hover:bg-emerald-50 transition-colors"
+                              title="Bewerk leerling"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(student.id)}
+                              className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
+                              title="Verwijder leerling"
+                              disabled={actionLoading}
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          <span className="flex items-center">
-                            <ClassIcon size={16} className="mr-1.5 text-blue-500 flex-shrink-0"/>
-                            {className}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          <span className="flex items-center">
-                            <UserCircle size={16} className="mr-1.5 text-orange-500 flex-shrink-0"/>
-                            {parentName}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {student.date_of_birth 
-                            ? new Date(student.date_of_birth).toLocaleDateString('nl-NL') 
-                            : '-'
-                          }
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                          {paymentInfo ? (
-                            <span className={`px-2.5 py-1 inline-flex text-xs leading-tight font-semibold rounded-full ${statusColorClass} capitalize`}>
-                              {paymentInfo.paymentStatus.replace('_', ' ')}
-                            </span>
-                          ) : (
-                            <span className="italic text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
-                          <Button 
-                            onClick={() => viewAttendanceHistory(student.id)}
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-green-600 hover:text-green-800 p-1.5" 
-                            title="Bekijk aanwezigheid" 
-                            disabled={actionLoading}
-                          > 
-                            <Calendar size={16} /> 
-                          </Button>
-                          <Button 
-                            onClick={() => handleOpenEditModal(student)} 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-blue-600 hover:text-blue-800 p-1.5" 
-                            title="Bewerken" 
-                            disabled={actionLoading}
-                          > 
-                            <Edit3 size={16} /> 
-                          </Button>
-                          <Button 
-                            onClick={() => handleDeleteStudent(student.id)} 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-800 p-1.5" 
-                            title="Verwijderen" 
-                            disabled={actionLoading}
-                          > 
-                            <Trash2 size={16} /> 
-                          </Button>
                         </td>
                       </tr>
                     );
@@ -620,10 +777,10 @@ const StudentsTab = () => {
         {showAddStudentModal && (
           <AddStudentModal
             isOpen={showAddStudentModal}
-            onClose={() => { 
-              setShowAddStudentModal(false); 
-              setEditingStudent(null); 
-              setModalErrorText(''); 
+            onClose={() => {
+              setShowAddStudentModal(false);
+              setEditingStudent(null);
+              setModalErrorText('');
             }}
             onSubmit={handleStudentSubmit}
             initialData={editingStudent}
