@@ -15,25 +15,22 @@ const LandingPage = () => {
     const handleChooseProfessional = async () => {
         setIsProcessingPayment(true);
         try {
-            // Je product ID: prod_STX7QxkdnAG0dP
-            // Price ID van je €25/maand professional plan
-            const priceId = 'price_1RdFm2CHZ9R82JCdw329WusE';
+            // ✅ ZORG ERVOOR DAT DEZE REGEL AANWEZIG EN CORRECT IS
+            const priceId = 'price_1RdFm2CHZ9R82JCdw329WusE'; // De LIVE price ID
             
-            // Gebruik de bestaande API service
             const result = await apiCall('/api/payments/stripe/create-checkout-session', {
                 method: 'POST',
                 body: JSON.stringify({ 
-                    priceId,
+                    priceId, // ✅ Zorg ervoor dat de priceId hier wordt meegegeven
                     metadata: {
                         plan_type: 'professional',
                         source: 'landing_page',
-                        product_id: 'prod_SYMVWz9hrt46zg'
+                        product_id: 'prod_SYMVWz9hrt46zg' // De LIVE product ID
                     }
                 })
             });
             
             if (result.url) {
-                // Stuur de gebruiker naar de Stripe betaalpagina
                 window.location.href = result.url;
             } else {
                 throw new Error('Geen checkout URL ontvangen');
@@ -41,11 +38,10 @@ const LandingPage = () => {
         } catch (error) {
             console.error('Stripe checkout error:', error);
             
-            // Betere error handling
             let errorMessage = 'Er ging iets mis bij het starten van de betaling.';
-            if (error.message.includes('fetch')) {
-                errorMessage = 'Kan geen verbinding maken met de server. Controleer je internetverbinding.';
-            } else if (error.message) {
+            // De error.message komt nu van de backend, bv. "Prijs-ID ontbreekt."
+            // We kunnen die direct tonen voor betere debugging.
+            if (error.message) {
                 errorMessage = error.message;
             }
             
