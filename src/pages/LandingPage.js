@@ -17,7 +17,7 @@ const LandingPage = () => {
         try {
             // Je product ID: prod_STX7QxkdnAG0dP
             // Price ID van je €25/maand professional plan
-            const priceId = 'price_1RYa3GFmYwBPXo2HwGl8Ffb5';
+            const priceId = 'price_1RdFm2CHZ9R82JCdw329WusE';
             
             // Gebruik de bestaande API service
             const result = await apiCall('/api/payments/stripe/create-checkout-session', {
@@ -27,7 +27,7 @@ const LandingPage = () => {
                     metadata: {
                         plan_type: 'professional',
                         source: 'landing_page',
-                        product_id: 'prod_STX7QxkdnAG0dP'
+                        product_id: 'prod_SYMVWz9hrt46zg'
                     }
                 })
             });
