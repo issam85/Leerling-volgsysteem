@@ -39,6 +39,43 @@ const LandingPage = () => {
         }
     };
 
+    const handleChooseProfessional = async () => {
+        setIsProcessingPayment(true);
+        try {
+            const priceId = 'price_1RdFm2CHZ9R82JCdw329WusE'; // De LIVE price ID
+            
+            // ✅ Roep je backend aan en vertel dat de proefperiode overgeslagen moet worden
+            const result = await apiCall('/api/payments/stripe/create-checkout-session', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    priceId,
+                    skipTrial: true,  // ✅ STUUR DEZE PARAMETER MEE
+                    metadata: {
+                        plan_type: 'professional',
+                        source: 'landing_page_direct_payment', // Maak de bron duidelijker
+                        product_id: 'prod_SYMVWz9hrt46zg'
+                    }
+                })
+            });
+            
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                throw new Error('Geen checkout URL ontvangen');
+            }
+        } catch (error) {
+            console.error('Stripe checkout error:', error);
+            
+            let errorMessage = 'Er ging iets mis bij het starten van de betaling.';
+            if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            alert(errorMessage);
+            setIsProcessingPayment(false);
+        }
+    };
+
     const pricingTiers = [
         {
             name: 'Basis',
