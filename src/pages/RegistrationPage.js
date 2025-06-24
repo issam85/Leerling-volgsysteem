@@ -409,6 +409,11 @@ const RegistrationPage = () => {
     setError('');
     
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const trackingId = urlParams.get('tracking_id');
+      const sessionId = urlParams.get('session_id');
+      const paymentSuccess = urlParams.get('payment_success') === 'true';
+
       const payload = {
         mosqueName: formData.mosqueName.trim(), 
         subdomain: formData.subdomain.trim().toLowerCase(), 
@@ -426,7 +431,12 @@ const RegistrationPage = () => {
         paymentSuccess: paymentSuccess
       };
 
-      console.log("REGISTRATION PAYLOAD TO BACKEND (Frontend):", JSON.stringify(payload, null, 2));
+      console.log("REGISTRATION PAYLOAD TO BACKEND (Frontend):", {
+        ...payload,
+        trackingId: trackingId ? `${trackingId.substring(0, 10)}...` : null,
+        sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : null,
+        paymentSuccess
+      });
 
       const result = await apiCall('/api/mosques/register', { 
         method: 'POST', 
@@ -437,14 +447,34 @@ const RegistrationPage = () => {
         const mosqueData = result.mosque;
         setRegisteredMosque(mosqueData);
         
-        // Basis success message
-        setSuccessMessage(`Welkom bij MijnLVS, ${mosqueData.name}! Uw account is succesvol aangemaakt.`);
+        // ✅ CHECK PAYMENT LINKING RESULT
+        if (result.payment_linked) {
+          setSuccessMessage(`🎉 Welkom bij MijnLVS, ${mosqueData.name}! Uw Professional account is direct actief.`);
+          setPaymentStatus({
+            status: 'success',
+            message: 'Uw betaling is succesvol verwerkt en uw Professional account is geactiveerd.',
+            subscriptionStatus: 'active'
+          });
+          setLinkingComplete(true);
+        } else {
+          setSuccessMessage(`Welkom bij MijnLVS, ${mosqueData.name}! Uw account is succesvol aangemaakt.`);
+          
+          // Als er payment parameters waren maar linking niet lukte
+          if (trackingId && paymentSuccess) {
+            setPaymentStatus({
+              status: 'failed',
+              message: 'Uw betaling wordt nog verwerkt. Uw Professional account wordt automatisch geactiveerd zodra de verwerking voltooid is.',
+              suggestion: 'Log over een paar minuten opnieuw in om de status te controleren.'
+            });
+            setLinkingComplete(true);
+          }
+        }
+        
+        // Verwijder URL parameters na verwerking
+        clearUrlParameters();
         
         // Ga naar succes stap
         nextStep();
-        
-        // Probeer payment linking als er payment parameters zijn
-        await attemptPaymentLinking(mosqueData);
         
       } else { 
         throw new Error(result.error || 'Registratie mislukt.'); 
