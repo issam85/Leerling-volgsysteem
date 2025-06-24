@@ -12,40 +12,29 @@ const LandingPage = () => {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
     // Stripe Checkout Handler voor Professioneel Plan
-    const handleChooseProfessional = async () => {
+    const handleStartTrial = async () => {
         setIsProcessingPayment(true);
         try {
-            // ✅ ZORG ERVOOR DAT DEZE REGEL AANWEZIG EN CORRECT IS
-            const priceId = 'price_1RdFm2CHZ9R82JCdw329WusE'; // De LIVE price ID
+            const priceId = 'price_1RdFm2CHZ9R82JCdw329WusE';
             
             const result = await apiCall('/api/payments/stripe/create-checkout-session', {
                 method: 'POST',
                 body: JSON.stringify({ 
-                    priceId, // ✅ Zorg ervoor dat de priceId hier wordt meegegeven
+                    priceId,
+                    skipTrial: false,  // ✅ Trial WEL toestaan
                     metadata: {
                         plan_type: 'professional',
-                        source: 'landing_page',
-                        product_id: 'prod_SYMVWz9hrt46zg' // De LIVE product ID
+                        source: 'landing_page_trial',
+                        product_id: 'prod_SYMVWz9hrt46zg'
                     }
                 })
             });
             
             if (result.url) {
                 window.location.href = result.url;
-            } else {
-                throw new Error('Geen checkout URL ontvangen');
             }
         } catch (error) {
-            console.error('Stripe checkout error:', error);
-            
-            let errorMessage = 'Er ging iets mis bij het starten van de betaling.';
-            // De error.message komt nu van de backend, bv. "Prijs-ID ontbreekt."
-            // We kunnen die direct tonen voor betere debugging.
-            if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            alert(errorMessage);
+            console.error('Stripe trial checkout error:', error);
             setIsProcessingPayment(false);
         }
     };
