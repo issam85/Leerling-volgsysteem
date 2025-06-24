@@ -421,6 +421,9 @@ const RegistrationPage = () => {
         phone: formData.phone.trim(), 
         website: formData.website.trim(), 
         email: formData.contactEmail.trim().toLowerCase() || formData.adminEmail.trim().toLowerCase(),
+        trackingId: trackingId,
+        sessionId: sessionId,
+        paymentSuccess: paymentSuccess
       };
 
       console.log("REGISTRATION PAYLOAD TO BACKEND (Frontend):", JSON.stringify(payload, null, 2));
