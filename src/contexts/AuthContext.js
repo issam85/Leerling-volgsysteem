@@ -125,7 +125,7 @@ export const AuthProvider = ({ children }) => {
         
         setLoadingUser(false);
         console.log("[AuthContext] Login successful for", result.user.name, ". Navigating to dashboard.");
-        navigate('/dashboard', { replace: true });
+        // navigate('/dashboard', { replace: true });
 
         return { success: true };
 
@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }) => {
       setLoadingUser(false);
       throw error; // Re-throw so LoginPage can catch and display
     }
-  }, [currentSubdomain, navigate]);
+  }, [currentSubdomain]);
 
   const handleLogout = useCallback(async () => {
     console.log("[AuthContext] Logout initiated");
