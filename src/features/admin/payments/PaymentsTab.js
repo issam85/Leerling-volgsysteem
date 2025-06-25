@@ -1,4 +1,4 @@
-// src/features/admin/payments/PaymentsTab.js - CORRECTED VERSION (No Edit/Delete)
+// src/features/admin/payments/PaymentsTab.js - Met bewerk en verwijder functionaliteit
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../../contexts/DataContext';
@@ -7,7 +7,7 @@ import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../../.
 import AdminLayout from '../../../layouts/AdminLayout';
 import Button from '../../../components/Button';
 import AddPaymentModal from './AddPaymentModal';
-import { DollarSign, Plus, CheckCircle, XCircle, AlertTriangle, Info, Users as UsersIcon, AlertCircle as AlertCircleIcon } from 'lucide-react';
+import { DollarSign, Plus, CheckCircle, XCircle, AlertTriangle, Info, Users as UsersIcon, AlertCircle as AlertCircleIcon, Edit3, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 
 const PaymentsTab = () => {
@@ -16,6 +16,7 @@ const PaymentsTab = () => {
   const { users, payments, mosque, loading: dataLoading, error: dataError } = realData;
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [selectedParentForPaymentModal, setSelectedParentForPaymentModal] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
   const [pageError, setPageError] = useState('');
   const [modalErrorText, setModalErrorText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -29,6 +30,14 @@ const PaymentsTab = () => {
 
   const handleOpenAddModal = (parent = null) => {
     setSelectedParentForPaymentModal(parent);
+    setEditingPayment(null);
+    setShowAddPaymentModal(true);
+    setModalErrorText('');
+  };
+
+  const handleOpenEditModal = (payment) => {
+    setEditingPayment(payment);
+    setSelectedParentForPaymentModal(null);
     setShowAddPaymentModal(true);
     setModalErrorText('');
   };
@@ -53,37 +62,72 @@ const PaymentsTab = () => {
         payment_method: paymentDataFromModal.paymentMethod,
         description: paymentDataFromModal.description || 'Algemene bijdrage',
         notes: paymentDataFromModal.notes || '',
-        processed_by: currentUser?.id,
         payment_date: paymentDataFromModal.payment_date,
-        mosque_id: mosque.id,
         ...(paymentDataFromModal.student_id && { student_id: paymentDataFromModal.student_id }),
       };
 
-      // ✅ ONLY POST operation - no PUT for editing
-      const result = await apiCall(`/api/payments`, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
+      let result;
+      if (editingPayment) {
+        // PUT request voor bewerken
+        result = await apiCall(`/api/payments/${editingPayment.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // POST request voor nieuwe betaling
+        payload.mosque_id = mosque.id;
+        payload.processed_by = currentUser?.id;
+        result = await apiCall(`/api/payments`, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+      }
 
       if (result.success || result.payment) {
         setShowAddPaymentModal(false);
         setSelectedParentForPaymentModal(null);
+        setEditingPayment(null);
         await loadData();
         setActionLoading(false);
         return true;
       } else {
-        throw new Error(result.error || "Kon betaling niet registreren.");
+        throw new Error(result.error || "Kon betaling niet verwerken.");
       }
     } catch (err) {
       console.error('Error submitting payment:', err);
-      setModalErrorText(err.message || 'Fout bij het registreren van betaling.');
+      setModalErrorText(err.message || 'Fout bij het verwerken van betaling.');
       setActionLoading(false);
       return false;
     }
   };
 
-  // ❌ REMOVED: handleDeletePayment function - backend doesn't support this
-  // ❌ REMOVED: handleOpenEditModal function - backend doesn't support this
+  const handleDeletePayment = async (paymentId) => {
+    if (!window.confirm("Weet u zeker dat u deze betaling wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden.")) {
+      return;
+    }
+
+    setActionLoading(true);
+    setPageError('');
+
+    try {
+      const result = await apiCall(`/api/payments/${paymentId}`, {
+        method: 'DELETE'
+      });
+
+      if (result.success) {
+        await loadData();
+        // Toon kort succes bericht dat verdwijnt
+        setPageError('');
+      } else {
+        throw new Error(result.error || "Kon betaling niet verwijderen.");
+      }
+    } catch (err) {
+      console.error('Error deleting payment:', err);
+      setPageError(`Fout bij verwijderen van betaling: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const getPaymentStatusIcon = (statusKey) => {
     if (statusKey === 'betaald') return <CheckCircle size={14} className="text-green-600 mr-1" />;
@@ -168,7 +212,7 @@ const PaymentsTab = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Methode</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notitie</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Ouder</th>
-                  {/* ❌ REMOVED: Actions column since we can't edit/delete */}
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acties</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -202,7 +246,26 @@ const PaymentsTab = () => {
                           <span className="italic text-gray-400">-</span>
                         )}
                       </td>
-                      {/* ❌ REMOVED: Action buttons column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleOpenEditModal(payment)}
+                            className="text-emerald-600 hover:text-emerald-900 p-1 rounded-md hover:bg-emerald-50 transition-colors"
+                            title="Bewerk betaling"
+                            disabled={actionLoading}
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(payment.id)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
+                            title="Verwijder betaling"
+                            disabled={actionLoading}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -211,25 +274,17 @@ const PaymentsTab = () => {
           </div>
         )}
 
-        {/* ✅ Notice about payment limitations */}
-        {sortedPayments.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md text-sm">
-            <div className="flex items-center">
-              <Info size={16} className="mr-2 flex-shrink-0" />
-              <p>
-                <strong>Let op:</strong> Betalingen kunnen niet bewerkt of verwijderd worden voor administratieve integriteit. 
-                Neem contact op met de systeembeheerder als correcties nodig zijn.
-              </p>
-            </div>
-          </div>
-        )}
-
         {showAddPaymentModal && (
           <AddPaymentModal
             isOpen={showAddPaymentModal}
-            onClose={() => { setShowAddPaymentModal(false); setSelectedParentForPaymentModal(null); setModalErrorText(''); }}
+            onClose={() => { 
+              setShowAddPaymentModal(false); 
+              setSelectedParentForPaymentModal(null); 
+              setEditingPayment(null);
+              setModalErrorText(''); 
+            }}
             onSubmit={handlePaymentSubmit}
-            initialData={null} // ❌ Always null since we can't edit
+            initialData={editingPayment}
             parents={parents}
             selectedParentProp={selectedParentForPaymentModal}
             modalError={modalErrorText}
