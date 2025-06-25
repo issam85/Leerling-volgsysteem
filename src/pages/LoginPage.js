@@ -24,7 +24,7 @@ const LoginPage = () => {
     const [resetSuccess, setResetSuccess] = useState('');
     const [resetError, setResetError] = useState('');
     
-    const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain } = useAuth();
+    const { login, currentUser, loadingUser, currentSubdomain, switchSubdomain, resetLoadingUser } = useAuth();
     const { realData } = useData(); 
     const navigate = useNavigate();
     const location = useLocation();
