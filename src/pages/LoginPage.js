@@ -36,6 +36,14 @@ const LoginPage = () => {
         console.log("🔍 [DEBUG] setErrorSafe called with:", errorMessage);
         errorRef.current = errorMessage;
         setError(errorMessage);
+
+
+        // Force another update with a slight delay
+        setTimeout(() => {
+        console.log("🔍 [DEBUG] setErrorSafe timeout - forcing state update");
+            setError(errorMessage);
+            setForceUpdate(prev => prev + 1); // Force re-render
+        }, 1);
     };
 
     useEffect(() => {
