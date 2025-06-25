@@ -141,10 +141,11 @@ export const AuthProvider = ({ children }) => {
         console.log("🔍 [AuthContext DEBUG] Error object:", error);
         console.log("🔍 [AuthContext DEBUG] Error message:", error.message);
         console.log("🔍 [AuthContext DEBUG] Error type:", typeof error);
-        console.log("🔍 [AuthContext DEBUG] About to setLoadingUser(false) and throw...");
         
         console.error('Login error in handleLogin:', error.message);
-        setLoadingUser(false);
+        
+        // ✅ VERWIJDERD: setLoadingUser(false) - voorkomt race condition
+        // De LoginPage zal de loading state beheren via isSubmitting
         
         console.log("🔍 [AuthContext DEBUG] Now throwing error...");
         throw error; // Re-throw so LoginPage can catch and display
