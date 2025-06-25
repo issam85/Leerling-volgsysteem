@@ -95,49 +95,61 @@ export const AuthProvider = ({ children }) => {
     setLoadingUser(true);
 
     try {
-      if (!currentSubdomain || currentSubdomain === 'register') {
-        throw new Error('Geen geldig subdomein gevonden voor login.');
-      }
-      
-      // ✅ Call our backend login endpoint
-      const result = await apiCall('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: email.toLowerCase().trim(),
-          password: password,
-          subdomain: currentSubdomain,
-        })
-      });
-
-      // Backend should return: { success: true, user: {...}, session: {...} }
-      if (result.success && result.user && result.session) {
-        console.log("[AuthContext] Backend login successful. Setting session...");
-
-        // 1. Tell supabase-js about the session (stores tokens in localStorage)
-        const { error: sessionError } = await supabase.auth.setSession(result.session);
-        if (sessionError) {
-          throw new Error(`Kon de sessie niet instellen: ${sessionError.message}`);
+        if (!currentSubdomain || currentSubdomain === 'register') {
+            throw new Error('Geen geldig subdomein gevonden voor login.');
         }
         
-        // 2. Set currentUser state
-        setCurrentUser(result.user);
-        localStorage.setItem(`currentUser_${currentSubdomain}`, JSON.stringify(result.user));
+        console.log("🔍 [AuthContext DEBUG] About to call apiCall...");
         
-        setLoadingUser(false);
-        console.log("[AuthContext] Login successful for", result.user.name, ". Navigating to dashboard.");
-        // navigate('/dashboard', { replace: true });
+        // ✅ Call our backend login endpoint
+        const result = await apiCall('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({
+                email: email.toLowerCase().trim(),
+                password: password,
+                subdomain: currentSubdomain,
+            })
+        });
+        
+        console.log("🔍 [AuthContext DEBUG] apiCall completed successfully:", result);
 
-        return { success: true };
+        // Backend should return: { success: true, user: {...}, session: {...} }
+        if (result.success && result.user && result.session) {
+            console.log("[AuthContext] Backend login successful. Setting session...");
 
-      } else {
-        throw new Error(result.error || "Inloggen mislukt. Onbekende fout van server.");
-      }
+            // 1. Tell supabase-js about the session (stores tokens in localStorage)
+            const { error: sessionError } = await supabase.auth.setSession(result.session);
+            if (sessionError) {
+                throw new Error(`Kon de sessie niet instellen: ${sessionError.message}`);
+            }
+            
+            // 2. Set currentUser state
+            setCurrentUser(result.user);
+            localStorage.setItem(`currentUser_${currentSubdomain}`, JSON.stringify(result.user));
+            
+            setLoadingUser(false);
+            console.log("[AuthContext] Login successful for", result.user.name);
+            
+            return { success: true };
+
+        } else {
+            console.log("🔍 [AuthContext DEBUG] apiCall returned unsuccessful result:", result);
+            throw new Error(result.error || "Inloggen mislukt. Onbekende fout van server.");
+        }
     } catch (error) {
-      console.error('Login error in handleLogin:', error.message);
-      setLoadingUser(false);
-      throw error; // Re-throw so LoginPage can catch and display
+        console.log("🔍 [AuthContext DEBUG] CATCH BLOCK REACHED!");
+        console.log("🔍 [AuthContext DEBUG] Error object:", error);
+        console.log("🔍 [AuthContext DEBUG] Error message:", error.message);
+        console.log("🔍 [AuthContext DEBUG] Error type:", typeof error);
+        console.log("🔍 [AuthContext DEBUG] About to setLoadingUser(false) and throw...");
+        
+        console.error('Login error in handleLogin:', error.message);
+        setLoadingUser(false);
+        
+        console.log("🔍 [AuthContext DEBUG] Now throwing error...");
+        throw error; // Re-throw so LoginPage can catch and display
     }
-  }, [currentSubdomain]);
+}, [currentSubdomain]);
 
   const handleLogout = useCallback(async () => {
     console.log("[AuthContext] Logout initiated");
