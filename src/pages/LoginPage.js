@@ -72,9 +72,10 @@ const LoginPage = () => {
             console.log("🔍 [DEBUG] Error state should now be set");
             
             // Force re-render check
-            // setTimeout(() => {
-            //     console.log("🔍 [DEBUG] Error state after timeout:", error);
-            // }, 100);
+            setTimeout(() => {
+                setError(errorMessage);
+                console.log("🔍 [DEBUG] Error state set with timeout");
+            }, 10);
             
         } finally {
             console.log("🔍 [DEBUG] Finally block reached");
