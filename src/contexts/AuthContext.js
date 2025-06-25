@@ -270,15 +270,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, [hardResetAuth]);
 
+  const resetLoadingUser = useCallback(() => {
+    console.log("[AuthContext] Manually resetting loadingUser to false");
+    setLoadingUser(false);
+  }, []);
+
+  // Update je value object:
   const value = {
-    currentUser,
-    currentSubdomain,
-    loadingUser,
-    login: handleLogin,
-    logout: handleLogout,
-    switchSubdomain,
-    hardResetAuth,
-    recoverFromAuthError, // ✅ New recovery function
+      currentUser,
+      currentSubdomain,
+      loadingUser,
+      login: handleLogin,
+      logout: handleLogout,
+      switchSubdomain,
+      hardResetAuth,
+      recoverFromAuthError,
+      resetLoadingUser, // ✅ Nieuwe functie
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

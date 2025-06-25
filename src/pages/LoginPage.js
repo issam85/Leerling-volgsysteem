@@ -68,7 +68,7 @@ const LoginPage = () => {
             console.log("🔍 [DEBUG] Setting error to:", errorMessage);
             
             setError(errorMessage);
-            
+            resetLoadingUser();
             console.log("🔍 [DEBUG] Error state should now be set");
             
             // Force re-render check
