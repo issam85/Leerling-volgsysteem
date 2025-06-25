@@ -1,6 +1,6 @@
 // src/pages/LoginPage.js - Met Wachtwoord Vergeten functionaliteit
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -15,6 +15,7 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const errorRef = useRef('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [forceUpdate, setForceUpdate] = useState(0);
     
@@ -31,16 +32,22 @@ const LoginPage = () => {
     const location = useLocation();
 
     const from = location.state?.from?.pathname || "/dashboard";
+    const setErrorSafe = (errorMessage) => {
+        console.log("🔍 [DEBUG] setErrorSafe called with:", errorMessage);
+        errorRef.current = errorMessage;
+        setError(errorMessage);
+    };
 
     useEffect(() => {
         console.log("🔍 [UseEffect] Navigation check:", {
             currentUser: !!currentUser,
             loadingUser,
-            error,
-            shouldNavigate: currentUser && !loadingUser
+            errorState: error,
+            errorRef: errorRef.current,
+            shouldNavigate: currentUser && !loadingUser && !errorRef.current
         });
         
-        if (currentUser && !loadingUser) {
+        if (currentUser && !loadingUser && !errorRef.current) {
             console.log("[LoginPage] User found, navigating to dashboard:", currentUser.role);
             navigate(from, { replace: true });
         }
@@ -73,18 +80,18 @@ const LoginPage = () => {
             setIsSubmitting(false);
             resetLoadingUser();
             
-            // Update error state met verschillende timing strategieën
-            setError(errorMessage);
+            // Gebruik de veilige error setter
+            setErrorSafe(errorMessage);
             
-            // Force update na 10ms
+            // Force updates met de ref
             setTimeout(() => {
-                setError(errorMessage);
+                setErrorSafe(errorMessage);
                 console.log("🔍 [DEBUG] Error set again after 10ms");
             }, 10);
             
             // Force update na 100ms
             setTimeout(() => {
-                setError(errorMessage);
+                setErrorSafe(errorMessage);
                 console.log("🔍 [DEBUG] Error set again after 100ms");
             }, 100);
             
@@ -95,7 +102,6 @@ const LoginPage = () => {
             }, 50);
             
             return; // Exit vroeg uit de functie
-            
         }
         
         // Alleen uitgevoerd bij success
