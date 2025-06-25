@@ -43,6 +43,9 @@ const LoginPage = () => {
         setError('');
         setIsSubmitting(true);
         
+        console.log("🔍 [DEBUG] HandleSubmit started");
+        console.log("🔍 [DEBUG] Current error state before:", error);
+        
         try {
             console.log("[LoginPage] Starting login process...");
             await login(email, password);
@@ -56,8 +59,25 @@ const LoginPage = () => {
             }, 1000);
             
         } catch (err) {
-            setError(err.message || 'Inloggen mislukt. Controleer uw gegevens.');
+            console.log("🔍 [DEBUG] CATCH BLOCK REACHED!");
+            console.log("🔍 [DEBUG] Error object:", err);
+            console.log("🔍 [DEBUG] Error message:", err.message);
+            console.log("🔍 [DEBUG] Error type:", typeof err);
+            
+            const errorMessage = err.message || 'Inloggen mislukt. Controleer uw gegevens.';
+            console.log("🔍 [DEBUG] Setting error to:", errorMessage);
+            
+            setError(errorMessage);
+            
+            console.log("🔍 [DEBUG] Error state should now be set");
+            
+            // Force re-render check
+            setTimeout(() => {
+                console.log("🔍 [DEBUG] Error state after timeout:", error);
+            }, 100);
+            
         } finally {
+            console.log("🔍 [DEBUG] Finally block reached");
             setIsSubmitting(false);
         }
     };
@@ -132,6 +152,10 @@ const LoginPage = () => {
     if (realData.loading && !realData.mosque) {
         return <LoadingSpinner message="Organisatiegegevens laden..." />;
     }
+
+    console.log("🔍 [DEBUG] Render - Current error state:", error);
+    console.log("🔍 [DEBUG] Render - Should show error:", !!error);
+    console.log("🔍 [DEBUG] Render - Error length:", error?.length);
 
     return (
         <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
@@ -295,8 +319,17 @@ const LoginPage = () => {
                             {error && (
                                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                                     <p className="text-red-700 text-sm text-center">{error}</p>
+                                    {/* Debug info */}
+                                    <p className="text-xs text-gray-500 mt-1">Debug: Error length = {error.length}</p>
                                 </div>
                             )}
+
+                            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                                <p>Debug Info:</p>
+                                <p>Error state: "{error}"</p>
+                                <p>Error exists: {String(!!error)}</p>
+                                <p>IsSubmitting: {String(isSubmitting)}</p>
+                            </div>
 
                             <Button 
                                 type="submit" 
