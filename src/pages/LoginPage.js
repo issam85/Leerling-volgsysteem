@@ -230,10 +230,51 @@ const LoginPage = () => {
                         </p>
                         {/* Subtitel voor mobiele weergave */}
                         {!showForgotPassword && (
+                            
                             <p className="lg:hidden mt-4 text-sm text-gray-500 p-4 bg-emerald-50 rounded-lg">
                                 📚 Portaal voor {realData.mosque?.name || 'uw organisatie'}
                             </p>
                         )}
+                    </div>
+                    {/* Voeg dit toe BOVEN je normale formulier, tijdelijk voor testing */}
+                    <div className="mb-4 p-4 bg-orange-100 border border-orange-300 rounded">
+                        <p className="text-sm mb-2">🔧 ERROR STATE TESTS:</p>
+                        <div className="space-x-2">
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    console.log("TEST: Setting error directly");
+                                    setError("DIRECT TEST: Dit is een test error!");
+                                }}
+                                className="px-3 py-1 bg-red-500 text-white text-xs rounded"
+                            >
+                                Test Direct Error
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    console.log("TEST: Setting error with timeout");
+                                    setTimeout(() => {
+                                        setError("TIMEOUT TEST: Dit is een test error!");
+                                        console.log("TEST: Error set via timeout");
+                                    }, 100);
+                                }}
+                                className="px-3 py-1 bg-yellow-500 text-white text-xs rounded"
+                            >
+                                Test Timeout Error
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    console.log("TEST: Clearing error");
+                                    setError("");
+                                }}
+                                className="px-3 py-1 bg-green-500 text-white text-xs rounded"
+                            >
+                                Clear Error
+                            </button>
+                        </div>
+                        <p className="text-xs mt-2">Current error in test: "{error}" (length: {error?.length || 0})</p>
                     </div>
 
                     {/* ✅ WACHTWOORD VERGETEN FORMULIER */}
