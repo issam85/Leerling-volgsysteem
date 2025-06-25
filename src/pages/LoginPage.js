@@ -16,6 +16,7 @@ const LoginPage = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [forceUpdate, setForceUpdate] = useState(0);
     
     // ✅ NIEUWE STATE VOOR WACHTWOORD RESET
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -43,13 +44,10 @@ const LoginPage = () => {
         setError('');
         setIsSubmitting(true);
         
-        console.log("🔍 [DEBUG] HandleSubmit started");
-        console.log("🔍 [DEBUG] Current error state before:", error);
-        
         try {
             console.log("[LoginPage] Starting login process...");
             await login(email, password);
-            console.log("[LoginPage] Login successful - setting backup navigation");
+            console.log("[LoginPage] Login successful");
             
             setTimeout(() => {
                 if (window.location.pathname === '/login') {
@@ -60,29 +58,42 @@ const LoginPage = () => {
             
         } catch (err) {
             console.log("🔍 [DEBUG] CATCH BLOCK REACHED!");
-            console.log("🔍 [DEBUG] Error object:", err);
             console.log("🔍 [DEBUG] Error message:", err.message);
-            console.log("🔍 [DEBUG] Error type:", typeof err);
             
             const errorMessage = err.message || 'Inloggen mislukt. Controleer uw gegevens.';
-            console.log("🔍 [DEBUG] Setting error to:", errorMessage);
             
-            setError(errorMessage);
+            // STOP alle loading states eerst
+            setIsSubmitting(false);
             resetLoadingUser();
-            console.log("🔍 [DEBUG] Error state should now be set");
             
-            // Force re-render check
+            // Update error state met verschillende timing strategieën
+            setError(errorMessage);
+            
+            // Force update na 10ms
             setTimeout(() => {
                 setError(errorMessage);
-                console.log("🔍 [DEBUG] Error state set with timeout");
+                console.log("🔍 [DEBUG] Error set again after 10ms");
             }, 10);
             
-        } finally {
-            console.log("🔍 [DEBUG] Finally block reached");
-            setIsSubmitting(false);
+            // Force update na 100ms
+            setTimeout(() => {
+                setError(errorMessage);
+                console.log("🔍 [DEBUG] Error set again after 100ms");
+            }, 100);
+            
+            // Force een component re-render
+            setTimeout(() => {
+                setForceUpdate(prev => prev + 1);
+                console.log("🔍 [DEBUG] Forced component update");
+            }, 50);
+            
+            return; // Exit vroeg uit de functie
+            
         }
+        
+        // Alleen uitgevoerd bij success
+        setIsSubmitting(false);
     };
-
     // ✅ NIEUWE FUNCTIE: Wachtwoord reset
     const handleForgotPassword = async (e) => {
         e.preventDefault();
