@@ -33,11 +33,18 @@ const LoginPage = () => {
     const from = location.state?.from?.pathname || "/dashboard";
 
     useEffect(() => {
+        console.log("🔍 [UseEffect] Navigation check:", {
+            currentUser: !!currentUser,
+            loadingUser,
+            error,
+            shouldNavigate: currentUser && !loadingUser
+        });
+        
         if (currentUser && !loadingUser) {
             console.log("[LoginPage] User found, navigating to dashboard:", currentUser.role);
             navigate(from, { replace: true });
         }
-    }, [currentUser, loadingUser, navigate, from]);
+    }, [currentUser, loadingUser, navigate, from, error]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
