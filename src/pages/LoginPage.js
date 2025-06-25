@@ -18,6 +18,14 @@ const LoginPage = () => {
     const errorRef = useRef('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [forceUpdate, setForceUpdate] = useState(0);
+
+    const originalSetError = setError;
+    const trackedSetError = (value) => {
+        console.log(`🔍 [DEBUG] setError called with: "${value}"`);
+        console.trace('setError call stack:'); // Dit toont wie setError aanroept
+        originalSetError(value);
+    };
+       
     
     // ✅ NIEUWE STATE VOOR WACHTWOORD RESET
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -35,13 +43,13 @@ const LoginPage = () => {
     const setErrorSafe = (errorMessage) => {
         console.log("🔍 [DEBUG] setErrorSafe called with:", errorMessage);
         errorRef.current = errorMessage;
-        setError(errorMessage);
+        trackedSetError(errorMessage);
 
 
         // Force another update with a slight delay
         setTimeout(() => {
         console.log("🔍 [DEBUG] setErrorSafe timeout - forcing state update");
-            setError(errorMessage);
+            trackedSetError(errorMessage);
             setForceUpdate(prev => prev + 1); // Force re-render
         }, 1);
     };
@@ -265,7 +273,7 @@ const LoginPage = () => {
                                 type="button"
                                 onClick={() => {
                                     console.log("TEST: Setting error directly");
-                                    setError("DIRECT TEST: Dit is een test error!");
+                                    trackedSetError("DIRECT TEST: Dit is een test error!");
                                 }}
                                 className="px-3 py-1 bg-red-500 text-white text-xs rounded"
                             >
@@ -276,7 +284,7 @@ const LoginPage = () => {
                                 onClick={() => {
                                     console.log("TEST: Setting error with timeout");
                                     setTimeout(() => {
-                                        setError("TIMEOUT TEST: Dit is een test error!");
+                                        trackedSetError("TIMEOUT TEST: Dit is een test error!");
                                         console.log("TEST: Error set via timeout");
                                     }, 100);
                                 }}
@@ -288,7 +296,7 @@ const LoginPage = () => {
                                 type="button"
                                 onClick={() => {
                                     console.log("TEST: Clearing error");
-                                    setError("");
+                                    trackedSetError("");
                                 }}
                                 className="px-3 py-1 bg-green-500 text-white text-xs rounded"
                             >
