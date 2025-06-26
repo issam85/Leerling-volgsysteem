@@ -233,170 +233,243 @@ const SettingsTab = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-8 max-w-3xl mx-auto pb-10">
+      <div className="max-w-7xl mx-auto pb-10">
         {actionLoading && <LoadingSpinner message="Bezig met opslaan..." />}
-        <h2 className="page-title">Systeem Instellingen</h2>
+        
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Instellingen</h1>
+          <p className="text-gray-600">Beheer uw organisatie instellingen en configuratie</p>
+        </div>
 
+        {/* Global Message */}
         {formMessage.text && (
-          <div className={`p-4 mb-6 rounded-md text-sm flex items-center shadow ${formMessage.type === 'success' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
+          <div className={`p-4 mb-8 rounded-lg text-sm flex items-center shadow-sm ${formMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
             {formMessage.type === 'success' ? <CheckCircle size={20} className="mr-3 flex-shrink-0"/> : <AlertCircle size={20} className="mr-3 flex-shrink-0"/>}
             {formMessage.text}
           </div>
         )}
 
-        {/* Moskee Informatie Kaart - AANGEPAST NAAR "ALGEMENE GEGEVENS" */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center"> 
-                <Building size={28} className="text-emerald-600 mr-3" /> 
-                <h3 className="text-xl font-semibold text-gray-700">Algemene Gegevens</h3> 
+        {/* Settings Grid */}
+        <div className="grid lg:grid-cols-2 gap-8">{/* Left Column */}
+          <div className="space-y-6">{/* Algemene Gegevens */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Building size={24} className="text-emerald-600 mr-3" />
+                    <h3 className="text-lg font-semibold text-gray-900">Algemene Gegevens</h3>
+                  </div>
+                  <Button 
+                    onClick={handleSaveMosqueDetails} 
+                    variant="primary" 
+                    icon={Save} 
+                    size="sm" 
+                    disabled={actionLoading}
+                  >
+                    Opslaan
+                  </Button>
+                </div>
               </div>
-              <Button onClick={handleSaveMosqueDetails} variant="primary" icon={Save} size="md" disabled={actionLoading}> 
-                Opslaan 
-              </Button>
-          </div>
-          <div className="space-y-4">
-            <Input label="Naam Moskee *" name="name" value={mosqueDetailsForm.name} onChange={handleMosqueDetailsChange} />
-            <Input label="Adres" name="address" value={mosqueDetailsForm.address} onChange={handleMosqueDetailsChange} />
-            <div className="grid md:grid-cols-2 gap-4">
-              <Input label="Stad" name="city" value={mosqueDetailsForm.city} onChange={handleMosqueDetailsChange} />
-              <Input label="Postcode" name="zipcode" value={mosqueDetailsForm.zipcode} onChange={handleMosqueDetailsChange} />
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Input label="Telefoon" name="phone" type="tel" value={mosqueDetailsForm.phone} onChange={handleMosqueDetailsChange} />
-              <Input label="Contact Email" name="email" type="email" value={mosqueDetailsForm.email} onChange={handleMosqueDetailsChange} />
-            </div>
-            <Input label="Website (optioneel)" name="website" type="url" value={mosqueDetailsForm.website} onChange={handleMosqueDetailsChange} placeholder="https://www.voorbeeld.nl"/>
-          </div>
-        </div>
-
-        {/* NIEUWE KAART VOOR CONTACTPERSONEN */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center"> 
-                <Users size={28} className="text-sky-600 mr-3" /> 
-                <h3 className="text-xl font-semibold text-gray-700">Contactpersonen</h3> 
+              <div className="p-6 space-y-4">
+                <Input label="Naam Moskee *" name="name" value={mosqueDetailsForm.name} onChange={handleMosqueDetailsChange} />
+                <Input label="Adres" name="address" value={mosqueDetailsForm.address} onChange={handleMosqueDetailsChange} />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="Stad" name="city" value={mosqueDetailsForm.city} onChange={handleMosqueDetailsChange} />
+                  <Input label="Postcode" name="zipcode" value={mosqueDetailsForm.zipcode} onChange={handleMosqueDetailsChange} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="Telefoon" name="phone" type="tel" value={mosqueDetailsForm.phone} onChange={handleMosqueDetailsChange} />
+                  <Input label="Contact Email" name="email" type="email" value={mosqueDetailsForm.email} onChange={handleMosqueDetailsChange} />
+                </div>
+                <Input 
+                  label="Website (optioneel)" 
+                  name="website" 
+                  type="url" 
+                  value={mosqueDetailsForm.website} 
+                  onChange={handleMosqueDetailsChange} 
+                  placeholder="https://www.voorbeeld.nl"
+                />
               </div>
-              <Button onClick={handleSaveMosqueDetails} variant="primary" icon={Save} size="md" disabled={actionLoading}> 
-                Opslaan 
-              </Button>
-          </div>
-          <p className="text-xs text-gray-500 mb-4">
-            Deze gegevens worden getoond op het ouder-dashboard, zodat zij weten met wie ze contact moeten opnemen.
-          </p>
-          <div className="space-y-4">
-            <Input 
-              label="Naam Commissie/Contactpersoon" 
-              name="contact_committee_name" 
-              value={mosqueDetailsForm.contact_committee_name} 
-              onChange={handleMosqueDetailsChange} 
-              placeholder="Bijv. Onderwijscommissie"
-            />
-            <Input 
-              label="Emailadres Commissie/Contactpersoon" 
-              name="contact_committee_email" 
-              type="email" 
-              value={mosqueDetailsForm.contact_committee_email} 
-              onChange={handleMosqueDetailsChange} 
-              placeholder="Bijv. onderwijs@uwdomein.nl"
-            />
-          </div>
-        </div>
+            </div>
 
-        {/* ✅ SIMPELE ABONNEMENT KAART */}
-        <div className="card">
-          <div className="flex items-center mb-6"> 
-            <CreditCard size={28} className="text-blue-600 mr-3" /> 
-            <h3 className="text-xl font-semibold text-gray-700">Abonnement Beheer</h3> 
-          </div>
-          
-          <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-4 border">
-              <div className="space-y-2">
-                <div>
-                  <span className="text-sm text-gray-600">Bedrag: </span>
-                  <span className="font-semibold">€25/maand</span>
+            {/* Contactpersonen */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Users size={24} className="text-sky-600 mr-3" />
+                    <h3 className="text-lg font-semibold text-gray-900">Contactpersonen</h3>
+                  </div>
+                  <Button 
+                    onClick={handleSaveMosqueDetails} 
+                    variant="primary" 
+                    icon={Save} 
+                    size="sm" 
+                    disabled={actionLoading}
+                  >
+                    Opslaan
+                  </Button>
+                </div>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-500 mb-4">
+                  Deze gegevens worden getoond op het ouder-dashboard voor contactinformatie.
+                </p>
+                <div className="space-y-4">
+                  <Input 
+                    label="Naam Commissie/Contactpersoon" 
+                    name="contact_committee_name" 
+                    value={mosqueDetailsForm.contact_committee_name} 
+                    onChange={handleMosqueDetailsChange} 
+                    placeholder="Bijv. Onderwijscommissie"
+                  />
+                  <Input 
+                    label="Emailadres Commissie/Contactpersoon" 
+                    name="contact_committee_email" 
+                    type="email" 
+                    value={mosqueDetailsForm.contact_committee_email} 
+                    onChange={handleMosqueDetailsChange} 
+                    placeholder="Bijv. onderwijs@uwdomein.nl"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800 text-sm">
-                <strong>Abonnement opzeggen?</strong><br />
-                Stuur een email naar <a href="mailto:info@mijnlvs.nl" className="text-blue-600 underline">info@mijnlvs.nl</a> om uw abonnement op te zeggen.
-              </p>
+            {/* Bijdrage Instellingen */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <SlidersHorizontal size={24} className="text-purple-600 mr-3" />
+                    <h3 className="text-lg font-semibold text-gray-900">Bijdrage Instellingen</h3>
+                  </div>
+                  <Button 
+                    onClick={handleSaveContributionSettings} 
+                    variant="primary" 
+                    icon={Save} 
+                    size="sm" 
+                    disabled={actionLoading}
+                  >
+                    Opslaan
+                  </Button>
+                </div>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-500 mb-4">
+                  Definieer de jaarlijkse bijdrage per aantal kinderen (€).
+                </p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="1 Kind" name="contribution_1_child" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_1_child} onChange={handleContributionChange} />
+                    <Input label="2 Kinderen" name="contribution_2_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_2_children} onChange={handleContributionChange} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Input label="3 Kinderen" name="contribution_3_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_3_children} onChange={handleContributionChange} />
+                    <Input label="4 Kinderen" name="contribution_4_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_4_children} onChange={handleContributionChange} />
+                    <Input label="5+ Kinderen" name="contribution_5_plus_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_5_plus_children} onChange={handleContributionChange} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Bijdrage Instellingen Kaart */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center"> 
-                <SlidersHorizontal size={28} className="text-purple-600 mr-3" /> 
-                <h3 className="text-xl font-semibold text-gray-700">Bijdrage per Aantal Kinderen (€)</h3> 
-              </div>
-              <Button onClick={handleSaveContributionSettings} variant="primary" icon={Save} size="md" disabled={actionLoading}> 
-                Instellingen Opslaan 
-              </Button>
-          </div>
-          <p className="text-xs text-gray-500 mb-4">
-            Definieer hier de jaarlijkse bijdrage. Deze bedragen worden gebruikt om automatisch de 'Te Betalen Bijdrage' voor ouders te berekenen bij het toevoegen/verwijderen van leerlingen.
-          </p>
-          <div className="space-y-3">
-            <Input label="Bijdrage voor 1 Kind" name="contribution_1_child" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_1_child} onChange={handleContributionChange} />
-            <Input label="Bijdrage voor 2 Kinderen" name="contribution_2_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_2_children} onChange={handleContributionChange} />
-            <Input label="Bijdrage voor 3 Kinderen" name="contribution_3_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_3_children} onChange={handleContributionChange} />
-            <Input label="Bijdrage voor 4 Kinderen" name="contribution_4_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_4_children} onChange={handleContributionChange} />
-            <Input label="Bijdrage voor 5+ Kinderen" name="contribution_5_plus_children" type="number" min="0" step="0.01" value={contributionSettingsForm.contribution_5_plus_children} onChange={handleContributionChange} />
-          </div>
-        </div>
+          {/* Right Column */}
+          <div className="space-y-6">
 
-        {/* Microsoft 365 Email Kaart */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center"> 
-                <Mail size={28} className="text-blue-600 mr-3" /> 
-                <h3 className="text-xl font-semibold text-gray-700">Microsoft 365 Email</h3> 
+            {/* Microsoft 365 Email */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Mail size={24} className="text-blue-600 mr-3" />
+                    <h3 className="text-lg font-semibold text-gray-900">Microsoft 365 Email</h3>
+                  </div>
+                  <Button 
+                    onClick={() => setShowM365ConfigModal(true)} 
+                    variant="secondary" 
+                    icon={Edit} 
+                    size="sm" 
+                    disabled={actionLoading}
+                  >
+                    {displayM365Config.configured ? 'Bewerken' : 'Configureren'}
+                  </Button>
+                </div>
               </div>
-              <Button onClick={() => setShowM365ConfigModal(true)} variant="secondary" icon={Edit} size="md" disabled={actionLoading}> 
-                {displayM365Config.configured ? 'Configuratie Bewerken' : 'Configureren'} 
-              </Button>
-          </div>
-          <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-center p-3 rounded bg-gray-50 border"> 
-                <span>Status:</span> 
-                {displayM365Config.configured ? 
-                  <span className="flex items-center font-semibold text-green-600">
-                    <CheckCircle size={16} className="mr-1.5"/>Geconfigureerd
-                  </span> : 
-                  <span className="flex items-center font-semibold text-red-600">
-                    <XCircle size={16} className="mr-1.5"/>Niet geconfigureerd
+              <div className="p-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    {displayM365Config.configured ? (
+                      <span className="flex items-center text-green-600 font-medium">
+                        <CheckCircle size={16} className="mr-1.5"/>
+                        Geconfigureerd
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-red-600 font-medium">
+                        <XCircle size={16} className="mr-1.5"/>
+                        Niet geconfigureerd
+                      </span>
+                    )}
+                  </div>
+                  {displayM365Config.configured && displayM365Config.senderEmail && (
+                    <div className="flex justify-between items-center py-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-600">Afzender Email:</span>
+                      <span className="font-medium text-gray-900">{displayM365Config.senderEmail}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Abonnement Beheer */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center">
+                  <CreditCard size={24} className="text-blue-600 mr-3" />
+                  <h3 className="text-lg font-semibold text-gray-900">Abonnement</h3>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Bedrag:</span>
+                      <span className="font-semibold text-lg text-gray-900">€25/maand</span>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-blue-800 text-sm">
+                      <strong>Abonnement opzeggen?</strong><br />
+                      Stuur een email naar{' '}
+                      <a href="mailto:info@mijnlvs.nl" className="text-blue-600 underline font-medium">
+                        info@mijnlvs.nl
+                      </a>{' '}
+                      om uw abonnement op te zeggen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Systeem Status */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center">
+                  <ServerCog size={24} className="text-gray-600 mr-3" />
+                  <h3 className="text-lg font-semibold text-gray-900">Systeem Status</h3>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600">Backend API:</span>
+                  <span className="flex items-center text-green-600 font-medium">
+                    <CheckCircle size={16} className="mr-1.5"/>
+                    Verbonden
                   </span>
-                } 
+                </div>
               </div>
-              {displayM365Config.configured && displayM365Config.senderEmail && ( 
-                <div className="flex justify-between items-center p-3 rounded bg-gray-50 border"> 
-                  <span>Afzender Email (M365):</span> 
-                  <span className="font-medium text-gray-700">{displayM365Config.senderEmail}</span> 
-                </div> 
-              )}
-          </div>
-        </div>
-
-        {/* Systeem Status Kaart */}
-        <div className="card">
-          <div className="flex items-center mb-4"> 
-            <ServerCog size={28} className="text-gray-600 mr-3" /> 
-            <h3 className="text-xl font-semibold text-gray-700">Systeem Status</h3> 
-          </div>
-          <div className="space-y-2 text-sm"> 
-            <div className="flex justify-between items-center p-3 rounded bg-gray-50 border"> 
-              <span>Backend API:</span> 
-              <span className="flex items-center font-semibold text-green-600">
-                <CheckCircle size={16} className="mr-1.5"/>Verbonden
-              </span> 
-            </div> 
+            </div>
           </div>
         </div>
 
