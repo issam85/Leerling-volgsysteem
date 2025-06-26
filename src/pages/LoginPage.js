@@ -21,8 +21,16 @@ const LoginPage = () => {
 
     const originalSetError = setError;
     const trackedSetError = (value) => {
-        console.log(`🔍 [DEBUG] setError called with: "${value}"`);
-        console.trace('setError call stack:'); // Dit toont wie setError aanroept
+    console.log(`🔍 [DEBUG] setError called with: "${value}"`);
+    console.trace('setError call stack:');
+    
+        // ✅ BLOKKEER LEGE STRINGS TIJDELIJK
+        if (value === '') {
+            console.log("🚫 [DEBUG] BLOCKED: Attempt to clear error state!");
+            console.trace('BLOCKED setError("") call stack:');
+            return; // Niet uitvoeren als het een lege string is
+        }
+        
         originalSetError(value);
     };
        
