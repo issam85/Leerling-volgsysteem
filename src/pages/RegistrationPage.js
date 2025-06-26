@@ -200,7 +200,7 @@ const Stepper = ({ currentStep }) => {
 };
 
 // ✅ UPDATED Payment Status Component - Better messaging
-const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
+const PaymentStatusCard = ({ status, message, isLoading, onRetry, linkingMethod }) => {
   if (status === 'success') {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
@@ -212,6 +212,12 @@ const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
             <p className="text-emerald-600 text-xs mt-2 font-medium">
               ✅ Onbeperkt aantal leerlingen en leraren
             </p>
+            {/* ✅ NEW: Show linking method for debugging */}
+            {linkingMethod && (
+              <p className="text-emerald-500 text-xs mt-1">
+                🔗 Gekoppeld via: {linkingMethod}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -277,6 +283,7 @@ const RegistrationPage = () => {
   const [isLinkingPayment, setIsLinkingPayment] = useState(false);
   const [linkingComplete, setLinkingComplete] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [paymentSession, setPaymentSession] = useState(null);
 
   const clearUrlParameters = () => {
     const url = new URL(window.location.href);
@@ -288,10 +295,24 @@ const RegistrationPage = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment_success');
     const trackingId = urlParams.get('tracking_id');
+    const sessionId = urlParams.get('session_id'); // ✅ NEW: Also extract session_id
     
-    if (paymentSuccess === 'true' && trackingId) {
-      console.log('[Registration] Payment parameters detected:', { paymentSuccess, trackingId });
-      clearUrlParameters();
+    if (paymentSuccess === 'true' && (trackingId || sessionId)) {
+      console.log('[Registration] Payment parameters detected:', { 
+        paymentSuccess, 
+        trackingId: trackingId?.substring(0, 10),
+        sessionId: sessionId?.substring(0, 15) // ✅ NEW: Log session_id
+      });
+      
+      // ✅ STORE payment session data for later use
+      setPaymentSession({
+        session_id: sessionId,
+        tracking_id: trackingId,
+        payment_success: paymentSuccess,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Don't clear URL parameters yet - we need them for linking
     }
   }, []);
 
@@ -325,44 +346,73 @@ const RegistrationPage = () => {
   const attemptPaymentLinking = async (mosqueData) => {
     const urlParams = new URLSearchParams(window.location.search);
     const trackingId = urlParams.get('tracking_id');
-    const sessionId = urlParams.get('session_id');
+    const sessionId = urlParams.get('session_id'); // ✅ NEW: Get session_id
     const paymentSuccess = urlParams.get('payment_success');
 
-    if (paymentSuccess === 'true' && (trackingId || sessionId)) {
-      console.log('[Registration] Attempting payment linking...', { trackingId: trackingId?.substring(0, 10), sessionId: sessionId?.substring(0, 10) });
+    if (paymentSuccess === 'true' && (sessionId || trackingId)) {
+      console.log('[Registration] Attempting session-based payment linking...', { 
+        trackingId: trackingId?.substring(0, 10), 
+        sessionId: sessionId?.substring(0, 15),
+        mosqueId: mosqueData.id 
+      });
       
       setIsLinkingPayment(true);
       
       try {
-        // ✅ GEBRUIK NIEUWE LINKING SERVICE ENDPOINT
-        const result = await apiCall('/api/payments/stripe/retry-payment-linking', {
+        // ✅ NEW: Use session-based linking endpoint
+        const result = await apiCall('/api/payments/stripe/link-by-session', {
           method: 'POST',
           body: JSON.stringify({
-            mosqueId: mosqueData.id,
-            adminEmail: mosqueData.email, // ✅ UPDATED: use 'email' field
-            trackingId: trackingId,
-            sessionId: sessionId
+            mosque_id: mosqueData.id,
+            session_id: sessionId,          // ✅ PRIMARY: Session ID first
+            tracking_id: trackingId,        // ✅ BACKUP: Tracking ID fallback  
+            admin_email: mosqueData.email   // ✅ LAST RESORT: Email timing
           })
         });
 
         if (result.success) {
-          console.log('[Registration] Payment linked successfully!');
+          console.log('[Registration] ✅ Session-based payment linking SUCCESS!');
           setPaymentStatus({
             status: 'success',
-            message: `Uw ${result.result.planType || 'Professional'} account is direct actief! Geen restricties op aantallen.`,
+            message: `Uw ${result.plan_type || 'Professional'} account is direct actief! Geen restricties op aantallen.`,
             subscriptionStatus: 'active',
-            planType: result.result.planType
+            planType: result.plan_type,
+            linkingMethod: result.linking_method || 'session_id'
           });
         } else {
-          console.warn('[Registration] Payment linking failed:', result.message);
-          setPaymentStatus({
-            status: 'failed',
-            message: result.message || 'Betaling wordt nog verwerkt. Uw Professional account wordt automatisch geactiveerd zodra de verwerking voltooid is.',
-            suggestion: 'Log over een paar minuten opnieuw in om de status te controleren.'
+          console.warn('[Registration] Session-based linking failed, trying fallback...', result.message);
+          
+          // ✅ FALLBACK: Try the old retry endpoint as backup
+          const fallbackResult = await apiCall('/api/payments/stripe/retry-payment-linking', {
+            method: 'POST',
+            body: JSON.stringify({
+              mosqueId: mosqueData.id,
+              adminEmail: mosqueData.email,
+              trackingId: trackingId,
+              sessionId: sessionId
+            })
           });
+          
+          if (fallbackResult.success) {
+            console.log('[Registration] ✅ Fallback linking SUCCESS!');
+            setPaymentStatus({
+              status: 'success',
+              message: `Uw ${fallbackResult.result?.planType || 'Professional'} account is direct actief!`,
+              subscriptionStatus: 'active',
+              planType: fallbackResult.result?.planType,
+              linkingMethod: 'fallback_retry'
+            });
+          } else {
+            setPaymentStatus({
+              status: 'failed',
+              message: result.message || 'Betaling wordt nog verwerkt. Uw Professional account wordt automatisch geactiveerd zodra de verwerking voltooid is.',
+              suggestion: 'Log over een paar minuten opnieuw in om de status te controleren.',
+              queued_for_retry: result.queued_for_retry
+            });
+          }
         }
       } catch (error) {
-        console.error('[Registration] Error linking payment:', error);
+        console.error('[Registration] Error in session-based linking:', error);
         setPaymentStatus({
           status: 'failed',
           message: 'Er was een probleem bij het verwerken van uw betaling. Uw account werkt nu als proefversie, maar uw Professional account wordt geactiveerd zodra de betaling is verwerkt.',
@@ -371,7 +421,7 @@ const RegistrationPage = () => {
       } finally {
         setIsLinkingPayment(false);
         setLinkingComplete(true);
-        clearUrlParameters();
+        clearUrlParameters(); // ✅ NOW clear URL parameters
       }
     }
   };
@@ -416,8 +466,9 @@ const RegistrationPage = () => {
         website: formData.website.trim(), 
         contactEmail: formData.contactEmail.trim().toLowerCase() || formData.adminEmail.trim().toLowerCase(),
         trackingId: trackingId,
-        sessionId: sessionId,
-        paymentSuccess: paymentSuccess
+        sessionId: sessionId,        // ✅ ENSURE session_id is included
+        paymentSuccess: paymentSuccess,
+        paymentSession: paymentSession // ✅ NEW: Include full payment session data
       };
 
       console.log("REGISTRATION PAYLOAD TO BACKEND:", {
@@ -439,19 +490,25 @@ const RegistrationPage = () => {
         // ✅ UPDATED: Betere success messaging gebaseerd op plan type
         if (result.payment_linked) {
           const planType = result.plan_type || 'Professional';
+          const linkingMethod = result.linking_method || 'unknown';
+          
+          console.log(`[Registration] ✅ Payment linked via: ${linkingMethod}`);
+          
           setSuccessMessage(`🎉 Welkom bij MijnLVS, ${mosqueData.name}! Uw ${planType} account is direct actief.`);
           setPaymentStatus({
             status: 'success',
-            message: `Uw betaling is succesvol verwerkt en uw ${planType} account is geactiveerd. Geen restricties op aantallen!`,
+            message: `Uw betaling is succesvol verwerkt via ${linkingMethod === 'session_id' ? 'session linking' : linkingMethod}. Uw ${planType} account is geactiveerd!`,
             subscriptionStatus: 'active',
-            planType: planType
+            planType: planType,
+            linkingMethod: linkingMethod
           });
           setLinkingComplete(true);
         } else {
+          // Bestaande logic voor wanneer payment linking niet direct lukt
           setSuccessMessage(`Welkom bij MijnLVS, ${mosqueData.name}! Uw account is succesvol aangemaakt.`);
           
           // Als er payment parameters waren maar linking niet lukte
-          if (trackingId && paymentSuccess) {
+          if ((trackingId || sessionId) && paymentSuccess) {
             await attemptPaymentLinking(mosqueData);
           }
         }
@@ -515,6 +572,7 @@ const RegistrationPage = () => {
               <PaymentStatusCard 
                 status={paymentStatus.status}
                 message={paymentStatus.message}
+                linkingMethod={paymentStatus.linkingMethod} // ✅ NEW: Pass linking method
                 onRetry={paymentStatus.status === 'failed' ? retryPaymentLinking : null}
               />
             )}
