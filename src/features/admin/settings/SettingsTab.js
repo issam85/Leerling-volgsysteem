@@ -1,11 +1,14 @@
-// src/features/admin/settings/SettingsTab.js - VOLLEDIG GECORRIGEERD
+// src/features/admin/settings/SettingsTab.js - VOLLEDIG MET SUBSCRIPTION MANAGEMENT
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../../contexts/DataContext';
 import { apiCall } from '../../../services/api';
 import Button from '../../../components/Button';
 import M365ConfigModal from './M365ConfigModal';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Building, Mail, ServerCog, CheckCircle, XCircle, Edit, AlertCircle, Save, SlidersHorizontal, Users } from 'lucide-react';
+import { 
+  Building, Mail, ServerCog, CheckCircle, XCircle, Edit, AlertCircle, Save, 
+  SlidersHorizontal, Users, CreditCard, AlertTriangle, ExternalLink 
+} from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import Input from '../../../components/Input';
 
@@ -17,6 +20,10 @@ const SettingsTab = () => {
   const [showM365ConfigModal, setShowM365ConfigModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
+
+  // ✅ NIEUWE STATE VOOR SUBSCRIPTION MANAGEMENT
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // State voor moskee basisgegevens formulier - UITGEBREID MET NIEUWE VELDEN
   const [mosqueDetailsForm, setMosqueDetailsForm] = useState({
@@ -44,6 +51,42 @@ const SettingsTab = () => {
     contribution_4_children: '',
     contribution_5_plus_children: '',
   });
+
+  // ✅ NIEUWE FUNCTIE: Subscription info ophalen
+  const fetchSubscriptionInfo = async () => {
+    try {
+      const response = await apiCall('/api/payments/stripe/subscription-status');
+      setSubscriptionInfo(response);
+      console.log('[SettingsTab] Subscription info loaded:', response);
+    } catch (error) {
+      console.error('Error fetching subscription info:', error);
+    }
+  };
+
+  // ✅ NIEUWE FUNCTIE: Cancellation email
+  const handleRequestCancellation = () => {
+    const subject = encodeURIComponent(`Abonnement Opzeggen - ${mosque?.name || 'MijnLVS'}`);
+    const body = encodeURIComponent(`Beste MijnLVS team,
+
+Ik wil graag mijn Professional abonnement opzeggen voor:
+
+Organisatie: ${mosque?.name || ''}
+Subdomein: ${mosque?.subdomain || ''}.mijnlvs.nl
+Contact Email: ${mosque?.email || ''}
+Administrator: ${mosque?.contact_committee_name || 'Niet opgegeven'}
+
+Reden voor opzegging:
+[Vul hier uw reden in]
+
+Gewenste einddatum:
+[Vul hier uw gewenste einddatum in]
+
+Met vriendelijke groet,
+${mosque?.contact_committee_name || 'Administrator'}`);
+
+    window.open(`mailto:i.abdellaoui@gmail.com?subject=${subject}&body=${body}`, '_blank');
+    setShowCancelConfirm(false);
+  };
 
   // Effect om form states te vullen wanneer mosque data uit context verandert
   useEffect(() => {
@@ -74,6 +117,9 @@ const SettingsTab = () => {
         contribution_4_children: mosque.contribution_4_children !== null ? String(mosque.contribution_4_children) : '450',
         contribution_5_plus_children: mosque.contribution_5_plus_children !== null ? String(mosque.contribution_5_plus_children) : '450',
       });
+
+      // ✅ NIEUW: Subscription info laden
+      fetchSubscriptionInfo();
     } else {
         console.log("[SettingsTab] useEffect: mosque data is null or undefined. Resetting forms.");
         setMosqueDetailsForm({ 
@@ -89,6 +135,7 @@ const SettingsTab = () => {
         });
         setDisplayM365Config({ tenantId: '', clientId: '', configured: false, senderEmail: '' });
         setContributionSettingsForm({ contribution_1_child: '150', contribution_2_children: '300', contribution_3_children: '450', contribution_4_children: '450', contribution_5_plus_children: '450' });
+        setSubscriptionInfo(null);
     }
   }, [mosque]);
 
@@ -291,6 +338,129 @@ const SettingsTab = () => {
           </div>
         </div>
 
+        {/* ✅ NIEUWE KAART: ABONNEMENT BEHEER */}
+        {subscriptionInfo && (
+          <div className="card">
+            <div className="flex items-center mb-6"> 
+              <CreditCard size={28} className="text-blue-600 mr-3" /> 
+              <h3 className="text-xl font-semibold text-gray-700">Abonnement Beheer</h3> 
+            </div>
+            
+            <div className="space-y-4">
+              {/* Subscription Status */}
+              <div className="bg-gray-50 rounded-lg p-4 border">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <div className="font-semibold">
+                      {subscriptionInfo.subscription_status === 'active' && (
+                        <span className="text-green-600 flex items-center">
+                          <CheckCircle size={16} className="mr-1"/>
+                          Professional Actief
+                        </span>
+                      )}
+                      {subscriptionInfo.subscription_status === 'trialing' && (
+                        <span className="text-blue-600 flex items-center">
+                          <AlertCircle size={16} className="mr-1"/>
+                          Proefperiode
+                        </span>
+                      )}
+                      {subscriptionInfo.subscription_status === 'canceled' && (
+                        <span className="text-red-600 flex items-center">
+                          <XCircle size={16} className="mr-1"/>
+                          Geannuleerd
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {subscriptionInfo.subscription_details && (
+                    <div>
+                      <span className="text-sm text-gray-600">Volgende Betaling:</span>
+                      <div className="font-medium">
+                        {new Date(subscriptionInfo.subscription_details.current_period_end).toLocaleDateString('nl-NL')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {subscriptionInfo.subscription_details && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <span className="text-sm text-gray-600">Bedrag:</span>
+                    <span className="font-semibold ml-2">
+                      €{subscriptionInfo.subscription_details.amount}/maand
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {subscriptionInfo.has_active_subscription && (
+                  <>
+                    {/* Stripe Portal Button */}
+                    <Button
+                      onClick={async () => {
+                        try {
+                          setActionLoading(true);
+                          const portalResponse = await apiCall('/api/payments/stripe/create-portal-session', {
+                            method: 'POST'
+                          });
+                          if (portalResponse.url) {
+                            window.open(portalResponse.url, '_blank');
+                          }
+                        } catch (error) {
+                          setFormMessage({ 
+                            type: 'error', 
+                            text: 'Kon billing portal niet openen. Probeer het later opnieuw.' 
+                          });
+                        } finally {
+                          setActionLoading(false);
+                        }
+                      }}
+                      variant="secondary"
+                      icon={ExternalLink}
+                      disabled={actionLoading}
+                      className="flex-1"
+                    >
+                      Beheer Betaling & Facturen
+                    </Button>
+
+                    {/* Cancel Request Button */}
+                    <Button
+                      onClick={() => setShowCancelConfirm(true)}
+                      variant="outline"
+                      icon={AlertTriangle}
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      Abonnement Opzeggen
+                    </Button>
+                  </>
+                )}
+                
+                {subscriptionInfo.subscription_status === 'trialing' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                      <div>
+                        <h4 className="text-blue-800 font-medium">Proefperiode Actief</h4>
+                        <p className="text-blue-700 text-sm mt-1">
+                          U bent momenteel in de 14-dagen proefperiode. Na de proefperiode wordt automatisch uw Professional abonnement gestart.
+                        </p>
+                        {subscriptionInfo.trial_ends_at && (
+                          <p className="text-blue-600 text-xs mt-2 font-medium">
+                            Proefperiode eindigt: {new Date(subscriptionInfo.trial_ends_at).toLocaleDateString('nl-NL')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Bijdrage Instellingen Kaart */}
         <div className="card">
           <div className="flex items-center justify-between mb-6">
@@ -361,6 +531,58 @@ const SettingsTab = () => {
             </div> 
           </div>
         </div>
+
+        {/* ✅ CANCELLATION CONFIRMATION MODAL */}
+        {showCancelConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Abonnement Opzeggen
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  U staat op het punt een email te versturen om uw Professional abonnement op te zeggen.
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-yellow-800 font-medium">Belangrijk om te weten:</h4>
+                    <ul className="text-yellow-700 text-sm mt-1 space-y-1">
+                      <li>• Uw account blijft actief tot het einde van de betaalperiode</li>
+                      <li>• Al uw gegevens blijven bewaard</li>
+                      <li>• U kunt altijd weer upgraden naar Professional</li>
+                      <li>• Na opzegging: max 10 leerlingen, 2 leraren</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowCancelConfirm(false)}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  Annuleren
+                </Button>
+                <Button
+                  onClick={handleRequestCancellation}
+                  variant="primary"
+                  icon={ExternalLink}
+                  className="flex-1 bg-red-600 hover:bg-red-700 border-red-600"
+                >
+                  Verstuur Email
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* M365 Config Modal */}
         {showM365ConfigModal && mosque && (
