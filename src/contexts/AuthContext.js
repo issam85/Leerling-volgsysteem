@@ -1,4 +1,5 @@
-// src/contexts/AuthContext.js - FINAL CORRECTED VERSION with backend API integration
+// src/contexts/AuthContext.js - FIXED VERSION - Clean error handling zonder race conditions
+
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -7,22 +8,16 @@ import { apiCall } from '../services/api';
 const AuthContext = createContext(null);
 
 const getSubdomainFromHostname = (hostname) => {
-  // Handle localhost/development environments
   if (hostname === 'localhost' || hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
     return localStorage.getItem('currentSubdomainForDev') || 'al-hijra';
   }
 
   const parts = hostname.split('.');
   
-  // GENERIC LOGIC for production:
-  // If hostname has 3+ parts (e.g. test.mijnlvs.nl) AND first part is not 'www'
   if (parts.length >= 3 && parts[0] !== 'www') {
-    // First part is the subdomain
     return parts[0];
   }
   
-  // For all other cases (e.g. mijnlvs.nl or www.mijnlvs.nl),
-  // consider it the main domain and redirect to registration
   return 'register';
 };
 
@@ -35,7 +30,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     console.log("[AuthContext] Setting up auth listener for session restoration.");
     
-    // Initialize subdomain handling
     const detectedSubdomain = getSubdomainFromHostname(window.location.hostname);
     if (window.location.hostname === 'localhost') {
         const storedDevSubdomain = localStorage.getItem('currentSubdomainForDev');
@@ -48,7 +42,6 @@ export const AuthProvider = ({ children }) => {
         setCurrentSubdomain(detectedSubdomain);
     }
     
-    // Auth state listener for session restoration and external events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`[AuthContext] Auth event: ${event}. Session available: ${!!session}`);
@@ -70,7 +63,6 @@ export const AuthProvider = ({ children }) => {
         } else if (event === 'SIGNED_OUT') {
           console.log("[AuthContext] SIGNED_OUT event - clearing user");
           setCurrentUser(null);
-          // Clear stored user data
           Object.keys(localStorage).forEach(key => {
             if (key.startsWith('currentUser_')) {
               localStorage.removeItem(key);
@@ -78,7 +70,6 @@ export const AuthProvider = ({ children }) => {
           });
         }
 
-        // After first check, loading is complete
         setLoadingUser(false);
       }
     );
@@ -89,19 +80,17 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // ✅ MAIN LOGIN FUNCTION - Uses backend API
+  // ✅ FIXED: Clean login function - alleen error handling, geen navigatie
   const handleLogin = useCallback(async (email, password) => {
     console.log("[AuthContext] Starting login via backend API...");
-    setLoadingUser(true);
 
     try {
         if (!currentSubdomain || currentSubdomain === 'register') {
             throw new Error('Geen geldig subdomein gevonden voor login.');
         }
         
-        console.log("🔍 [AuthContext DEBUG] About to call apiCall...");
+        console.log("[AuthContext] Calling backend login API...");
         
-        // ✅ Call our backend login endpoint
         const result = await apiCall('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify({
@@ -111,44 +100,34 @@ export const AuthProvider = ({ children }) => {
             })
         });
         
-        console.log("🔍 [AuthContext DEBUG] apiCall completed successfully:", result);
+        console.log("[AuthContext] API call completed:", result);
 
-        // Backend should return: { success: true, user: {...}, session: {...} }
         if (result.success && result.user && result.session) {
             console.log("[AuthContext] Backend login successful. Setting session...");
 
-            // 1. Tell supabase-js about the session (stores tokens in localStorage)
+            // 1. Stel Supabase sessie in
             const { error: sessionError } = await supabase.auth.setSession(result.session);
             if (sessionError) {
                 throw new Error(`Kon de sessie niet instellen: ${sessionError.message}`);
             }
             
-            // 2. Set currentUser state
+            // 2. Stel currentUser state in
             setCurrentUser(result.user);
             localStorage.setItem(`currentUser_${currentSubdomain}`, JSON.stringify(result.user));
             
-            setLoadingUser(false);
             console.log("[AuthContext] Login successful for", result.user.name);
             
+            // ✅ FIXED: Geen navigatie hier - dat doet LoginPage.js
             return { success: true };
 
         } else {
-            console.log("🔍 [AuthContext DEBUG] apiCall returned unsuccessful result:", result);
             throw new Error(result.error || "Inloggen mislukt. Onbekende fout van server.");
         }
     } catch (error) {
-        console.log("🔍 [AuthContext DEBUG] CATCH BLOCK REACHED!");
-        console.log("🔍 [AuthContext DEBUG] Error object:", error);
-        console.log("🔍 [AuthContext DEBUG] Error message:", error.message);
-        console.log("🔍 [AuthContext DEBUG] Error type:", typeof error);
+        console.error('[AuthContext] Login error:', error.message);
         
-        console.error('Login error in handleLogin:', error.message);
-        
-        // ✅ VERWIJDERD: setLoadingUser(false) - voorkomt race condition
-        // De LoginPage zal de loading state beheren via isSubmitting
-        
-        console.log("🔍 [AuthContext DEBUG] Now throwing error...");
-        throw error; // Re-throw so LoginPage can catch and display
+        // ✅ FIXED: Gewoon de error doorsturen, geen loading state management
+        throw error;
     }
 }, [currentSubdomain]);
 
@@ -158,7 +137,6 @@ export const AuthProvider = ({ children }) => {
       await supabase.auth.signOut();
       setCurrentUser(null);
       
-      // Clear all stored user data
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('currentUser_') || key.startsWith('sb-')) {
           localStorage.removeItem(key);
@@ -168,7 +146,6 @@ export const AuthProvider = ({ children }) => {
       navigate('/login', { replace: true });
     } catch (error) {
       console.warn("Logout error:", error);
-      // Even on error, force logout
       setCurrentUser(null);
       navigate('/login', { replace: true });
     }
@@ -177,7 +154,6 @@ export const AuthProvider = ({ children }) => {
   const switchSubdomain = useCallback((newSubdomain) => {
     const currentHostname = window.location.hostname;
 
-    // Handle localhost for development
     if (currentHostname === 'localhost' || currentHostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
         localStorage.setItem('currentSubdomainForDev', newSubdomain);
         window.location.reload();
@@ -187,36 +163,28 @@ export const AuthProvider = ({ children }) => {
     const parts = currentHostname.split('.');
     let newHost;
 
-    // Handle 'mijnlvs.nl' (2 parts) and 'www.mijnlvs.nl' (3 parts with www)
     if (parts.length === 2 || (parts.length === 3 && parts[0] === 'www')) {
         newHost = `${newSubdomain}.${parts.slice(-2).join('.')}`;
     } 
-    // Handle replacing existing subdomain like 'register.mijnlvs.nl'
     else if (parts.length === 3) {
         newHost = `${newSubdomain}.${parts.slice(1).join('.')}`;
     } 
-    // Fallback for unexpected structures
     else {
         console.warn("Cannot determine how to switch subdomain for hostname:", currentHostname);
         newHost = `${newSubdomain}.mijnlvs.nl`;
     }
 
     const port = window.location.port ? `:${window.location.port}` : '';
-    
-    // Redirect to login page of new subdomain
     window.location.href = `${window.location.protocol}//${newHost}${port}/login`;
   }, []);
 
   const hardResetAuth = useCallback(() => {
     console.warn("[AuthContext] HARD AUTH RESET - Clearing all auth state");
     
-    // Force sign out from Supabase
     supabase.auth.signOut();
-    
     setCurrentUser(null);
     setLoadingUser(false);
     
-    // Clear ALL auth-related localStorage items
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('currentUser_') || 
           key.startsWith('sb-') || 
@@ -229,12 +197,10 @@ export const AuthProvider = ({ children }) => {
     window.location.reload();
   }, []);
 
-  // ✅ Enhanced error recovery
   const recoverFromAuthError = useCallback(async () => {
     console.log("[AuthContext] Attempting auth error recovery...");
     
     try {
-      // Check if we have a valid session
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
@@ -244,7 +210,6 @@ export const AuthProvider = ({ children }) => {
       }
       
       if (session?.user) {
-        // Try to fetch user data
         const { data: appUser } = await supabase
           .from('users')
           .select('*')
@@ -275,7 +240,6 @@ export const AuthProvider = ({ children }) => {
     setLoadingUser(false);
   }, []);
 
-  // Update je value object:
   const value = {
       currentUser,
       currentSubdomain,
@@ -285,7 +249,7 @@ export const AuthProvider = ({ children }) => {
       switchSubdomain,
       hardResetAuth,
       recoverFromAuthError,
-      resetLoadingUser, // ✅ Nieuwe functie
+      resetLoadingUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,10 +1,10 @@
-// src/pages/LoginPage.js - Met Wachtwoord Vergeten functionaliteit
+// src/pages/LoginPage.js - FIXED VERSION - Error display werkt nu correct
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { supabase } from '../supabaseClient'; // ✅ TOEGEVOEGD voor password reset
+import { supabase } from '../supabaseClient';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -15,27 +15,9 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const errorRef = useRef('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [forceUpdate, setForceUpdate] = useState(0);
-
-    const originalSetError = setError;
-    const trackedSetError = (value) => {
-    console.log(`🔍 [DEBUG] setError called with: "${value}"`);
-    console.trace('setError call stack:');
     
-        // ✅ BLOKKEER LEGE STRINGS TIJDELIJK
-        if (value === '') {
-            console.log("🚫 [DEBUG] BLOCKED: Attempt to clear error state!");
-            console.trace('BLOCKED setError("") call stack:');
-            return; // Niet uitvoeren als het een lege string is
-        }
-        
-        originalSetError(value);
-    };
-       
-    
-    // ✅ NIEUWE STATE VOOR WACHTWOORD RESET
+    // NIEUWE STATE VOOR WACHTWOORD RESET
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [resetLoading, setResetLoading] = useState(false);
@@ -48,90 +30,50 @@ const LoginPage = () => {
     const location = useLocation();
 
     const from = location.state?.from?.pathname || "/dashboard";
-    const setErrorSafe = (errorMessage) => {
-        console.log("🔍 [DEBUG] setErrorSafe called with:", errorMessage);
-        errorRef.current = errorMessage;
-        trackedSetError(errorMessage);
 
-
-        // Force another update with a slight delay
-        setTimeout(() => {
-        console.log("🔍 [DEBUG] setErrorSafe timeout - forcing state update");
-            trackedSetError(errorMessage);
-            setForceUpdate(prev => prev + 1); // Force re-render
-        }, 1);
-    };
-
+    // ✅ FIX: Alleen navigeren als er GEEN error is EN login succesvol was
     useEffect(() => {
-        console.log("🔍 [UseEffect] Navigation check:", {
-            currentUser: !!currentUser,
-            loadingUser,
-            errorState: error,
-            errorRef: errorRef.current,
-            shouldNavigate: currentUser && !loadingUser && !errorRef.current
-        });
-        
-        if (currentUser && !loadingUser && !errorRef.current) {
-            console.log("[LoginPage] User found, navigating to dashboard:", currentUser.role);
+        // Alleen navigeren als:
+        // 1. We hebben een user
+        // 2. We zijn niet aan het laden
+        // 3. Er is GEEN error
+        // 4. We zijn niet bezig met submitten (login proces)
+        if (currentUser && !loadingUser && !error && !isSubmitting) {
+            console.log("[LoginPage] Navigation conditions met - going to dashboard");
             navigate(from, { replace: true });
         }
-    }, [currentUser, loadingUser, navigate, from, error]);
+    }, [currentUser, loadingUser, error, isSubmitting, navigate, from]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // setError('');
+        
+        // Reset error state aan het begin van nieuwe login poging
+        setError('');
         setIsSubmitting(true);
         
         try {
             console.log("[LoginPage] Starting login process...");
             await login(email, password);
-            console.log("[LoginPage] Login successful");
+            console.log("[LoginPage] Login successful - user should be set by AuthContext");
             
-            setTimeout(() => {
-                if (window.location.pathname === '/login') {
-                    console.log("[LoginPage] BACKUP navigation to dashboard");
-                    navigate('/dashboard', { replace: true });
-                }
-            }, 1000);
+            // ✅ FIX: Niet hier navigeren! useEffect doet dat als login succesvol is
+            // De isSubmitting staat wordt NIET gereset bij success - useEffect doet navigatie
             
         } catch (err) {
-            console.log("🔍 [DEBUG] CATCH BLOCK REACHED!");
-            console.log("🔍 [DEBUG] Error message:", err.message);
+            console.error("[LoginPage] Login failed:", err.message);
+            
+            // ✅ FIX: Bij error - stop loading EN toon error
+            setIsSubmitting(false);
+            resetLoadingUser(); // Zorg dat AuthContext loading ook stopt
             
             const errorMessage = err.message || 'Inloggen mislukt. Controleer uw gegevens.';
+            setError(errorMessage);
             
-            // STOP alle loading states eerst
-            setIsSubmitting(false);
-            resetLoadingUser();
-            
-            // Gebruik de veilige error setter
-            setErrorSafe(errorMessage);
-            
-            // Force updates met de ref
-            setTimeout(() => {
-                setErrorSafe(errorMessage);
-                console.log("🔍 [DEBUG] Error set again after 10ms");
-            }, 10);
-            
-            // Force update na 100ms
-            setTimeout(() => {
-                setErrorSafe(errorMessage);
-                console.log("🔍 [DEBUG] Error set again after 100ms");
-            }, 100);
-            
-            // Force een component re-render
-            setTimeout(() => {
-                setForceUpdate(prev => prev + 1);
-                console.log("🔍 [DEBUG] Forced component update");
-            }, 50);
-            
-            return; // Exit vroeg uit de functie
+            // ✅ FIX: Geen navigatie bij error - blijf op login pagina
         }
-        
-        // Alleen uitgevoerd bij success
-        setIsSubmitting(false);
     };
-    // ✅ NIEUWE FUNCTIE: Wachtwoord reset
+
+    // Wachtwoord reset functie
     const handleForgotPassword = async (e) => {
         e.preventDefault();
         setResetLoading(true);
@@ -147,7 +89,6 @@ const LoginPage = () => {
         try {
             console.log('🔧 [FORGOT PASSWORD] Sending reset email to:', resetEmail);
             
-            // Bepaal de juiste redirect URL gebaseerd op de huidige hostname
             const currentHostname = window.location.hostname;
             let redirectUrl;
             
@@ -156,7 +97,6 @@ const LoginPage = () => {
             } else if (currentHostname.includes('mijnlvs.nl')) {
                 redirectUrl = `https://${currentHostname}/reset-password`;
             } else {
-                // Voor development/localhost
                 redirectUrl = `${window.location.origin}/reset-password`;
             }
 
@@ -171,7 +111,6 @@ const LoginPage = () => {
             console.log('✅ [FORGOT PASSWORD] Reset email sent successfully');
             setResetSuccess(`Een reset link is verstuurd naar ${resetEmail}. Check uw email en spam folder!`);
             
-            // Reset form na 8 seconden
             setTimeout(() => {
                 setShowForgotPassword(false);
                 setResetEmail('');
@@ -186,8 +125,8 @@ const LoginPage = () => {
         }
     };
 
-    // Loading state
-    if (loadingUser && !currentUser) { 
+    // Loading state tijdens initiële user check
+    if (loadingUser && !currentUser && !error) { 
         return (
             <div className="min-h-screen bg-white flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-md text-center">
@@ -197,14 +136,10 @@ const LoginPage = () => {
         );
     }
 
-    // Conditional rendering gebaseerd op het laden van organisatie-data
+    // Loading organisatiegegevens
     if (realData.loading && !realData.mosque) {
         return <LoadingSpinner message="Organisatiegegevens laden..." />;
     }
-
-    console.log("🔍 [DEBUG] Render - Current error state:", error);
-    console.log("🔍 [DEBUG] Render - Should show error:", !!error);
-    console.log("🔍 [DEBUG] Render - Error length:", error?.length);
 
     return (
         <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
@@ -265,56 +200,14 @@ const LoginPage = () => {
                                 : `Log in op uw ${realData.mosque?.name || 'organisatie'} account`
                             }
                         </p>
-                        {/* Subtitel voor mobiele weergave */}
                         {!showForgotPassword && (
-                            
                             <p className="lg:hidden mt-4 text-sm text-gray-500 p-4 bg-emerald-50 rounded-lg">
                                 📚 Portaal voor {realData.mosque?.name || 'uw organisatie'}
                             </p>
                         )}
                     </div>
-                    {/* Voeg dit toe BOVEN je normale formulier, tijdelijk voor testing */}
-                    <div className="mb-4 p-4 bg-orange-100 border border-orange-300 rounded">
-                        <p className="text-sm mb-2">🔧 ERROR STATE TESTS:</p>
-                        <div className="space-x-2">
-                            <button 
-                                type="button"
-                                onClick={() => {
-                                    console.log("TEST: Setting error directly");
-                                    trackedSetError("DIRECT TEST: Dit is een test error!");
-                                }}
-                                className="px-3 py-1 bg-red-500 text-white text-xs rounded"
-                            >
-                                Test Direct Error
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={() => {
-                                    console.log("TEST: Setting error with timeout");
-                                    setTimeout(() => {
-                                        trackedSetError("TIMEOUT TEST: Dit is een test error!");
-                                        console.log("TEST: Error set via timeout");
-                                    }, 100);
-                                }}
-                                className="px-3 py-1 bg-yellow-500 text-white text-xs rounded"
-                            >
-                                Test Timeout Error
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={() => {
-                                    console.log("TEST: Clearing error");
-                                    trackedSetError("");
-                                }}
-                                className="px-3 py-1 bg-green-500 text-white text-xs rounded"
-                            >
-                                Clear Error
-                            </button>
-                        </div>
-                        <p className="text-xs mt-2">Current error in test: "{error}" (length: {error?.length || 0})</p>
-                    </div>
 
-                    {/* ✅ WACHTWOORD VERGETEN FORMULIER */}
+                    {/* WACHTWOORD VERGETEN FORMULIER */}
                     {showForgotPassword ? (
                         <div className="space-y-6">
                             <form onSubmit={handleForgotPassword} className="space-y-6">
@@ -383,7 +276,7 @@ const LoginPage = () => {
                             </div>
                         </div>
                     ) : (
-                        /* ✅ NORMALE LOGIN FORMULIER */
+                        /* NORMALE LOGIN FORMULIER */
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <Input
                                 label="Emailadres" 
@@ -406,20 +299,12 @@ const LoginPage = () => {
                                 autoComplete="current-password"
                             />
                             
+                            {/* ✅ FIXED: Error display nu correct */}
                             {error && (
                                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                                     <p className="text-red-700 text-sm text-center">{error}</p>
-                                    {/* Debug info */}
-                                    <p className="text-xs text-gray-500 mt-1">Debug: Error length = {error.length}</p>
                                 </div>
                             )}
-
-                            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                                <p>Debug Info:</p>
-                                <p>Error state: "{error}"</p>
-                                <p>Error exists: {String(!!error)}</p>
-                                <p>IsSubmitting: {String(isSubmitting)}</p>
-                            </div>
 
                             <Button 
                                 type="submit" 
@@ -445,7 +330,7 @@ const LoginPage = () => {
                                 )}
                             </Button>
 
-                            {/* ✅ WACHTWOORD VERGETEN LINK */}
+                            {/* WACHTWOORD VERGETEN LINK */}
                             <div className="text-center">
                                 <button
                                     type="button"
@@ -470,7 +355,7 @@ const LoginPage = () => {
                         </div>
                     )}
 
-                    {/* Action Links - alleen tonen bij normale login view */}
+                    {/* Action Links */}
                     {!showForgotPassword && (
                         <div className="mt-8 space-y-4 text-center">
                             <div className="flex flex-col space-y-2">
