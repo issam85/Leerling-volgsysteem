@@ -56,8 +56,8 @@ const LoginPage = () => {
             await login(email, password);
             console.log("[LoginPage] Login successful - user should be set by AuthContext");
             
-            // ✅ FIX: Niet hier navigeren! useEffect doet dat als login succesvol is
-            // De isSubmitting staat wordt NIET gereset bij success - useEffect doet navigatie
+            // ✅ FIX: Reset isSubmitting bij success zodat useEffect kan navigeren
+            setIsSubmitting(false);
             
         } catch (err) {
             console.error("[LoginPage] Login failed:", err.message);
