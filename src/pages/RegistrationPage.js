@@ -1,4 +1,4 @@
-// src/pages/RegistrationPage.js
+// src/pages/RegistrationPage.js - UPDATED voor consistentie met payment linking fixes
 
 import React, { useState, useEffect } from 'react';
 import { apiCall } from '../services/api';
@@ -9,13 +9,12 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import appLogo from '../assets/logo-mijnlvs.png';
 import { Building, UserCircle, CheckCircle, ArrowLeft, CreditCard, AlertCircle, X, LogIn } from 'lucide-react';
 
-// ✅ NIEUWE LOGIN MODAL COMPONENT
+// Login Modal Component (unchanged)
 const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
   const [subdomain, setSubdomain] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Reset modal state when opening/closing
   useEffect(() => {
     if (isOpen) {
       setSubdomain('');
@@ -24,7 +23,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
     }
   }, [isOpen]);
 
-  // Handle escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -34,7 +32,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
     
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden'; // Prevent background scroll
+      document.body.style.overflow = 'hidden';
     }
     
     return () => {
@@ -52,7 +50,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
       return;
     }
 
-    // Basic validation
     if (!/^[a-zA-Z0-9-]+$/.test(subdomain.trim())) {
       setError('Subdomein mag alleen letters, cijfers en koppelstreepjes bevatten');
       return;
@@ -82,7 +79,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in duration-200">
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -91,7 +87,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
           <X className="w-6 h-6" />
         </button>
 
-        {/* Header */}
         <div className="text-center mb-6 pr-8">
           <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <LogIn className="w-6 h-6 text-emerald-600" />
@@ -104,7 +99,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Input
@@ -128,7 +122,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
             </div>
           )}
 
-          {/* Action buttons */}
           <div className="flex gap-3 pt-2">
             <Button
               type="button"
@@ -160,7 +153,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
           </div>
         </form>
 
-        {/* Help text */}
         <div className="mt-4 pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-500 text-center">
             💡 Weet je het subdomein niet? Neem contact op met de beheerder van je organisatie.
@@ -171,7 +163,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchSubdomain }) => {
   );
 };
 
-// De Stepper Component
+// Stepper Component (unchanged)
 const Stepper = ({ currentStep }) => {
   const steps = [
     { number: 1, title: 'Organisatie', icon: Building },
@@ -207,7 +199,7 @@ const Stepper = ({ currentStep }) => {
   );
 };
 
-// Payment Status Component
+// ✅ UPDATED Payment Status Component - Better messaging
 const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
   if (status === 'success') {
     return (
@@ -217,6 +209,9 @@ const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
           <div>
             <h4 className="text-emerald-800 font-medium">🎉 Professional Account Actief!</h4>
             <p className="text-emerald-700 text-sm mt-1">{message}</p>
+            <p className="text-emerald-600 text-xs mt-2 font-medium">
+              ✅ Onbeperkt aantal leerlingen en leraren
+            </p>
           </div>
         </div>
       </div>
@@ -231,12 +226,15 @@ const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
           <div className="flex-1">
             <h4 className="text-yellow-800 font-medium">Betaling wordt nog verwerkt</h4>
             <p className="text-yellow-700 text-sm mt-1">{message}</p>
+            <p className="text-yellow-600 text-xs mt-2">
+              💡 Uw account werkt nu als gratis proefversie (max 10 leerlingen)
+            </p>
             {onRetry && (
               <button
                 onClick={onRetry}
                 className="text-yellow-800 underline text-sm mt-2 hover:text-yellow-900"
               >
-                Opnieuw proberen
+                Opnieuw controleren
               </button>
             )}
           </div>
@@ -262,7 +260,7 @@ const PaymentStatusCard = ({ status, message, isLoading, onRetry }) => {
   return null;
 };
 
-// De Hoofdcomponent
+// Main Component
 const RegistrationPage = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -276,21 +274,16 @@ const RegistrationPage = () => {
   const [registeredMosque, setRegisteredMosque] = useState(null);
   const { switchSubdomain } = useAuth();
 
-  // Payment linking state
   const [isLinkingPayment, setIsLinkingPayment] = useState(false);
   const [linkingComplete, setLinkingComplete] = useState(false);
-
-  // ✅ NIEUWE STATE: Login modal
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // NIEUWE FUNCTIE: Verwijder URL parameters
   const clearUrlParameters = () => {
     const url = new URL(window.location.href);
     url.search = '';
     window.history.replaceState({}, '', url);
   };
 
-  // Check voor payment parameters bij het laden van de pagina
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment_success');
@@ -298,7 +291,6 @@ const RegistrationPage = () => {
     
     if (paymentSuccess === 'true' && trackingId) {
       console.log('[Registration] Payment parameters detected:', { paymentSuccess, trackingId });
-      // Verwijder de parameters na het loggen
       clearUrlParameters();
     }
   }, []);
@@ -311,46 +303,45 @@ const RegistrationPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // ✅ NIEUWE FUNCTIE: Switch naar subdomain via modal
   const handleSwitchToLogin = async (subdomain) => {
     try {
-      // Clean subdomain - remove any .nl suffix that might be accidentally added
       const cleanSubdomain = subdomain.trim().toLowerCase().replace('.nl', '');
       await switchSubdomain(cleanSubdomain);
       setShowLoginModal(false);
     } catch (error) {
-      throw error; // Let modal handle the error
+      throw error;
     }
   };
 
-  // ✅ NIEUWE FUNCTIE: Switch met vertraging voor race condition fix
   const handleSwitchWithDelay = (subdomain) => {
     const cleanSubdomain = subdomain.trim().toLowerCase().replace('.nl', '');
     
-    // Kleine vertraging om race condition te voorkomen
     setTimeout(() => {
       switchSubdomain(cleanSubdomain);
-    }, 1000); // 1 seconde vertraging
+    }, 1000);
   };
 
-  // Functie om payment linking te proberen
+  // ✅ UPDATED: Payment linking functie - gebruikt nu de verbeterde service
   const attemptPaymentLinking = async (mosqueData) => {
     const urlParams = new URLSearchParams(window.location.search);
     const trackingId = urlParams.get('tracking_id');
+    const sessionId = urlParams.get('session_id');
     const paymentSuccess = urlParams.get('payment_success');
 
-    if (paymentSuccess === 'true' && trackingId) {
-      console.log('[Registration] Attempting payment linking with tracking ID:', trackingId);
+    if (paymentSuccess === 'true' && (trackingId || sessionId)) {
+      console.log('[Registration] Attempting payment linking...', { trackingId: trackingId?.substring(0, 10), sessionId: sessionId?.substring(0, 10) });
       
       setIsLinkingPayment(true);
       
       try {
-        const result = await apiCall('/api/payments/stripe/link-pending-payment', {
+        // ✅ GEBRUIK NIEUWE LINKING SERVICE ENDPOINT
+        const result = await apiCall('/api/payments/stripe/retry-payment-linking', {
           method: 'POST',
           body: JSON.stringify({
             mosqueId: mosqueData.id,
-            userEmail: mosqueData.admin_email,
-            trackingId: trackingId
+            adminEmail: mosqueData.email, // ✅ UPDATED: use 'email' field
+            trackingId: trackingId,
+            sessionId: sessionId
           })
         });
 
@@ -358,34 +349,33 @@ const RegistrationPage = () => {
           console.log('[Registration] Payment linked successfully!');
           setPaymentStatus({
             status: 'success',
-            message: result.message,
-            subscriptionStatus: result.subscription_status
+            message: `Uw ${result.result.planType || 'Professional'} account is direct actief! Geen restricties op aantallen.`,
+            subscriptionStatus: 'active',
+            planType: result.result.planType
           });
         } else {
           console.warn('[Registration] Payment linking failed:', result.message);
           setPaymentStatus({
             status: 'failed',
-            message: result.message || 'Betaling wordt nog verwerkt. Probeer over een paar minuten opnieuw in te loggen.',
-            suggestion: result.suggestion
+            message: result.message || 'Betaling wordt nog verwerkt. Uw Professional account wordt automatisch geactiveerd zodra de verwerking voltooid is.',
+            suggestion: 'Log over een paar minuten opnieuw in om de status te controleren.'
           });
         }
       } catch (error) {
         console.error('[Registration] Error linking payment:', error);
         setPaymentStatus({
           status: 'failed',
-          message: 'Er was een probleem bij het verwerken van uw betaling. Uw account is aangemaakt, maar probeer over een paar minuten opnieuw in te loggen.',
-          suggestion: 'Als het probleem aanhoudt, neem dan contact met ons op.'
+          message: 'Er was een probleem bij het verwerken van uw betaling. Uw account werkt nu als proefversie, maar uw Professional account wordt geactiveerd zodra de betaling is verwerkt.',
+          suggestion: 'Log over een paar minuten opnieuw in om de status te controleren.'
         });
       } finally {
         setIsLinkingPayment(false);
         setLinkingComplete(true);
-        // Verwijder de parameters na het verwerken
         clearUrlParameters();
       }
     }
   };
 
-  // Retry payment linking
   const retryPaymentLinking = async () => {
     if (registeredMosque) {
       await attemptPaymentLinking(registeredMosque);
@@ -395,7 +385,6 @@ const RegistrationPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     
-    // Validatie op de laatste stap
     if (formData.adminPassword !== formData.confirmPassword) {
       setError('Wachtwoorden komen niet overeen.'); 
       return;
@@ -425,13 +414,13 @@ const RegistrationPage = () => {
         zipcode: formData.zipcode.trim().toUpperCase(),
         phone: formData.phone.trim(), 
         website: formData.website.trim(), 
-        email: formData.contactEmail.trim().toLowerCase() || formData.adminEmail.trim().toLowerCase(),
+        contactEmail: formData.contactEmail.trim().toLowerCase() || formData.adminEmail.trim().toLowerCase(),
         trackingId: trackingId,
         sessionId: sessionId,
         paymentSuccess: paymentSuccess
       };
 
-      console.log("REGISTRATION PAYLOAD TO BACKEND (Frontend):", {
+      console.log("REGISTRATION PAYLOAD TO BACKEND:", {
         ...payload,
         trackingId: trackingId ? `${trackingId.substring(0, 10)}...` : null,
         sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : null,
@@ -447,13 +436,15 @@ const RegistrationPage = () => {
         const mosqueData = result.mosque;
         setRegisteredMosque(mosqueData);
         
-        // ✅ CHECK PAYMENT LINKING RESULT
+        // ✅ UPDATED: Betere success messaging gebaseerd op plan type
         if (result.payment_linked) {
-          setSuccessMessage(`🎉 Welkom bij MijnLVS, ${mosqueData.name}! Uw Professional account is direct actief.`);
+          const planType = result.plan_type || 'Professional';
+          setSuccessMessage(`🎉 Welkom bij MijnLVS, ${mosqueData.name}! Uw ${planType} account is direct actief.`);
           setPaymentStatus({
             status: 'success',
-            message: 'Uw betaling is succesvol verwerkt en uw Professional account is geactiveerd.',
-            subscriptionStatus: 'active'
+            message: `Uw betaling is succesvol verwerkt en uw ${planType} account is geactiveerd. Geen restricties op aantallen!`,
+            subscriptionStatus: 'active',
+            planType: planType
           });
           setLinkingComplete(true);
         } else {
@@ -461,19 +452,11 @@ const RegistrationPage = () => {
           
           // Als er payment parameters waren maar linking niet lukte
           if (trackingId && paymentSuccess) {
-            setPaymentStatus({
-              status: 'failed',
-              message: 'Uw betaling wordt nog verwerkt. Uw Professional account wordt automatisch geactiveerd zodra de verwerking voltooid is.',
-              suggestion: 'Log over een paar minuten opnieuw in om de status te controleren.'
-            });
-            setLinkingComplete(true);
+            await attemptPaymentLinking(mosqueData);
           }
         }
         
-        // Verwijder URL parameters na verwerking
         clearUrlParameters();
-        
-        // Ga naar succes stap
         nextStep();
         
       } else { 
@@ -522,7 +505,6 @@ const RegistrationPage = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Registratie succesvol!</h2>
             <p className="text-gray-600 max-w-lg mx-auto mb-6">{successMessage}</p>
             
-            {/* Payment Status Display */}
             {isLinkingPayment && (
               <PaymentStatusCard 
                 isLoading={true}
@@ -537,7 +519,6 @@ const RegistrationPage = () => {
               />
             )}
             
-            {/* Login Button */}
             <div className="mt-8">
               <Button 
                 onClick={() => handleSwitchWithDelay(formData.subdomain)}
@@ -545,20 +526,26 @@ const RegistrationPage = () => {
                 size="lg"
                 className="w-full sm:w-auto"
               >
-                {paymentStatus?.status === 'success' ? 'Ga naar Professional Dashboard' : 'Ga naar Inloggen'}
+                {paymentStatus?.status === 'success' ? 
+                  `Ga naar ${paymentStatus.planType || 'Professional'} Dashboard` : 
+                  'Ga naar Inloggen'
+                }
               </Button>
             </div>
             
-            {/* Additional Info for Payment Cases */}
+            {/* ✅ UPDATED: Better success info */}
             {linkingComplete && paymentStatus?.status === 'success' && (
               <div className="mt-6 p-4 bg-emerald-50 rounded-lg text-left">
-                <h4 className="font-medium text-emerald-800 mb-2">🚀 Uw Professional Account is actief!</h4>
+                <h4 className="font-medium text-emerald-800 mb-2">
+                  🚀 Uw {paymentStatus.planType || 'Professional'} Account is actief!
+                </h4>
                 <ul className="text-sm text-emerald-700 space-y-1">
-                  <li>✅ Onbeperkt aantal leerlingen</li>
+                  <li>✅ <strong>Onbeperkt</strong> aantal leerlingen en leraren</li>
                   <li>✅ Volledige financieel beheer</li>
                   <li>✅ Qor'aan voortgang tracking</li>
                   <li>✅ Professionele rapporten</li>
                   <li>✅ E-mail communicatie met ouders</li>
+                  <li>✅ Geen restricties of limieten</li>
                 </ul>
               </div>
             )}
@@ -567,8 +554,9 @@ const RegistrationPage = () => {
               <div className="mt-6 p-4 bg-blue-50 rounded-lg text-left">
                 <h4 className="font-medium text-blue-800 mb-2">💡 Wat nu?</h4>
                 <div className="text-sm text-blue-700 space-y-2">
-                  <p>• Uw account is aangemaakt en u kunt direct beginnen met de gratis proefperiode</p>
-                  <p>• Als u heeft betaald, wordt uw Professional account automatisch geactiveerd zodra de betaling is verwerkt</p>
+                  <p>• <strong>Nu:</strong> Proefversie actief (max 10 leerlingen, 2 leraren)</p>
+                  <p>• <strong>Binnenkort:</strong> Automatische upgrade naar Professional zodra betaling is verwerkt</p>
+                  <p>• <strong>Dan:</strong> Onbeperkt aantal leerlingen en leraren</p>
                   <p>• Log over een paar minuten opnieuw in om de status te controleren</p>
                 </div>
               </div>
@@ -584,24 +572,19 @@ const RegistrationPage = () => {
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-5">
       {loading && <LoadingSpinner message="Registratie verwerken..." />}
 
-      {/* ✅ LOGIN MODAL */}
       <LoginModal 
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSwitchSubdomain={handleSwitchToLogin}
       />
 
-      {/* ==================================================================== */}
-      {/* KOLOM 1: De "Banner" - Zichtbaar op grote schermen (NIEUWE VERSIE) */}
-      {/* ==================================================================== */}
+      {/* Banner Column */}
       <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-emerald-600 to-teal-600 text-white p-8 xl:p-12 flex flex-col justify-between">
           <div>
-              {/* Logo is nu extra groot, klikbaar en heeft meer ruimte */}
               <a href="/" className="inline-block hover:scale-110 transition-transform duration-200">
                   <img className="h-36 w-auto bg-white p-6 rounded-2xl shadow-lg" src={appLogo} alt="MijnLVS Logo" />
               </a>
               
-              {/* Nieuwe, gerichte headline en sub-headline */}
               <h1 className="mt-10 text-3xl font-bold tracking-tight">
                   Het hart van uw Islamitisch onderwijs.
               </h1>
@@ -609,7 +592,6 @@ const RegistrationPage = () => {
                   MijnLVS is speciaal ontworpen voor moskeeën en onderwijsinstellingen die Arabische taal- en Qor'aanlessen verzorgen.
               </p>
               
-              {/* Nieuwe, specifiekere bullet points */}
               <ul className="mt-8 space-y-4 text-emerald-50">
                   <li className="flex items-start">
                       <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-400 flex-shrink-0" />
@@ -630,17 +612,15 @@ const RegistrationPage = () => {
           </div>
       </div>
 
-      {/* KOLOM 2: De Formulier Wizard */}
+      {/* Form Column */}
       <div className="lg:col-span-3 flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <div className="w-full max-w-lg mx-auto">
-          {/* Logo voor mobiele weergave - ook klikbaar en groter */}
           <div className="lg:hidden text-center mb-8">
             <a href="/" className="inline-block hover:scale-105 transition-transform duration-200">
               <img className="mx-auto h-20 w-auto bg-emerald-50 p-3 rounded-xl shadow-md" src={appLogo} alt="MijnLVS Logo" />
             </a>
             <h2 className="mt-4 text-2xl font-extrabold text-gray-900">Nieuwe Organisatie Registreren</h2>
             
-            {/* Breadcrumb voor mobiel */}
             <div className="mt-2 flex items-center justify-center text-sm text-gray-500">
               <a href="/" className="hover:text-emerald-600 transition-colors">
                 🏠 Hoofdpagina
@@ -676,7 +656,7 @@ const RegistrationPage = () => {
             )}
           </form>
 
-          {/* ✅ NIEUWE LOGIN SECTIE - alleen tonen voor stap 1 en 2 */}
+          {/* ✅ LOGIN SECTIE - alleen tonen voor stap 1 en 2 */}
           {step < 3 && (
             <div className="text-center mt-8">
               <p className="text-sm text-gray-600">
