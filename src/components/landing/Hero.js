@@ -11,7 +11,6 @@ const heroSlides = [
         highlight: "Qor'aan Memorisatie Tracker",
         icon: BookOpen,
         gradient: "from-emerald-600 to-teal-600",
-        stats: { label: "156 Actieve Leerlingen", value: "94% Aanwezigheid" }
     },
     {
         title: "Directe communicatie met alle ouders",
@@ -19,7 +18,6 @@ const heroSlides = [
         highlight: "Email & Ouder Portaal",
         icon: Users,
         gradient: "from-blue-600 to-purple-600",
-        stats: { label: "24 Ouders bereikt", value: "98% Open rate" }
     },
     {
         title: "Professionele rapporten en analyses",
@@ -27,7 +25,6 @@ const heroSlides = [
         highlight: "Slimme Analytics",
         icon: BarChart3,
         gradient: "from-orange-600 to-red-600",
-        stats: { label: "12 Leraren actief", value: "8.7 Gem. cijfer" }
     }
 ];
 
@@ -50,20 +47,21 @@ const Hero = ({ onStartProfessional, onStartTrial, isProcessingPayment, onLoginC
     };
 
     return (
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden bg-gray-900 min-h-[700px] flex items-center">
             {heroSlides.map((slide, index) => {
                 const IconComponent = slide.icon;
                 return (
                     <div
                         key={index}
-                        className={`absolute inset-0 transition-transform duration-700 ease-in-out transform ${
-                            index === currentSlide ? 'translate-x-0' : 
-                            index < currentSlide ? '-translate-x-full' : 'translate-x-full'
+                        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                            index === currentSlide ? 'opacity-100' : 'opacity-0'
                         }`}
                     >
-                        <div className={`bg-gradient-to-br ${slide.gradient} text-white relative`}>
-                            <div className="absolute inset-0 bg-black/20"></div>
-                            <div className="container mx-auto px-6 py-24 lg:py-32 relative z-10">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient}`}></div>
+                        <div className="absolute inset-0 bg-black/30"></div>
+                        
+                        <div className="relative z-10 h-full flex items-center">
+                            <div className="container mx-auto px-6">
                                 <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
                                     <div className="text-center lg:text-left">
                                         <div className="flex items-center justify-center lg:justify-start mb-6">
@@ -161,3 +159,4 @@ const Hero = ({ onStartProfessional, onStartTrial, isProcessingPayment, onLoginC
 };
 
 export default Hero;
+
