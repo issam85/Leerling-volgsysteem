@@ -29,6 +29,53 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  button, 
+  a, 
+  input, 
+  select, 
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Prevent zoom on form inputs on iOS */
+  input, 
+  select, 
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Improve mobile scrolling */
+  body {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Prevent text selection on mobile for UI elements */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Better mobile typography */
+  h1, h2, h3 {
+    line-height: 1.2;
+    word-wrap: break-word;
+  }
+
+  /* Improve mobile spacing */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {

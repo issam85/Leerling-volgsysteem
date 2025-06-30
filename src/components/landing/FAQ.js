@@ -31,18 +31,18 @@ const faqData = [
 
 const FaqItem = ({ faq, isOpen, onClick }) => {
     return (
-        <div className="border-b border-gray-200 py-6">
+        <div className="border-b border-gray-200 py-4 sm:py-6">
             <button
-                className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-800"
+                className="w-full flex justify-between items-center text-left text-base sm:text-lg font-semibold text-gray-800 touch-manipulation"
                 onClick={onClick}
             >
-                <span>{faq.question}</span>
-                <ChevronDown className={`w-6 h-6 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                <span className="pr-4 leading-tight">{faq.question}</span>
+                <ChevronDown className={`w-5 h-5 sm:w-6 sm:h-6 transform transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             <div
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96 mt-4' : 'max-h-0'}`}
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96 mt-3 sm:mt-4' : 'max-h-0'}`}
             >
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                     {faq.answer}
                 </p>
             </div>
@@ -58,13 +58,13 @@ const FAQ = () => {
     };
 
     return (
-        <section id="faq" className="py-20 bg-white">
-            <div className="container mx-auto px-6">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+        <section id="faq" className="py-12 sm:py-16 lg:py-20 bg-white">
+            <div className="container mx-auto px-4 sm:px-6">
+                <div className="text-center mb-8 sm:mb-12">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
                         Veelgestelde Vragen
                     </h2>
-                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                    <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                         Heeft u een vraag? Hier vindt u de antwoorden op de meest gestelde vragen.
                     </p>
                 </div>
