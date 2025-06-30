@@ -156,11 +156,13 @@ const TeacherClassAttendancePage = () => {
         setPageError('');
         const dateStr = selectedDate.toISOString().split('T')[0];
         const lessonPayload = {
+            mosque_id: mosque.id,
+            klas_id: classId,
             les_datum: dateStr,
         };
         
         try {
-            const newLesson = await createLesson(mosque.id, classId, lessonPayload);
+            const newLesson = await createLesson(lessonPayload);
             if (newLesson && newLesson.id) {
                 setPageMessage("Nieuwe les succesvol aangemaakt. U kunt nu absenties registreren.");
                 // Reset refs to force reload
