@@ -11,9 +11,11 @@ import Pricing from '../components/landing/Pricing';
 import CTA from '../components/landing/CTA';
 import FAQ from '../components/landing/FAQ';
 import Footer from '../components/landing/Footer';
+import SubdomainModal from '../components/landing/SubdomainModal';
 
 const LandingPage = () => {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [isSubdomainModalOpen, setIsSubdomainModalOpen] = useState(false);
 
     const handleStripeCheckout = async (skipTrial) => {
         setIsProcessingPayment(true);
@@ -48,11 +50,12 @@ const LandingPage = () => {
     const handleChooseProfessional = () => handleStripeCheckout(true);
     const handleStartTrial = () => handleStripeCheckout(false);
 
-    const handleExistingLogin = () => {
-        const subdomain = prompt('Voer het subdomein van uw organisatie in (bijv: al-noor):');
-        if (subdomain && subdomain.trim()) {
-            window.location.href = `https://${subdomain.trim().toLowerCase()}.mijnlvs.nl/login`;
-        }
+    const handleOpenLoginModal = () => {
+        setIsSubdomainModalOpen(true);
+    };
+
+    const handleSubdomainSubmit = (subdomain) => {
+        window.location.href = `https://${subdomain}.mijnlvs.nl/login`;
     };
 
     const handleStartDemo = () => {
@@ -61,13 +64,13 @@ const LandingPage = () => {
 
     return (
         <div className="bg-white text-gray-800">
-            <Header onLoginClick={handleExistingLogin} onStartDemoClick={handleStartDemo} />
+            <Header onLoginClick={handleOpenLoginModal} onStartDemoClick={handleStartDemo} />
             <main>
                 <Hero 
                     onStartProfessional={handleChooseProfessional}
                     onStartTrial={handleStartTrial}
                     isProcessingPayment={isProcessingPayment}
-                    onLoginClick={handleExistingLogin}
+                    onLoginClick={handleOpenLoginModal}
                 />
                 <Features />
                 <Communication />
@@ -85,6 +88,11 @@ const LandingPage = () => {
                 />
             </main>
             <Footer />
+            <SubdomainModal 
+                isOpen={isSubdomainModalOpen}
+                onClose={() => setIsSubdomainModalOpen(false)}
+                onSubmit={handleSubdomainSubmit}
+            />
         </div>
     );
 };
