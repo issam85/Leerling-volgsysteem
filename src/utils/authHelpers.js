@@ -1,12 +1,85 @@
 // src/utils/authHelpers.js
 
-export const generateTempPassword = () => {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
-  let password = '';
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+// Strong password validation
+export const validatePasswordStrength = (password) => {
+  const errors = [];
+  
+  if (!password || password.length < 8) {
+    errors.push('Wachtwoord moet minimaal 8 karakters lang zijn');
   }
-  return password;
+  
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Wachtwoord moet minimaal één hoofdletter bevatten');
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    errors.push('Wachtwoord moet minimaal één kleine letter bevatten');
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push('Wachtwoord moet minimaal één cijfer bevatten');
+  }
+  
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Wachtwoord moet minimaal één speciaal teken bevatten');
+  }
+  
+  // Check for common weak patterns
+  const weakPatterns = [
+    /123456/, /password/, /admin/, /qwerty/, /abc123/,
+    /111111/, /000000/, /letmein/, /welcome/
+  ];
+  
+  if (weakPatterns.some(pattern => pattern.test(password.toLowerCase()))) {
+    errors.push('Wachtwoord mag geen veelgebruikte zwakke patronen bevatten');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors: errors,
+    strength: calculatePasswordStrength(password)
+  };
+};
+
+const calculatePasswordStrength = (password) => {
+  let score = 0;
+  
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 1;
+  if (password.length >= 16) score += 1;
+  
+  if (score <= 2) return 'weak';
+  if (score <= 4) return 'medium';
+  return 'strong';
+};
+
+export const generateTempPassword = () => {
+  // Generate a stronger temporary password with guaranteed character types
+  const uppercase = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+  const numbers = '23456789'; // Exclude 0, 1 to avoid confusion
+  const symbols = '!@#$%^&*';
+  
+  let password = '';
+  
+  // Ensure at least one character from each type
+  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+  
+  // Fill the rest randomly
+  const allChars = uppercase + lowercase + numbers + symbols;
+  for (let i = 4; i < 14; i++) { // 14 character total length
+    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  }
+  
+  // Shuffle the password to randomize character positions
+  return password.split('').sort(() => Math.random() - 0.5).join('');
 };
 
 // Stuurt een welkomstmail via de backend API.
