@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { apiCall } from '../services/api';
 
 import Header from '../components/landing/Header';
-import Hero from '../components/landing/Hero';
 import PortalSlider from '../components/landing/PortalSlider';
 import Communication from '../components/landing/Communication';
 import QuranTracking from '../components/landing/QuranTracking';
@@ -66,12 +65,6 @@ const LandingPage = () => {
         <div className="bg-white text-gray-800">
             <Header onLoginClick={handleOpenLoginModal} onStartDemoClick={handleStartDemo} />
             <main>
-                <Hero 
-                    onStartProfessional={handleChooseProfessional}
-                    onStartTrial={handleStartTrial}
-                    isProcessingPayment={isProcessingPayment}
-                    onLoginClick={handleOpenLoginModal}
-                />
                 <PortalSlider />
                 <Communication />
                 <QuranTracking />
