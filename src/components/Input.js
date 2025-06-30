@@ -33,9 +33,11 @@ const validateInput = (value, type, maxLength = 1000) => {
   return { isValid: true, sanitized: sanitizeInput(stringValue) };
 };
 
-const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, required, className = '', rows = 3, name, maxLength, ...props }) => {
+const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, required, disabled, className = '', rows = 3, name, maxLength, ...props }) => {
   
   const handleChange = (e) => {
+    if (disabled) return; // Prevent change if disabled
+
     const inputValue = e.target.value;
     
     // Perform security validation and sanitization
@@ -68,8 +70,9 @@ const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, 
     onChange: handleChange,
     placeholder: placeholder,
     required: required,
+    disabled: disabled,
     maxLength: maxLength || 1000, // Default max length for security
-    className: `input-field ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'} ${className}`,
+    className: `input-field ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'} ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`,
     ...props,
   };
 
