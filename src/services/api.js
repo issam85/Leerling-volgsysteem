@@ -1,5 +1,18 @@
 // src/services/api.js - Verbeterde versie met Cache-Busting voor 304 Not Modified probleem
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://moskee-backend-api-production.up.railway.app';
+import { handleApiError, logError } from '../utils/errorHandling';
+import { getSecureConfig } from '../utils/envValidation';
+
+const getApiBaseUrl = () => {
+  try {
+    const config = getSecureConfig();
+    return config.REACT_APP_API_BASE_URL || 'https://moskee-backend-api-production.up.railway.app';
+  } catch (error) {
+    console.warn('[API] Environment validation failed, using fallback URL');
+    return 'https://moskee-backend-api-production.up.railway.app';
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const apiCall = async (endpoint, options = {}) => {
   let requestUrl = `${API_BASE_URL}${endpoint}`;
@@ -131,16 +144,26 @@ export const apiCall = async (endpoint, options = {}) => {
                           responseData?.details ||
                           `HTTP ${response.status}: ${response.statusText}`;
       
-      console.error(`[API Error] ${method} ${endpoint}:`, {
-        status: response.status,
+      // Use secure error handling
+      const errorInfo = handleApiError({
         message: errorMessage,
-        fullResponse: responseData
-      });
+        response: {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData
+        },
+        config: {
+          url: requestUrl,
+          method: method
+        }
+      }, `${method} ${endpoint}`);
       
-      const errorToThrow = new Error(errorMessage);
+      const errorToThrow = new Error(errorInfo.message);
       errorToThrow.status = response.status; 
-      errorToThrow.data = responseData; 
+      errorToThrow.data = process.env.NODE_ENV === 'development' ? responseData : undefined; 
       errorToThrow.endpoint = endpoint;
+      errorToThrow.category = errorInfo.category;
+      errorToThrow.isRetryable = errorInfo.isRetryable;
       
       throw errorToThrow;
     }

@@ -4,6 +4,8 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { apiCall } from '../services/api';
+import { useSessionTimeout } from '../hooks/useSessionTimeout';
+import SessionTimeoutWarning from '../components/SessionTimeoutWarning';
 
 const AuthContext = createContext(null);
 
@@ -240,6 +242,12 @@ export const AuthProvider = ({ children }) => {
     setLoadingUser(false);
   }, []);
 
+  // Session timeout management
+  const { showWarning, timeLeft, extendSession, forceLogout } = useSessionTimeout(
+    !!currentUser, 
+    handleLogout
+  );
+
   const value = {
       currentUser,
       currentSubdomain,
@@ -252,7 +260,17 @@ export const AuthProvider = ({ children }) => {
       resetLoadingUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <SessionTimeoutWarning
+        isOpen={showWarning}
+        timeLeft={timeLeft}
+        onExtend={extendSession}
+        onLogout={forceLogout}
+      />
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
