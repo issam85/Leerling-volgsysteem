@@ -141,7 +141,7 @@ const Pricing = ({ onChooseProfessional, onStartTrial, isProcessingPayment }) =>
                 <div className="mt-16 text-center">
                     <div className="bg-white rounded-2xl p-8 shadow-lg border border-emerald-200 max-w-2xl mx-auto">
                         <h3 className="text-2xl font-bold text-gray-900 mb-4">Klaar om te beginnen?</h3>
-                        <p className="text-gray-600 mb-6">Join honderden moskeeën die al gebruik maken van MijnLVS voor hun onderwijsmanagement</p>
+                        <p className="text-gray-600 mb-6">Klaar om de volgende stap te zetten in de professionalisering van uw onderwijs?</p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <button 
                                 onClick={onChooseProfessional}

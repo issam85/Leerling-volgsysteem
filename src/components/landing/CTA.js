@@ -12,7 +12,7 @@ const CTA = ({ onStartProfessional, onStartDemo, isProcessingPayment }) => {
                         Transformeer uw Islamitisch onderwijs vandaag nog
                     </h2>
                     <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-                        Join honderden moskeeën die al gebruik maken van MijnLVS. Start met het Professioneel Plan en ervaar direct het verschil.
+                        Sluit u aan bij de groeiende groep onderwijsinstellingen die kiezen voor een modern en efficiënt beheer. Start met het Professioneel Plan en ervaar direct het verschil.
                     </p>
                     
                     <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
