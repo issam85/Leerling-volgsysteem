@@ -1,7 +1,8 @@
 // src/components/landing/Hero.js
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Users, BarChart3, ArrowRight, ChevronLeft, ChevronRight, Star, Shield, Award, TrendingUp } from 'lucide-react';
+import { BookOpen, Users, BarChart3, ArrowRight, ChevronLeft, ChevronRight, Star, Shield, Award } from 'lucide-react';
+import appLogo from '../../assets/logo-mijnlvs.png';
 
 const heroSlides = [
     {
@@ -109,23 +110,9 @@ const Hero = ({ onStartProfessional, onStartTrial, isProcessingPayment, onLoginC
                                         </div>
                                     </div>
 
-                                    <div className="mt-12 lg:mt-0">
-                                        <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
-                                            <div className="text-center">
-                                                <TrendingUp className="w-16 h-16 text-white mx-auto mb-4" />
-                                                <h3 className="text-2xl font-bold text-white mb-2">Live Dashboard</h3>
-                                                <p className="text-white/80 mb-6">Real-time inzicht in uw onderwijs</p>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
-                                                        <div className="text-2xl font-bold text-white">{slide.stats.label.split(' ')[0]}</div>
-                                                        <div className="text-sm text-white/80">{slide.stats.label.split(' ').slice(1).join(' ')}</div>
-                                                    </div>
-                                                    <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
-                                                        <div className="text-2xl font-bold text-white">{slide.stats.value.split(' ')[0]}</div>
-                                                        <div className="text-sm text-white/80">{slide.stats.value.split(' ').slice(1).join(' ')}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                    <div className="mt-12 lg:mt-0 flex items-center justify-center">
+                                        <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 w-full max-w-sm">
+                                            <img src={appLogo} alt="MijnLVS Logo" className="w-full h-auto" />
                                         </div>
                                     </div>
                                 </div>
