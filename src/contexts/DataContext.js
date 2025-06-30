@@ -443,7 +443,7 @@ export const DataProvider = ({ children }) => {
     
     try {
       // ✅ CORRECTED: Simplified endpoint - no mosqueId needed
-      const lessons = await apiCall(`/api/lessons/class/${classId}?startDate=${startDate}&endDate=${endDate}`);
+      const lessons = await apiCall(`/api/lessen/class/${classId}?startDate=${startDate}&endDate=${endDate}`);
       setRealData(prev => ({ ...prev, currentClassLessons: lessons || [] }));
       return lessons || [];
     } catch (error) {
@@ -459,7 +459,7 @@ export const DataProvider = ({ children }) => {
       
       try {
           // ✅ CORRECTED: Updated endpoint path
-          const lessonDetails = await apiCall(`/api/lessons/${lessonId}/details-for-attendance`);
+          const lessonDetails = await apiCall(`/api/lessen/${lessonId}/details-for-attendance`);
           return lessonDetails;
       } catch (error) {
           console.error("[DataContext] Error fetching lesson details for attendance:", error);
@@ -474,7 +474,7 @@ export const DataProvider = ({ children }) => {
     
     try {
       // ✅ CORRECTED: Updated endpoint path
-      const attendance = await apiCall(`/api/lessons/${lessonId}/absenties`);
+      const attendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
       setRealData(prev => ({ ...prev, currentLessonAttendance: attendance || [] }));
       return attendance || [];
     } catch (error) {
@@ -495,7 +495,7 @@ export const DataProvider = ({ children }) => {
     
     try {
       // ✅ CORRECTED: Updated endpoint path
-      const result = await apiCall(`/api/lessons/${lessonId}/absenties`, {
+      const result = await apiCall(`/api/lessen/${lessonId}/absenties`, {
         method: 'POST',
         body: JSON.stringify(payloadWithTeacher)
       });
@@ -503,7 +503,7 @@ export const DataProvider = ({ children }) => {
       if (result.success) {
         try {
           console.log("[DataContext] Save successful, refreshing attendance from database...");
-          const freshAttendance = await apiCall(`/api/lessons/${lessonId}/absenties`);
+          const freshAttendance = await apiCall(`/api/lessen/${lessonId}/absenties`);
           setRealData(prev => ({ ...prev, currentLessonAttendance: freshAttendance || [] }));
           console.log("[DataContext] Fresh attendance data loaded:", freshAttendance?.length || 0, "records");
           return { success: true, freshData: freshAttendance || [] };
@@ -526,7 +526,7 @@ export const DataProvider = ({ children }) => {
       
       try {
           // ✅ CORRECTED: Simplified endpoint - mosqueId and classId now in payload
-          const result = await apiCall(`/api/lessons`, {
+          const result = await apiCall(`/api/lessen`, {
               method: 'POST',
               body: JSON.stringify(lessonData)
           });
