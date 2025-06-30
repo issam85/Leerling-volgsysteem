@@ -13,11 +13,12 @@ const Header = ({ onLoginClick, onStartDemoClick }) => {
                         <span className="ml-3 text-xl font-bold text-gray-900">MijnLVS</span>
                     </div>
                     <div className="hidden md:flex items-center space-x-8">
-                        <a href="#features" className="text-gray-600 hover:text-emerald-600 transition-colors">Features</a>
-                        <a href="#prijzen" className="text-gray-600 hover:text-emerald-600 transition-colors">Prijzen</a>
-                        <Button onClick={onLoginClick} variant="ghost">Inloggen</Button>
-                        <Button onClick={onStartDemoClick} variant="primary">Demo Starten</Button>
-                    </div>
+                            <a href="#features" className="text-gray-600 hover:text-emerald-600 transition-colors">Features</a>
+                            <a href="#prijzen" className="text-gray-600 hover:text-emerald-600 transition-colors">Prijzen</a>
+                            <a href="#faq" className="text-gray-600 hover:text-emerald-600 transition-colors">FAQ</a>
+                            <Button onClick={onLoginClick} variant="ghost">Inloggen</Button>
+                            <Button onClick={onStartDemoClick} variant="primary">Demo Starten</Button>
+                        </div>
                 </div>
             </div>
         </nav>

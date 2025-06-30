@@ -17,7 +17,7 @@ const faqData = [
     },
     {
         question: "Hoe werkt de Qor'aan Memorisatie Tracker?",
-        answer: "Onze unieke tracker stelt leraren in staat om per leerling de voortgang van de Qor'aan memorisatie bij te houden, van Surah tot Surah en zelfs per Ayah. U kunt ook de kwaliteit van de recitatie (tajweed, vloeiendheid) beoordelen. Ouders kunnen deze voortgang direct inzien via hun eigen portaal."
+        answer: "Onze unieke tracker stelt leraren in staat om per leerling de voortgang van de Qor'aan memorisatie bij te houden, van Surah tot Surah. U kunt ook de kwaliteit van de recitatie (tajweed, vloeiendheid) beoordelen. Ouders kunnen deze voortgang direct inzien via hun eigen portaal."
     },
     {
         question: "Zit ik vast aan een lang contract?",

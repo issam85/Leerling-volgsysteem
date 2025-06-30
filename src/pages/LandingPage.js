@@ -4,7 +4,7 @@ import { apiCall } from '../services/api';
 
 import Header from '../components/landing/Header';
 import Hero from '../components/landing/Hero';
-import Features from '../components/landing/Features';
+import PortalSlider from '../components/landing/PortalSlider';
 import Communication from '../components/landing/Communication';
 import QuranTracking from '../components/landing/QuranTracking';
 import Pricing from '../components/landing/Pricing';
@@ -72,7 +72,7 @@ const LandingPage = () => {
                     isProcessingPayment={isProcessingPayment}
                     onLoginClick={handleOpenLoginModal}
                 />
-                <Features />
+                <PortalSlider />
                 <Communication />
                 <QuranTracking />
                 <Pricing 
