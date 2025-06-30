@@ -1,15 +1,58 @@
 // src/pages/LandingPage.js - Complete versie
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import appLogo from '../assets/logo-mijnlvs.png';
 import Button from '../components/Button';
-import { CheckCircle, BookOpen, Users, BarChart3, Building, ArrowRight } from 'lucide-react';
+import { CheckCircle, BookOpen, Users, BarChart3, Building, ArrowRight, ChevronLeft, ChevronRight, Star, TrendingUp, Award, Shield } from 'lucide-react';
 
 // Import je bestaande API service
 import { apiCall } from '../services/api';
 
 const LandingPage = () => {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [currentSlide, setCurrentSlide] = useState(0);
+    
+    const heroSlides = [
+        {
+            title: "Het complete systeem voor uw Islamitisch onderwijs",
+            subtitle: "Beheer leerlingen, voortgang, financiën en communicatie vanuit één professioneel platform",
+            highlight: "Qor'aan Memorisatie Tracker",
+            icon: BookOpen,
+            gradient: "from-emerald-600 to-teal-600",
+            stats: { label: "156 Actieve Leerlingen", value: "94% Aanwezigheid" }
+        },
+        {
+            title: "Directe communicatie met alle ouders",
+            subtitle: "Verstuur updates, rapporten en mededelingen naar ouders met een enkele klik",
+            highlight: "Email & Ouder Portaal",
+            icon: Users,
+            gradient: "from-blue-600 to-purple-600",
+            stats: { label: "24 Ouders bereikt", value: "98% Open rate" }
+        },
+        {
+            title: "Professionele rapporten en analyses",
+            subtitle: "Automatische voortgangsrapporten en inzichtelijke dashboards voor betere besluitvorming",
+            highlight: "Slimme Analytics",
+            icon: BarChart3,
+            gradient: "from-orange-600 to-red-600",
+            stats: { label: "12 Leraren actief", value: "8.7 Gem. cijfer" }
+        }
+    ];
+    
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+        }, 6000);
+        return () => clearInterval(timer);
+    }, [heroSlides.length]);
+    
+    const nextSlide = () => {
+        setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    };
+    
+    const prevSlide = () => {
+        setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+    };
 
     // Stripe Checkout Handler voor Professioneel Plan
     const handleStartTrial = async () => {
@@ -78,32 +121,53 @@ const LandingPage = () => {
 
     const pricingTiers = [
         {
-            name: 'Basis',
-            price: 'Gratis',
-            priceSuffix: 'tot 10 leerlingen',
-            features: ['Leerlingen & Klassenbeheer', 'Basis Aanwezigheid', '1 Beheerder', 'Max 2 Leraren'],
-            cta: 'Start Gratis Demo',
-            link: '/register',
-            isFeatured: false,
-        },
-        {
             name: 'Professioneel',
             price: '€25',
             priceSuffix: '/ maand',
-            features: ['Onbeperkt Aantal Leerlingen', 'Financieel Beheer', 'Qor\'aan Voortgang', 'Rapporten Module', 'Email Communicatie', 'Standaard Support'],
-            cta: 'Kies Professioneel',
+            features: [
+                'Onbeperkt Aantal Leerlingen', 
+                'Qor\'aan Memorisatie Tracker', 
+                'Financieel Beheer & Betalingen', 
+                'Email Communicatie naar Ouders', 
+                'Professionele Rapporten', 
+                'Aanwezigheid Tracking',
+                'Ouder Portaal Toegang',
+                'Priority Support'
+            ],
+            cta: 'Start Professioneel Plan',
             handler: handleChooseProfessional,
             isFeatured: true,
             isStripeCheckout: true,
+            badge: 'Meest Populair',
+            description: 'Perfect voor moskeeën en onderwijsinstellingen'
         },
         {
-            name: 'Compleet',
+            name: 'Gratis Demo',
+            price: 'Gratis',
+            priceSuffix: '14 dagen proberen',
+            features: ['Alle Pro functies', 'Beperkt tot 10 leerlingen', 'Basis Support', 'Geen betaalgegevens vereist'],
+            cta: 'Start Gratis Demo',
+            link: '/register',
+            isFeatured: false,
+            description: 'Test alle functionaliteiten zonder kosten'
+        },
+        {
+            name: 'Enterprise',
             price: 'Maatwerk',
             priceSuffix: 'voor grote organisaties',
-            features: ['Alles in Professioneel', 'Eigen Branding', 'API Toegang', 'Persoonlijke Onboarding', 'Prioriteitssupport'],
-            cta: 'Neem Contact Op',
+            features: [
+                'Alles in Professioneel', 
+                'Eigen Branding & Logo', 
+                'API Toegang & Integraties', 
+                'Persoonlijke Onboarding', 
+                'Dedicated Account Manager',
+                'Custom Features',
+                'SLA Garantie'
+            ],
+            cta: 'Plan een Demo',
             link: 'mailto:i.abdellaoui@gmail.com',
             isFeatured: false,
+            description: 'Volledig op maat gemaakte oplossingen'
         },
     ];
 
@@ -140,92 +204,133 @@ const LandingPage = () => {
                 </div>
             </nav>
 
-            {/* Hero Section met Visual Dashboard */}
-            <div className="relative bg-gradient-to-br from-gray-50 via-white to-emerald-50">
-                <div className="container mx-auto px-6 py-20">
-                    <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
-                        {/* Linkerkant: Content */}
-                        <div className="text-center lg:text-left">
-                            <h1 className="text-4xl md:text-6xl font-bold text-gray-900">
-                                Het hart van uw Islamitisch onderwijs.
-                            </h1>
-                            <p className="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl lg:max-w-none mx-auto lg:mx-0">
-                                MijnLVS biedt overzicht en structuur voor moskeeën en onderwijsinstellingen. Beheer leerlingen, voortgang, financiën en communicatie vanuit één centraal, modern platform.
-                            </p>
-                            <div className="mt-8">
-                                <Link to="/register">
-                                    <Button size="lg" className="text-lg py-4 px-8">
-                                        Start je 14-daagse demo nu
-                                    </Button>
-                                </Link>
-                                <p className="mt-2 text-sm text-gray-500 text-center lg:text-left">
-                                    Of ga direct naar 
-                                    <button 
-                                        onClick={handleChooseProfessional}
-                                        disabled={isProcessingPayment}
-                                        className="text-emerald-600 hover:underline ml-1 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isProcessingPayment ? 'Bezig met laden...' : 'Professioneel Plan (€25/maand)'}
-                                    </button>
-                                </p>
-                            </div>
-                            
-                            {/* Trust indicators */}
-                            <div className="mt-6 flex justify-center lg:justify-start items-center space-x-8 text-sm text-gray-500">
-                                <span className="flex items-center">
-                                    <CheckCircle className="w-4 h-4 text-emerald-500 mr-2" />
-                                    Geen creditcard nodig
-                                </span>
-                                <span className="flex items-center">
-                                    <CheckCircle className="w-4 h-4 text-emerald-500 mr-2" />
-                                    Direct beschikbaar
-                                </span>
-                            </div>
+            {/* Hero Slider Banner */}
+            <div className="relative overflow-hidden">
+                {heroSlides.map((slide, index) => {
+                    const IconComponent = slide.icon;
+                    return (
+                        <div
+                            key={index}
+                            className={`absolute inset-0 transition-transform duration-700 ease-in-out transform ${
+                                index === currentSlide ? 'translate-x-0' : 
+                                index < currentSlide ? '-translate-x-full' : 'translate-x-full'
+                            }`}
+                        >
+                            <div className={`bg-gradient-to-br ${slide.gradient} text-white relative`}>
+                                <div className="absolute inset-0 bg-black/20"></div>
+                                <div className="container mx-auto px-6 py-24 lg:py-32 relative z-10">
+                                    <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
+                                        {/* Linkerkant: Content */}
+                                        <div className="text-center lg:text-left">
+                                            <div className="flex items-center justify-center lg:justify-start mb-6">
+                                                <div className="bg-white/20 p-3 rounded-full mr-4">
+                                                    <IconComponent className="w-8 h-8 text-white" />
+                                                </div>
+                                                <span className="text-white/90 font-medium">{slide.highlight}</span>
+                                            </div>
+                                            
+                                            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+                                                {slide.title}
+                                            </h1>
+                                            <p className="text-lg md:text-xl text-white/90 max-w-3xl lg:max-w-none mx-auto lg:mx-0 mb-8">
+                                                {slide.subtitle}
+                                            </p>
+                                            
+                                            {/* Primary CTA - Pro Plan */}
+                                            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
+                                                <button 
+                                                    onClick={handleChooseProfessional}
+                                                    disabled={isProcessingPayment}
+                                                    className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-emerald-600 bg-white rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                                                >
+                                                    <Star className="w-5 h-5 mr-2" />
+                                                    {isProcessingPayment ? 'Bezig met laden...' : 'Start Professioneel Plan - €25/maand'}
+                                                </button>
+                                                
+                                                <Link to="/register">
+                                                    <button className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-white/20 border-2 border-white rounded-xl hover:bg-white/30 transition-all duration-200">
+                                                        14-dagen gratis proberen
+                                                        <ArrowRight className="w-5 h-5 ml-2" />
+                                                    </button>
+                                                </Link>
+                                            </div>
+                                            
+                                            {/* Trust indicators */}
+                                            <div className="flex justify-center lg:justify-start items-center space-x-8 text-sm text-white/80">
+                                                <span className="flex items-center">
+                                                    <Shield className="w-4 h-4 mr-2" />
+                                                    Veilig & Betrouwbaar
+                                                </span>
+                                                <span className="flex items-center">
+                                                    <Award className="w-4 h-4 mr-2" />
+                                                    Direct beschikbaar
+                                                </span>
+                                            </div>
+                                        </div>
 
-                            {/* Existing customer login */}
-                            <p className="mt-4 text-sm text-gray-500">
-                                Al klant? 
-                                <button 
-                                    onClick={handleExistingLogin} 
-                                    className="text-emerald-600 hover:underline ml-1 font-medium"
-                                >
-                                    Log hier in op uw organisatie
-                                </button>
-                            </p>
-                        </div>
-
-                        {/* Rechterkant: Visual Dashboard Preview */}
-                        <div className="mt-12 lg:mt-0">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-3xl transform rotate-6"></div>
-                                <div className="relative bg-white rounded-3xl shadow-2xl p-8">
-                                    <div className="text-center">
-                                        <Building className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Uw Moskee Dashboard</h3>
-                                        <p className="text-gray-600 mb-6">Real-time inzicht in alle aspecten van uw onderwijs</p>
-                                        <div className="grid grid-cols-2 gap-4 text-left">
-                                            <div className="bg-emerald-50 p-4 rounded-lg">
-                                                <div className="text-2xl font-bold text-emerald-600">156</div>
-                                                <div className="text-sm text-gray-600">Actieve Leerlingen</div>
-                                            </div>
-                                            <div className="bg-blue-50 p-4 rounded-lg">
-                                                <div className="text-2xl font-bold text-blue-600">12</div>
-                                                <div className="text-sm text-gray-600">Leraren</div>
-                                            </div>
-                                            <div className="bg-purple-50 p-4 rounded-lg">
-                                                <div className="text-2xl font-bold text-purple-600">94%</div>
-                                                <div className="text-sm text-gray-600">Aanwezigheid</div>
-                                            </div>
-                                            <div className="bg-orange-50 p-4 rounded-lg">
-                                                <div className="text-2xl font-bold text-orange-600">8.7</div>
-                                                <div className="text-sm text-gray-600">Gem. Cijfer</div>
+                                        {/* Rechterkant: Stats Card */}
+                                        <div className="mt-12 lg:mt-0">
+                                            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+                                                <div className="text-center">
+                                                    <TrendingUp className="w-16 h-16 text-white mx-auto mb-4" />
+                                                    <h3 className="text-2xl font-bold text-white mb-2">Live Dashboard</h3>
+                                                    <p className="text-white/80 mb-6">Real-time inzicht in uw onderwijs</p>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+                                                            <div className="text-2xl font-bold text-white">{slide.stats.label.split(' ')[0]}</div>
+                                                            <div className="text-sm text-white/80">{slide.stats.label.split(' ').slice(1).join(' ')}</div>
+                                                        </div>
+                                                        <div className="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+                                                            <div className="text-2xl font-bold text-white">{slide.stats.value.split(' ')[0]}</div>
+                                                            <div className="text-sm text-white/80">{slide.stats.value.split(' ').slice(1).join(' ')}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    );
+                })}
+                
+                {/* Navigation Controls */}
+                <button 
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-full transition-all duration-200 z-20"
+                >
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+                
+                <button 
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-full transition-all duration-200 z-20"
+                >
+                    <ChevronRight className="w-6 h-6" />
+                </button>
+                
+                {/* Slide Indicators */}
+                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3 z-20">
+                    {heroSlides.map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => setCurrentSlide(index)}
+                            className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                                index === currentSlide ? 'bg-white' : 'bg-white/50 hover:bg-white/70'
+                            }`}
+                        />
+                    ))}
+                </div>
+                
+                {/* Existing customer login - repositioned */}
+                <div className="absolute top-4 right-4 z-20">
+                    <button 
+                        onClick={handleExistingLogin} 
+                        className="text-white/80 hover:text-white text-sm font-medium bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm transition-all duration-200"
+                    >
+                        Al klant? Inloggen →
+                    </button>
                 </div>
             </div>
 
@@ -449,27 +554,51 @@ const LandingPage = () => {
             {/* Pricing Section */}
             <div id="prijzen" className="py-20 bg-gray-50">
                 <div className="container mx-auto px-6">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-bold">Een plan voor elke organisatie</h2>
-                        <p className="text-gray-600 mt-2">Kies het pakket dat bij u past. Eenvoudig, transparant en zonder verborgen kosten.</p>
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Kies het plan dat bij u past</h2>
+                        <p className="text-gray-600 text-lg max-w-2xl mx-auto">Start vandaag nog met het Professioneel Plan en transformeer uw Islamitisch onderwijs. Transparante prijzen, geen verborgen kosten.</p>
                     </div>
+                    
+                    {/* Featured Pro Plan Highlight */}
+                    <div className="mb-12 text-center">
+                        <div className="inline-flex items-center bg-emerald-100 text-emerald-800 px-6 py-3 rounded-full font-semibold">
+                            <Star className="w-5 h-5 mr-2" />
+                            Aanbevolen: Start direct met het Professioneel Plan voor de beste ervaring
+                        </div>
+                    </div>
+                    
                     <div className="flex flex-wrap justify-center gap-8">
                         {pricingTiers.map(tier => (
-                            <div key={tier.name} className={`w-full max-w-sm border rounded-xl p-8 space-y-6 flex flex-col bg-white ${tier.isFeatured ? 'border-emerald-500 border-2 shadow-2xl' : 'border-gray-200'}`}>
-                                {tier.isFeatured && <div className="text-center"><span className="px-3 py-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full">Meest Gekozen</span></div>}
-                                <h3 className="text-2xl font-bold text-center">{tier.name}</h3>
+                            <div key={tier.name} className={`w-full max-w-sm border rounded-2xl p-8 space-y-6 flex flex-col bg-white relative transform hover:scale-105 transition-all duration-200 ${tier.isFeatured ? 'border-emerald-500 border-2 shadow-2xl ring-4 ring-emerald-100' : 'border-gray-200 hover:shadow-lg'}`}>
+                                {tier.badge && (
+                                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                                        <span className="px-4 py-2 text-sm font-bold text-white bg-emerald-500 rounded-full shadow-lg">
+                                            {tier.badge}
+                                        </span>
+                                    </div>
+                                )}
+                                
+                                <div className="pt-4">
+                                    <h3 className="text-2xl font-bold text-center mb-2">{tier.name}</h3>
+                                    {tier.description && (
+                                        <p className="text-gray-600 text-sm text-center mb-4">{tier.description}</p>
+                                    )}
+                                </div>
+                                
                                 <div className="text-center">
-                                    <span className="text-4xl font-extrabold">{tier.price}</span>
+                                    <span className={`text-4xl font-extrabold ${tier.isFeatured ? 'text-emerald-600' : 'text-gray-900'}`}>{tier.price}</span>
                                     <span className="text-gray-500 ml-1">{tier.priceSuffix}</span>
                                 </div>
+                                
                                 <ul className="space-y-3 text-sm flex-grow">
                                     {tier.features.map(feature => (
                                         <li key={feature} className="flex items-start">
-                                            <CheckCircle className="w-5 h-5 text-emerald-500 mr-2 flex-shrink-0" />
-                                            <span>{feature}</span>
+                                            <CheckCircle className={`w-5 h-5 mr-2 flex-shrink-0 ${tier.isFeatured ? 'text-emerald-500' : 'text-gray-400'}`} />
+                                            <span className={tier.isFeatured ? 'text-gray-900 font-medium' : 'text-gray-700'}>{feature}</span>
                                         </li>
                                     ))}
                                 </ul>
+                                
                                 {tier.isStripeCheckout ? (
                                     <Button 
                                         fullWidth 
@@ -477,6 +606,7 @@ const LandingPage = () => {
                                         size="lg"
                                         onClick={tier.handler}
                                         disabled={isProcessingPayment}
+                                        className={tier.isFeatured ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-4 shadow-xl' : ''}
                                     >
                                         {isProcessingPayment ? 'Bezig met laden...' : tier.cta}
                                     </Button>
@@ -496,31 +626,85 @@ const LandingPage = () => {
                             </div>
                         ))}
                     </div>
+                    
+                    {/* Bottom CTA for Pro Plan */}
+                    <div className="mt-16 text-center">
+                        <div className="bg-white rounded-2xl p-8 shadow-lg border border-emerald-200 max-w-2xl mx-auto">
+                            <h3 className="text-2xl font-bold text-gray-900 mb-4">Klaar om te beginnen?</h3>
+                            <p className="text-gray-600 mb-6">Join honderden moskeeën die al gebruik maken van MijnLVS voor hun onderwijsmanagement</p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button 
+                                    onClick={handleChooseProfessional}
+                                    disabled={isProcessingPayment}
+                                    className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                                >
+                                    <Star className="w-5 h-5 mr-2" />
+                                    {isProcessingPayment ? 'Bezig met laden...' : 'Start Professioneel Plan Nu'}
+                                </button>
+                                <Link to="/register">
+                                    <button className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all duration-200">
+                                        Of probeer 14 dagen gratis
+                                        <ArrowRight className="w-5 h-5 ml-2" />
+                                    </button>
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Extra CTA Sectie */}
             <section className="py-20 bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
                 <div className="container mx-auto px-6 text-center">
-                    <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-                        Klaar om uw onderwijs te digitaliseren?
-                    </h2>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button 
-                            onClick={handleStartDemo}
-                            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-emerald-600 bg-white border border-transparent rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
-                        >
-                            Gratis Registreren 
-                            <ArrowRight className="w-5 h-5 ml-2" />
-                        </button>
+                    <div className="max-w-4xl mx-auto">
+                        <h2 className="text-3xl lg:text-5xl font-bold mb-6">
+                            Transformeer uw Islamitisch onderwijs vandaag nog
+                        </h2>
+                        <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+                            Join honderden moskeeën die al gebruik maken van MijnLVS. Start met het Professioneel Plan en ervaar direct het verschil.
+                        </p>
                         
-                        <a href="mailto:i.abdellaoui@gmail.com">
+                        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
                             <button 
-                                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-transparent border-2 border-white rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
+                                onClick={handleChooseProfessional}
+                                disabled={isProcessingPayment}
+                                className="inline-flex items-center justify-center px-10 py-5 text-xl font-bold text-emerald-600 bg-white border border-transparent rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-white/30 transition-all duration-200 shadow-2xl hover:shadow-white/20 transform hover:-translate-y-1"
                             >
-                                📞 Plan een demo gesprek
+                                <Star className="w-6 h-6 mr-3" />
+                                {isProcessingPayment ? 'Bezig met laden...' : 'Start Professioneel Plan - €25/maand'}
                             </button>
-                        </a>
+                            
+                            <div className="text-white/80 text-sm">of</div>
+                            
+                            <button 
+                                onClick={handleStartDemo}
+                                className="inline-flex items-center justify-center px-10 py-5 text-lg font-medium text-white bg-white/20 border-2 border-white rounded-xl hover:bg-white/30 focus:outline-none focus:ring-4 focus:ring-white/30 transition-all duration-200 backdrop-blur-sm"
+                            >
+                                Probeer 14 dagen gratis
+                                <ArrowRight className="w-5 h-5 ml-2" />
+                            </button>
+                        </div>
+                        
+                        <div className="mt-8 flex justify-center items-center space-x-8 text-sm text-white/70">
+                            <span className="flex items-center">
+                                <Shield className="w-4 h-4 mr-2" />
+                                Veilig & Betrouwbaar
+                            </span>
+                            <span className="flex items-center">
+                                <Award className="w-4 h-4 mr-2" />
+                                Direct Beschikbaar
+                            </span>
+                            <span className="flex items-center">
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Geen Setup Kosten
+                            </span>
+                        </div>
+                        
+                        <div className="mt-6">
+                            <a href="mailto:i.abdellaoui@gmail.com" className="text-white/80 hover:text-white underline text-lg">
+                                📞 Of plan een persoonlijke demo: i.abdellaoui@gmail.com
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>
