@@ -11,7 +11,7 @@ const sanitizeInput = (value) => {
     .replace(/on\w+\s*=/gi, ''); // Remove event handlers like onclick=
 };
 
-const validateInput = (value, type, maxLength = 1000) => {
+const validateInput = (value, type, maxLength = 1000, validateOnChange = false) => {
   if (!value) return { isValid: true, sanitized: value };
   
   const stringValue = String(value);
@@ -21,10 +21,11 @@ const validateInput = (value, type, maxLength = 1000) => {
     return { isValid: false, error: `Input is te lang (max ${maxLength} karakters)` };
   }
   
-  // Type-specific validation
-  if (type === 'email') {
+  // Type-specific validation - alleen als validateOnChange true is
+  if (validateOnChange && type === 'email') {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(stringValue)) {
+    // Alleen valideren als het veld niet leeg is en er een @ in zit
+    if (stringValue.includes('@') && !emailRegex.test(stringValue)) {
       return { isValid: false, error: 'Ongeldig emailadres' };
     }
   }
@@ -33,7 +34,7 @@ const validateInput = (value, type, maxLength = 1000) => {
   return { isValid: true, sanitized: sanitizeInput(stringValue) };
 };
 
-const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, required, disabled, className = '', rows = 3, name, maxLength, ...props }) => {
+const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, required, disabled, className = '', rows = 3, name, maxLength, validateOnChange = false, ...props }) => {
   
   const handleChange = (e) => {
     if (disabled) return; // Prevent change if disabled
@@ -41,7 +42,7 @@ const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, 
     const inputValue = e.target.value;
     
     // Perform security validation and sanitization
-    const validation = validateInput(inputValue, type, maxLength);
+    const validation = validateInput(inputValue, type, maxLength, validateOnChange);
     
     if (!validation.isValid) {
       // You could set an error state here if needed
