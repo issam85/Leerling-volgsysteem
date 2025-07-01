@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offline - MijnLVS</title>
+    <meta name="theme-color" content="#059669">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+        
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .info h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .info ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .info li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .info li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.9);
+            color: #047857;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+        }
+        
+        .online {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .offline {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            📱
+        </div>
+        
+        <h1>Offline Modus</h1>
+        <p class="subtitle">
+            Je bent momenteel offline. Sommige functies zijn beperkt beschikbaar.
+        </p>
+        
+        <div class="info">
+            <h3>Wat kun je nog wel doen:</h3>
+            <ul>
+                <li>Bekijk eerder geladen pagina's</li>
+                <li>Bekijk opgeslagen gegevens</li>
+                <li>Gebruik de navigatie</li>
+                <li>Formulieren invullen (worden gesynchroniseerd zodra je online bent)</li>
+            </ul>
+        </div>
+        
+        <div class="buttons">
+            <button class="btn" onclick="tryReconnect()">
+                🔄 Opnieuw verbinden
+            </button>
+            <a href="/" class="btn btn-secondary">
+                🏠 Naar Dashboard
+            </a>
+        </div>
+        
+        <div class="status" id="connectionStatus">
+            <span id="statusText">🔴 Offline</span>
+        </div>
+    </div>
+
+    <script>
+        // Check connection status
+        function updateConnectionStatus() {
+            const statusElement = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            
+            if (navigator.onLine) {
+                statusElement.className = 'status online';
+                statusText.innerHTML = '🟢 Online - Verbinding hersteld!';
+                
+                // Auto-redirect after 2 seconds when back online
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                statusElement.className = 'status offline';
+                statusText.innerHTML = '🔴 Offline';
+            }
+        }
+        
+        function tryReconnect() {
+            // Force a connection check
+            fetch('/manifest.json', { cache: 'no-cache' })
+                .then(() => {
+                    // Connection successful
+                    window.location.reload();
+                })
+                .catch(() => {
+                    // Still offline
+                    alert('Nog steeds offline. Controleer je internetverbinding.');
+                });
+        }
+        
+        // Listen for connection changes
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+        
+        // Initial status check
+        updateConnectionStatus();
+        
+        // Periodically check connection
+        setInterval(() => {
+            updateConnectionStatus();
+        }, 5000);
+    </script>
+</body>
+</html>

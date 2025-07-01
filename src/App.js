@@ -11,6 +11,8 @@ import LoginPage from './pages/LoginPage';
 import RegistrationPage from './pages/RegistrationPage';
 import ResetPasswordPage from './pages/ResetPasswordPage'; // ✅ NIEUWE IMPORT
 import DashboardPage from './pages/DashboardPage';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import NetworkStatus from './components/NetworkStatus';
 
 // Admin Pages
 import ClassesPage from './pages/ClassesPage';
@@ -123,6 +125,13 @@ const AppRoutes = () => {
               <span className="block sm:inline">U heeft geen rechten ({location.state.requiredRole} vereist) voor de vorige pagina.</span>
           </div>
       )}
+      
+      {/* Network Status Indicator */}
+      <NetworkStatus />
+      
+      {/* PWA Install Prompt - only show for authenticated users */}
+      {currentUser && <PWAInstallPrompt />}
+      
       <Routes>
         {/* ✅ NIEUWE ROUTE: Password reset op alle klant subdomeinen */}
         <Route path="/reset-password" element={<ResetPasswordPage />} />

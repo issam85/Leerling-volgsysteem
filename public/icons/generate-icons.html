@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Icon Generator - MijnLVS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #059669;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .icon-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .icon-item {
+            text-align: center;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        .icon-item canvas {
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .icon-size {
+            font-weight: bold;
+            margin-top: 10px;
+            color: #374151;
+        }
+        .generate-btn {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto;
+            font-weight: bold;
+        }
+        .generate-btn:hover {
+            background: #047857;
+        }
+        .instructions {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .instructions h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 PWA Icon Generator voor MijnLVS</h1>
+        
+        <p>Deze tool genereert placeholder app icons voor je PWA. In productie kun je deze vervangen door professionele icons gebaseerd op je logo.</p>
+        
+        <button class="generate-btn" onclick="generateAllIcons()">
+            🚀 Genereer App Icons
+        </button>
+        
+        <div class="icon-preview" id="iconPreview"></div>
+        
+        <div class="instructions">
+            <h3>📋 Instructies:</h3>
+            <ol>
+                <li>Klik op "Genereer App Icons" om placeholder icons te maken</li>
+                <li>Right-click op elke icon → "Opslaan als..." → sla op in de <code>/public/icons/</code> folder</li>
+                <li>Gebruik de exacte bestandsnamen zoals getoond</li>
+                <li>Voor productie: vervang deze door professionele icons gemaakt door een designer</li>
+                <li>Zorg dat alle icons dezelfde basis design hebben maar geschaald voor verschillende formaten</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const iconSizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#059669');
+            gradient.addColorStop(1, '#047857');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Border radius effect (rounded corners)
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            const radius = size * 0.15;
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Text/Logo placeholder
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            if (size >= 192) {
+                // Large icons - show full text
+                ctx.font = `bold ${size * 0.12}px Arial`;
+                ctx.fillText('MijnLVS', size / 2, size / 2 - size * 0.05);
+                ctx.font = `${size * 0.08}px Arial`;
+                ctx.fillText('Moskee', size / 2, size / 2 + size * 0.08);
+                ctx.fillText('Systeem', size / 2, size / 2 + size * 0.18);
+            } else if (size >= 96) {
+                // Medium icons - abbreviated
+                ctx.font = `bold ${size * 0.2}px Arial`;
+                ctx.fillText('LVS', size / 2, size / 2 - size * 0.05);
+                ctx.font = `${size * 0.12}px Arial`;
+                ctx.fillText('📚', size / 2, size / 2 + size * 0.15);
+            } else {
+                // Small icons - just emoji
+                ctx.font = `${size * 0.5}px Arial`;
+                ctx.fillText('📚', size / 2, size / 2);
+            }
+            
+            return canvas;
+        }
+        
+        function generateAllIcons() {
+            const preview = document.getElementById('iconPreview');
+            preview.innerHTML = '';
+            
+            iconSizes.forEach(size => {
+                const canvas = generateIcon(size);
+                
+                const item = document.createElement('div');
+                item.className = 'icon-item';
+                
+                const clonedCanvas = canvas.cloneNode(true);
+                const ctx = clonedCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, 0);
+                
+                // Scale for preview (max 96px)
+                const previewSize = Math.min(size, 96);
+                clonedCanvas.style.width = previewSize + 'px';
+                clonedCanvas.style.height = previewSize + 'px';
+                
+                const sizeLabel = document.createElement('div');
+                sizeLabel.className = 'icon-size';
+                sizeLabel.textContent = `${size}×${size}px`;
+                
+                const filename = document.createElement('div');
+                filename.style.fontSize = '12px';
+                filename.style.color = '#6b7280';
+                filename.style.marginTop = '5px';
+                filename.innerHTML = `<strong>icon-${size}x${size}.png</strong>`;
+                
+                item.appendChild(clonedCanvas);
+                item.appendChild(sizeLabel);
+                item.appendChild(filename);
+                preview.appendChild(item);
+                
+                // Add download functionality
+                clonedCanvas.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    const link = document.createElement('a');
+                    link.download = `icon-${size}x${size}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+                
+                clonedCanvas.style.cursor = 'pointer';
+                clonedCanvas.title = `Right-click om icon-${size}x${size}.png op te slaan`;
+            });
+            
+            // Add shortcuts
+            generateShortcutIcons();
+        }
+        
+        function generateShortcutIcons() {
+            const shortcuts = [
+                { name: 'dashboard', emoji: '📊', label: 'Dashboard' },
+                { name: 'students', emoji: '👥', label: 'Leerlingen' }
+            ];
+            
+            shortcuts.forEach(shortcut => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 96;
+                canvas.height = 96;
+                const ctx = canvas.getContext('2d');
+                
+                // Background
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(0, 0, 96, 96);
+                
+                // Border radius
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.roundRect(0, 0, 96, 96, 12);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+                
+                // Icon
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(shortcut.emoji, 48, 48);
+                
+                const item = document.createElement('div');
+                item.className = 'icon-item';
+                
+                const sizeLabel = document.createElement('div');
+                sizeLabel.className = 'icon-size';
+                sizeLabel.textContent = shortcut.label;
+                
+                const filename = document.createElement('div');
+                filename.style.fontSize = '12px';
+                filename.style.color = '#6b7280';
+                filename.style.marginTop = '5px';
+                filename.innerHTML = `<strong>shortcut-${shortcut.name}.png</strong>`;
+                
+                canvas.style.cursor = 'pointer';
+                canvas.title = `Right-click om shortcut-${shortcut.name}.png op te slaan`;
+                
+                canvas.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    const link = document.createElement('a');
+                    link.download = `shortcut-${shortcut.name}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+                
+                item.appendChild(canvas);
+                item.appendChild(sizeLabel);
+                item.appendChild(filename);
+                document.getElementById('iconPreview').appendChild(item);
+            });
+        }
+        
+        // Add roundRect support for older browsers
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                this.beginPath();
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                this.closePath();
+                return this;
+            };
+        }
+    </script>
+</body>
+</html>

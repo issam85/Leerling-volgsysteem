@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test - MijnLVS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #059669;
+            text-align: center;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+        .test-btn {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-btn:hover {
+            background: #047857;
+        }
+        pre {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 PWA Functionaliteit Test</h1>
+        
+        <div class="test-section">
+            <h3>📱 PWA Support Check</h3>
+            <div id="pwa-support"></div>
+            <button class="test-btn" onclick="checkPWASupport()">Test PWA Support</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Service Worker Test</h3>
+            <div id="sw-test"></div>
+            <button class="test-btn" onclick="testServiceWorker()">Test Service Worker</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📄 Manifest Test</h3>
+            <div id="manifest-test"></div>
+            <button class="test-btn" onclick="testManifest()">Test Manifest</button>
+        </div>
+
+        <div class="test-section">
+            <h3>💾 Cache Test</h3>
+            <div id="cache-test"></div>
+            <button class="test-btn" onclick="testCache()">Test Cache API</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🔔 Notification Test</h3>
+            <div id="notification-test"></div>
+            <button class="test-btn" onclick="testNotifications()">Test Push Notifications</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 PWA Score</h3>
+            <div id="pwa-score"></div>
+            <button class="test-btn" onclick="calculatePWAScore()">Bereken PWA Score</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Quick Setup Guide</h3>
+            <div>
+                <h4>Om PWA te testen:</h4>
+                <ol>
+                    <li>Start je React app: <code>npm start</code></li>
+                    <li>Open Chrome DevTools → Application → Manifest</li>
+                    <li>Controleer manifest.json inhoud</li>
+                    <li>Ga naar Service Workers tab</li>
+                    <li>Controleer of service worker draait</li>
+                    <li>Test "Add to Home Screen" in mobile view</li>
+                    <li>Test offline functionaliteit door Network → Offline</li>
+                </ol>
+                
+                <h4>Voor echte mobiele test:</h4>
+                <ol>
+                    <li>Deploy naar een HTTPS server</li>
+                    <li>Open op mobiele browser</li>
+                    <li>Controleer "Add to Home Screen" prompt</li>
+                    <li>Installeer app</li>
+                    <li>Test offline gebruik</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addResult(containerId, message, type = 'success') {
+            const container = document.getElementById(containerId);
+            const result = document.createElement('div');
+            result.className = `test-result ${type}`;
+            result.innerHTML = message;
+            container.appendChild(result);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        function checkPWASupport() {
+            clearResults('pwa-support');
+            
+            // Check service worker support
+            if ('serviceWorker' in navigator) {
+                addResult('pwa-support', '✅ Service Worker API ondersteund');
+            } else {
+                addResult('pwa-support', '❌ Service Worker API niet ondersteund', 'error');
+            }
+
+            // Check manifest support
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                addResult('pwa-support', '✅ Push Notifications ondersteund');
+            } else {
+                addResult('pwa-support', '⚠️ Push Notifications beperkt ondersteund', 'warning');
+            }
+
+            // Check install prompt support
+            if ('BeforeInstallPromptEvent' in window) {
+                addResult('pwa-support', '✅ Install Prompt ondersteund');
+            } else {
+                addResult('pwa-support', '⚠️ Install Prompt mogelijk beperkt', 'warning');
+            }
+
+            // Check cache API
+            if ('caches' in window) {
+                addResult('pwa-support', '✅ Cache API ondersteund');
+            } else {
+                addResult('pwa-support', '❌ Cache API niet ondersteund', 'error');
+            }
+        }
+
+        async function testServiceWorker() {
+            clearResults('sw-test');
+            
+            if (!('serviceWorker' in navigator)) {
+                addResult('sw-test', '❌ Service Worker niet ondersteund', 'error');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    addResult('sw-test', '✅ Service Worker geregistreerd');
+                    addResult('sw-test', `Scope: ${registration.scope}`);
+                    addResult('sw-test', `State: ${registration.active ? registration.active.state : 'Unknown'}`);
+                } else {
+                    addResult('sw-test', '⚠️ Geen Service Worker geregistreerd', 'warning');
+                    addResult('sw-test', 'Start je React app om Service Worker te registreren');
+                }
+            } catch (error) {
+                addResult('sw-test', `❌ Fout bij Service Worker check: ${error.message}`, 'error');
+            }
+        }
+
+        async function testManifest() {
+            clearResults('manifest-test');
+            
+            try {
+                const response = await fetch('/manifest.json');
+                if (response.ok) {
+                    const manifest = await response.json();
+                    addResult('manifest-test', '✅ Manifest.json gevonden en geldig');
+                    addResult('manifest-test', `App naam: ${manifest.name}`);
+                    addResult('manifest-test', `Icons: ${manifest.icons ? manifest.icons.length : 0} gevonden`);
+                    addResult('manifest-test', `Display mode: ${manifest.display}`);
+                    
+                    const manifestDetails = document.createElement('details');
+                    manifestDetails.innerHTML = `
+                        <summary>Bekijk manifest details</summary>
+                        <pre>${JSON.stringify(manifest, null, 2)}</pre>
+                    `;
+                    document.getElementById('manifest-test').appendChild(manifestDetails);
+                } else {
+                    addResult('manifest-test', '❌ Manifest.json niet gevonden', 'error');
+                }
+            } catch (error) {
+                addResult('manifest-test', `❌ Fout bij manifest check: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCache() {
+            clearResults('cache-test');
+            
+            if (!('caches' in window)) {
+                addResult('cache-test', '❌ Cache API niet ondersteund', 'error');
+                return;
+            }
+
+            try {
+                const cacheNames = await caches.keys();
+                if (cacheNames.length > 0) {
+                    addResult('cache-test', `✅ ${cacheNames.length} cache(s) gevonden`);
+                    for (const cacheName of cacheNames) {
+                        const cache = await caches.open(cacheName);
+                        const requests = await cache.keys();
+                        addResult('cache-test', `Cache "${cacheName}": ${requests.length} items`);
+                    }
+                } else {
+                    addResult('cache-test', '⚠️ Geen caches gevonden', 'warning');
+                    addResult('cache-test', 'Start je app om caching te activeren');
+                }
+            } catch (error) {
+                addResult('cache-test', `❌ Fout bij cache check: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNotifications() {
+            clearResults('notification-test');
+            
+            if (!('Notification' in window)) {
+                addResult('notification-test', '❌ Notifications niet ondersteund', 'error');
+                return;
+            }
+
+            addResult('notification-test', '✅ Notification API ondersteund');
+            
+            const permission = Notification.permission;
+            addResult('notification-test', `Huidige permissie: ${permission}`);
+
+            if (permission === 'default') {
+                addResult('notification-test', '⚠️ Vraag permissie aan gebruiker', 'warning');
+                try {
+                    const newPermission = await Notification.requestPermission();
+                    addResult('notification-test', `Nieuwe permissie: ${newPermission}`);
+                    
+                    if (newPermission === 'granted') {
+                        new Notification('PWA Test', {
+                            body: 'Notifications werken! 🎉',
+                            icon: '/icons/icon-192x192.png'
+                        });
+                    }
+                } catch (error) {
+                    addResult('notification-test', `❌ Fout bij permissie: ${error.message}`, 'error');
+                }
+            } else if (permission === 'granted') {
+                addResult('notification-test', '✅ Test notification...');
+                new Notification('PWA Test', {
+                    body: 'Notifications werken perfect! 🎉',
+                    icon: '/icons/icon-192x192.png'
+                });
+            }
+        }
+
+        function calculatePWAScore() {
+            clearResults('pwa-score');
+            
+            let score = 0;
+            let maxScore = 5;
+            
+            // Service Worker
+            if ('serviceWorker' in navigator) score++;
+            
+            // Manifest
+            fetch('/manifest.json').then(response => {
+                if (response.ok) score++;
+                updateScore();
+            }).catch(() => updateScore());
+            
+            // Cache API
+            if ('caches' in window) score++;
+            
+            // Notifications
+            if ('Notification' in window) score++;
+            
+            // HTTPS (can't check in local)
+            if (location.protocol === 'https:') score++;
+            
+            function updateScore() {
+                const percentage = Math.round((score / maxScore) * 100);
+                let message = `PWA Score: ${score}/${maxScore} (${percentage}%)`;
+                let type = 'success';
+                
+                if (percentage < 60) {
+                    type = 'error';
+                    message += ' - Verbeteringen nodig';
+                } else if (percentage < 80) {
+                    type = 'warning';
+                    message += ' - Goed, kan beter';
+                } else {
+                    message += ' - Uitstekend!';
+                }
+                
+                addResult('pwa-score', message, type);
+                
+                // Recommendations
+                if (score < maxScore) {
+                    addResult('pwa-score', '<strong>Aanbevelingen:</strong>');
+                    if (!('serviceWorker' in navigator)) {
+                        addResult('pwa-score', '• Service Worker toevoegen');
+                    }
+                    if (location.protocol !== 'https:') {
+                        addResult('pwa-score', '• HTTPS implementeren voor productie');
+                    }
+                }
+            }
+            
+            updateScore();
+        }
+
+        // Auto-run basic checks on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkPWASupport();
+                testServiceWorker();
+                testManifest();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
