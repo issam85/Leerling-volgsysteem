@@ -229,11 +229,11 @@ function showInstallNotification() {
 }
 
 // Global functions for notification handling
-window.reloadForUpdate = function() {
+const reloadForUpdate = function() {
   window.location.reload();
 };
 
-window.dismissNotification = function(id) {
+const dismissNotification = function(id) {
   const notification = document.getElementById(id);
   if (notification) {
     notification.style.animation = 'slideOut 0.3s ease-in forwards';
@@ -244,6 +244,10 @@ window.dismissNotification = function(id) {
     }, 300);
   }
 };
+
+// Make functions globally available
+window.reloadForUpdate = reloadForUpdate;
+window.dismissNotification = dismissNotification;
 
 // Add slideOut animation
 const style = document.createElement('style');
