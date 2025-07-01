@@ -96,6 +96,23 @@ html {
     line-height: 1.6;
   }
 
+  /* Mobile sidebar fixes */
+  .sidebar-mobile {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* Ensure admin content is visible on mobile */
+  .admin-layout {
+    position: relative;
+    z-index: 1;
+  }
+
+  .admin-content {
+    min-height: 200px;
+    position: relative;
+  }
+
   /* Better Arabic form inputs on mobile */
   .arabic-input {
     text-align: right;

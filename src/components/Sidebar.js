@@ -22,7 +22,13 @@ const Sidebar = () => {
   const { realData } = useData();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Set sidebar collapsed by default on mobile
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768; // Collapsed on mobile by default
+    }
+    return false;
+  });
   const [isChildrenMenuOpen, setIsChildrenMenuOpen] = useState(true);
   const [isTeacherMenuOpen, setIsTeacherMenuOpen] = useState(true);
 
@@ -37,6 +43,25 @@ const Sidebar = () => {
       setIsTeacherMenuOpen(true);
     }
   }, [isParentSectionActive, isTeacherSectionActive]);
+
+  // Handle window resize for responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile && !isCollapsed) {
+          setIsCollapsed(true);
+        } else if (!isMobile && isCollapsed && window.innerWidth >= 1024) {
+          setIsCollapsed(false);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [isCollapsed]);
 
   const handleLogout = async () => {
     try {
@@ -73,7 +98,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className={`bg-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} flex flex-col h-screen`}>
+    <div className={`bg-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} flex flex-col h-auto md:h-screen md:sticky md:top-0 sidebar-mobile`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
