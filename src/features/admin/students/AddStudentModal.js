@@ -138,6 +138,7 @@ const AddStudentModal = ({
       onClose={onClose}
       title={initialData ? "Leerling Bewerken" : "Nieuwe Leerling Toevoegen"}
       size="lg"
+      mobileFullScreen={true}
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={isLoading}>
@@ -162,7 +163,7 @@ const AddStudentModal = ({
             <h3 className="text-sm font-semibold text-gray-700">Persoonlijke Gegevens</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <Input 
               label="Voornaam *" 
               name="first_name" 
@@ -206,7 +207,7 @@ const AddStudentModal = ({
             <h3 className="text-sm font-semibold text-gray-700">Koppeling</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label htmlFor="studentParent" className="block text-sm font-medium text-gray-700 mb-2">
                 Ouder/Verzorger *
@@ -272,7 +273,7 @@ const AddStudentModal = ({
             <h3 className="text-sm font-semibold text-gray-700">Noodcontact (Optioneel)</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <Input 
               label="Naam Noodcontact" 
               name="emergency_contact" 

@@ -8,6 +8,7 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import Button from '../../../components/Button';
 import Input from '../../../components/Input';
 import AddStudentModal from './AddStudentModal';
+import MobileCard from '../../../components/MobileCard';
 import { 
   Users as StudentIcon, 
   Plus, 
@@ -57,6 +58,7 @@ const StudentsTab = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('table');
+  const [expandedCards, setExpandedCards] = useState(new Set());
   
   const navigate = useNavigate();
   const parents = users ? users.filter(u => u.role === 'parent') : [];
@@ -169,6 +171,20 @@ const StudentsTab = () => {
     setSelectedClassFilter('');
     setSortConfig({ key: 'first_name', direction: 'asc' });
   };
+
+  // Toggle card expansion
+  const toggleCardExpansion = (studentId) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(studentId)) {
+      newExpanded.delete(studentId);
+    } else {
+      newExpanded.add(studentId);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  // Check if we should show mobile view
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   // ✅ UPDATED: Enhanced trial limit check with trialLoading
   const handleOpenAddModal = () => {
@@ -622,153 +638,258 @@ const StudentsTab = () => {
             </Button>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => handleSort('first_name')}
-                    >
-                      <div className="flex items-center">
-                        Voornaam
-                        {renderSortIcon('first_name')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => handleSort('last_name')}
-                    >
-                      <div className="flex items-center">
-                        Achternaam
-                        {renderSortIcon('last_name')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => handleSort('class')}
-                    >
-                      <div className="flex items-center">
-                        Klas
-                        {renderSortIcon('class')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => handleSort('parent')}
-                    >
-                      <div className="flex items-center">
-                        Ouder
-                        {renderSortIcon('parent')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => handleSort('date_of_birth')}
-                    >
-                      <div className="flex items-center">
-                        Geboortedatum
-                        {renderSortIcon('date_of_birth')}
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Betalingsstatus
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acties
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAndSortedStudents.map((student, index) => {
-                    const studentPaymentStatus = calculateParentPaymentStatus(student.parent_id, users, payments);
-                    
-                    return (
-                      <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {index + 1} 
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <UserCircle className="h-8 w-8 text-gray-400 mr-3" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {student.first_name || student.name?.split(' ')[0] || 'Onbekend'}
+          <div className="space-y-4">
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('first_name')}
+                      >
+                        <div className="flex items-center">
+                          Voornaam
+                          {renderSortIcon('first_name')}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('last_name')}
+                      >
+                        <div className="flex items-center">
+                          Achternaam
+                          {renderSortIcon('last_name')}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('class')}
+                      >
+                        <div className="flex items-center">
+                          Klas
+                          {renderSortIcon('class')}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('parent')}
+                      >
+                        <div className="flex items-center">
+                          Ouder
+                          {renderSortIcon('parent')}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleSort('date_of_birth')}
+                      >
+                        <div className="flex items-center">
+                          Geboortedatum
+                          {renderSortIcon('date_of_birth')}
+                        </div>
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Betalingsstatus
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Acties
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredAndSortedStudents.map((student, index) => {
+                      const studentPaymentStatus = calculateParentPaymentStatus(student.parent_id, users, payments);
+                      
+                      return (
+                        <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {index + 1} 
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <UserCircle className="h-8 w-8 text-gray-400 mr-3" />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {student.first_name || student.name?.split(' ')[0] || 'Onbekend'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.last_name || student.name?.split(' ').slice(1).join(' ') || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <ClassIcon className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">
-                              {student.class?.name || 'Geen klas'}
-                            </span>
-                          </div>
-                        </td> 
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.parent?.name || 'Geen ouder'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.date_of_birth ? (
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.last_name || student.name?.split(' ').slice(1).join(' ') || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                              {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                              <ClassIcon className="h-4 w-4 text-gray-400 mr-2" />
+                              <span className="text-sm text-gray-900">
+                                {student.class?.name || 'Geen klas'}
+                              </span>
                             </div>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            studentPaymentStatus === 'up_to_date' 
-                              ? 'bg-green-100 text-green-800' 
-                              : studentPaymentStatus === 'overdue'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {studentPaymentStatus === 'up_to_date' ? 'Betaald' : 
-                             studentPaymentStatus === 'overdue' ? 'Achterstallig' : 'Onbekend'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button
-                              onClick={() => viewAttendanceHistory(student.id)}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors"
-                              title="Bekijk aanwezigheid"
-                            >
-                              <Calendar size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleOpenEditModal(student)}
-                              className="text-emerald-600 hover:text-emerald-900 p-1 rounded-md hover:bg-emerald-50 transition-colors"
-                              title="Bewerk leerling"
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudent(student.id)}
-                              className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
-                              title="Verwijder leerling"
-                              disabled={actionLoading}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                          </td> 
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.parent?.name || 'Geen ouder'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.date_of_birth ? (
+                              <div className="flex items-center">
+                                <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                                {new Date(student.date_of_birth).toLocaleDateString('nl-NL')}
+                              </div>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              studentPaymentStatus === 'up_to_date' 
+                                ? 'bg-green-100 text-green-800' 
+                                : studentPaymentStatus === 'overdue'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {studentPaymentStatus === 'up_to_date' ? 'Betaald' : 
+                               studentPaymentStatus === 'overdue' ? 'Achterstallig' : 'Onbekend'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => viewAttendanceHistory(student.id)}
+                                className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors"
+                                title="Bekijk aanwezigheid"
+                              >
+                                <Calendar size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleOpenEditModal(student)}
+                                className="text-emerald-600 hover:text-emerald-900 p-1 rounded-md hover:bg-emerald-50 transition-colors"
+                                title="Bewerk leerling"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudent(student.id)}
+                                className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
+                                title="Verwijder leerling"
+                                disabled={actionLoading}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {filteredAndSortedStudents.map((student, index) => {
+                const studentPaymentStatus = calculateParentPaymentStatus(student.parent_id, users, payments);
+                const isExpanded = expandedCards.has(student.id);
+                
+                return (
+                  <MobileCard
+                    key={student.id}
+                    expandable={true}
+                    expanded={isExpanded}
+                    onToggleExpand={() => toggleCardExpansion(student.id)}
+                  >
+                    <MobileCard.Header
+                      avatar={<UserCircle className="h-10 w-10 text-gray-400" />}
+                      title={`${student.first_name || student.name?.split(' ')[0] || 'Onbekend'} ${student.last_name || student.name?.split(' ').slice(1).join(' ') || ''}`}
+                      subtitle={student.class?.name || 'Geen klas'}
+                      status={
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          studentPaymentStatus === 'up_to_date' 
+                            ? 'bg-green-100 text-green-800' 
+                            : studentPaymentStatus === 'overdue'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {studentPaymentStatus === 'up_to_date' ? 'Betaald' : 
+                           studentPaymentStatus === 'overdue' ? 'Achterstallig' : 'Onbekend'}
+                        </span>
+                      }
+                      rightContent={<MobileCard.ExpandTrigger expanded={isExpanded} />}
+                    />
+                    
+                    <MobileCard.Content>
+                      <MobileCard.Field
+                        icon={<UserCircle size={16} />}
+                        label="Ouder"
+                        value={student.parent?.name || 'Geen ouder'}
+                      />
+                      <MobileCard.Field
+                        icon={<Calendar size={16} />}
+                        label="Geboortedatum"
+                        value={student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('nl-NL') : 'Niet opgegeven'}
+                      />
+                    </MobileCard.Content>
+
+                    <MobileCard.Expandable expanded={isExpanded}>
+                      <div className="p-4 space-y-3">
+                        <div className="text-sm font-medium text-gray-700 mb-2">Aanvullende informatie</div>
+                        
+                        {student.emergency_contact && (
+                          <MobileCard.Field
+                            icon={<UserCircle size={16} />}
+                            label="Noodcontact"
+                            value={student.emergency_contact}
+                          />
+                        )}
+                        
+                        {student.emergency_phone && (
+                          <MobileCard.Field
+                            icon={<UserCircle size={16} />}
+                            label="Noodtelefoon"
+                            value={student.emergency_phone}
+                          />
+                        )}
+                        
+                        {student.notes && (
+                          <div className="text-sm">
+                            <span className="text-gray-500">Notities:</span>
+                            <p className="text-gray-900 mt-1 p-2 bg-gray-50 rounded text-xs">
+                              {student.notes}
+                            </p>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        )}
+                      </div>
+                    </MobileCard.Expandable>
+
+                    <MobileCard.Actions>
+                      <MobileCard.Action
+                        icon={<Calendar size={16} />}
+                        label="Aanwezigheid"
+                        onClick={() => viewAttendanceHistory(student.id)}
+                        variant="secondary"
+                      />
+                      <MobileCard.Action
+                        icon={<Edit3 size={16} />}
+                        label="Bewerken"
+                        onClick={() => handleOpenEditModal(student)}
+                        variant="primary"
+                      />
+                      <MobileCard.Action
+                        icon={<Trash2 size={16} />}
+                        label="Verwijderen"
+                        onClick={() => handleDeleteStudent(student.id)}
+                        variant="danger"
+                        disabled={actionLoading}
+                      />
+                    </MobileCard.Actions>
+                  </MobileCard>
+                );
+              })}
             </div>
           </div>
         )}
