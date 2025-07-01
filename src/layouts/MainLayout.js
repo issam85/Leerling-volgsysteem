@@ -67,13 +67,16 @@ const MainLayout = () => {
   // en halen de overbodige padding van de main tag weg.
   // ==========================================================
   return (
-    <div className="relative min-h-screen flex flex-col md:flex-row">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto md:h-screen">
-        <div className="p-4 sm:p-6 md:p-8">
-            <Outlet />
-        </div>
-      </main>
+    <div className="relative min-h-screen bg-gray-50">
+      {/* Mobile-first layout: sidebar hidden by default, content takes full width */}
+      <div className="md:flex md:h-screen">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto min-h-screen md:h-screen">
+          <div className="p-4 sm:p-6 md:p-8 pt-0 md:pt-8">
+              <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };
