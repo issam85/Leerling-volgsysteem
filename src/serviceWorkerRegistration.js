@@ -64,8 +64,7 @@ function registerValidSW(swUrl, config) {
                 config.onSuccess(registration);
               }
               
-              // Show installation success notification
-              showInstallNotification();
+              // Removed offline notification - user doesn't want it due to Supabase dependency
             }
           }
         });
@@ -180,53 +179,7 @@ function showUpdateNotification() {
   }, 10000);
 }
 
-// PWA Installation Success Notification
-function showInstallNotification() {
-  const notification = document.createElement('div');
-  notification.id = 'pwa-install-notification';
-  notification.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #10b981;
-      color: white;
-      padding: 16px 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 9999;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 14px;
-      max-width: 350px;
-      animation: slideIn 0.3s ease-out;
-    ">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <div style="font-size: 20px;">✅</div>
-        <div style="flex: 1;">
-          <div style="font-weight: 600; margin-bottom: 4px;">Klaar voor offline gebruik</div>
-          <div style="opacity: 0.9; font-size: 13px;">MijnLVS is nu beschikbaar offline!</div>
-        </div>
-        <button onclick="dismissNotification('pwa-install-notification')" style="
-          background: none;
-          border: none;
-          color: white;
-          font-size: 18px;
-          cursor: pointer;
-          padding: 0;
-        ">
-          ×
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(notification);
-  
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    dismissNotification('pwa-install-notification');
-  }, 5000);
-}
+// Removed offline notification function - user doesn't want offline notifications
 
 // Global functions for notification handling
 const reloadForUpdate = function() {

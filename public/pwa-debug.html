@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Debug Tool - MijnLVS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f3f4f6;
+        }
+        .status-ok { background: #d1fae5; color: #065f46; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .icon { margin-right: 10px; font-size: 18px; }
+        button {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #047857; }
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 PWA Debug Tool - MijnLVS</h1>
+    <p>Deze tool helpt om te controleren waarom de PWA install prompt niet verschijnt.</p>
+
+    <div id="checks"></div>
+
+    <div class="info-box">
+        <h3>🛠 Debug Acties</h3>
+        <button onclick="clearPWAData()">Reset PWA Data</button>
+        <button onclick="forceInstallPrompt()">Force Install Prompt</button>
+        <button onclick="checkManifest()">Check Manifest</button>
+        <button onclick="testServiceWorker()">Test Service Worker</button>
+    </div>
+
+    <div class="info-box">
+        <h3>📋 Install Prompt Vereisten</h3>
+        <ul>
+            <li>HTTPS verbinding (behalve localhost)</li>
+            <li>Geldige manifest.json</li>
+            <li>Service Worker geregistreerd</li>
+            <li>App niet al geïnstalleerd</li>
+            <li>Gebruiker heeft de prompt niet recent weggedrukt</li>
+            <li>Site is 'engaging' (gebruiker heeft interactie gehad)</li>
+        </ul>
+    </div>
+
+    <div id="console-output">
+        <h3>📄 Console Output</h3>
+        <div id="console-log" style="background: #f9fafb; padding: 10px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        // Capture console logs
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        const consoleOutput = document.getElementById('console-log');
+
+        function addToConsole(type, ...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.textContent += `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => { originalLog(...args); addToConsole('LOG', ...args); };
+        console.warn = (...args) => { originalWarn(...args); addToConsole('WARN', ...args); };
+        console.error = (...args) => { originalError(...args); addToConsole('ERROR', ...args); };
+
+        // PWA Debug Functions
+        function addStatus(text, status, icon) {
+            const div = document.createElement('div');
+            div.className = `status-item status-${status}`;
+            div.innerHTML = `<span class="icon">${icon}</span>${text}`;
+            document.getElementById('checks').appendChild(div);
+        }
+
+        function checkPWASupport() {
+            // Check service worker support
+            if ('serviceWorker' in navigator) {
+                addStatus('Service Worker ondersteund', 'ok', '✅');
+            } else {
+                addStatus('Service Worker NIET ondersteund', 'error', '❌');
+            }
+
+            // Check manifest support
+            if ('manifest' in document.head.querySelector('link[rel="manifest"]') || 
+                document.head.querySelector('link[rel="manifest"]')) {
+                addStatus('Manifest link gevonden', 'ok', '✅');
+            } else {
+                addStatus('Manifest link NIET gevonden', 'error', '❌');
+            }
+
+            // Check HTTPS
+            if (location.protocol === 'https:' || location.hostname === 'localhost') {
+                addStatus('HTTPS/localhost verbinding', 'ok', '✅');
+            } else {
+                addStatus('HTTPS vereist voor PWA', 'error', '❌');
+            }
+
+            // Check if already installed
+            if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+                addStatus('App is al geïnstalleerd', 'warning', '⚠️');
+            } else {
+                addStatus('App nog niet geïnstalleerd', 'ok', '✅');
+            }
+
+            // Check localStorage dismissal
+            const dismissed = localStorage.getItem('pwa-install-dismissed');
+            const lastShown = localStorage.getItem('pwa-install-last-shown');
+            if (dismissed) {
+                const timeSince = lastShown ? Date.now() - parseInt(lastShown) : 0;
+                const minutesSince = Math.floor(timeSince / (1000 * 60));
+                addStatus(`Install prompt weggedrukt ${minutesSince} minuten geleden`, 'warning', '⚠️');
+            } else {
+                addStatus('Install prompt nog niet weggedrukt', 'ok', '✅');
+            }
+        }
+
+        function clearPWAData() {
+            localStorage.removeItem('pwa-install-dismissed');
+            localStorage.removeItem('pwa-install-last-shown');
+            console.log('PWA localStorage data gewist');
+            location.reload();
+        }
+
+        function forceInstallPrompt() {
+            // Simulate beforeinstallprompt event
+            const event = new Event('beforeinstallprompt');
+            event.preventDefault = () => console.log('preventDefault called');
+            event.prompt = () => Promise.resolve({ outcome: 'accepted' });
+            
+            window.dispatchEvent(event);
+            console.log('Geforceerde beforeinstallprompt event verstuurd');
+        }
+
+        async function checkManifest() {
+            try {
+                const response = await fetch('/manifest.json');
+                const manifest = await response.json();
+                console.log('Manifest geladen:', manifest);
+                addStatus('Manifest succesvol geladen', 'ok', '✅');
+            } catch (error) {
+                console.error('Manifest fout:', error);
+                addStatus('Manifest laad fout', 'error', '❌');
+            }
+        }
+
+        async function testServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        console.log('Service Worker geregistreerd:', registration);
+                        addStatus('Service Worker actief', 'ok', '✅');
+                    } else {
+                        addStatus('Service Worker NIET geregistreerd', 'error', '❌');
+                    }
+                } catch (error) {
+                    console.error('Service Worker fout:', error);
+                    addStatus('Service Worker fout', 'error', '❌');
+                }
+            }
+        }
+
+        // Listen for beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('🎉 beforeinstallprompt event ontvangen!', e);
+            addStatus('beforeinstallprompt event ontvangen', 'ok', '🎉');
+        });
+
+        // Listen for appinstalled
+        window.addEventListener('appinstalled', (e) => {
+            console.log('🎉 App geïnstalleerd!', e);
+            addStatus('App succesvol geïnstalleerd', 'ok', '🎉');
+        });
+
+        // Run checks on load
+        checkPWASupport();
+        checkManifest();
+        testServiceWorker();
+
+        console.log('PWA Debug Tool geladen');
+    </script>
+</body>
+</html>

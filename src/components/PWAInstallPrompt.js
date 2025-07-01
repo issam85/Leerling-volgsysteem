@@ -32,19 +32,19 @@ const PWAInstallPrompt = () => {
       e.preventDefault();
       setDeferredPrompt(e);
       
-      // Don't show immediately - wait a bit for user to get familiar with app
+      // Show immediately for testing
       setTimeout(() => {
         // Check if user hasn't dismissed it before
         const dismissed = localStorage.getItem('pwa-install-dismissed');
         const lastShown = localStorage.getItem('pwa-install-last-shown');
         const now = Date.now();
         
-        // Show if never dismissed, or if dismissed more than 7 days ago
-        if (!dismissed || (lastShown && now - parseInt(lastShown) > 7 * 24 * 60 * 60 * 1000)) {
+        // Show if never dismissed, or if dismissed more than 30 minutes ago (for testing)
+        if (!dismissed || (lastShown && now - parseInt(lastShown) > 30 * 60 * 1000)) {
           setShowPrompt(true);
           localStorage.setItem('pwa-install-last-shown', now.toString());
         }
-      }, 5000); // Show after 5 seconds
+      }, 1000); // Show after 1 second for testing
     };
 
     // Listen for app installation
@@ -225,7 +225,7 @@ const PWAInstallPrompt = () => {
           <div className="space-y-3 mb-4">
             <div className="flex items-center space-x-3 text-sm text-gray-600">
               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-              <span>Werkt offline</span>
+              <span>Snelle toegang vanaf startscherm</span>
             </div>
             <div className="flex items-center space-x-3 text-sm text-gray-600">
               <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
