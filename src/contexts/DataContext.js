@@ -522,7 +522,12 @@ export const DataProvider = ({ children }) => {
 
   // ✅ CORRECTED: Lesson aanmaken - SIMPLIFIED endpoint
   const createLesson = useCallback(async (lessonData) => {
-      if (!lessonData) return null;
+      if (!lessonData) {
+          console.error("[DataContext] createLesson: No lesson data provided");
+          return null;
+      }
+      
+      console.log("[DataContext] createLesson: Attempting to create lesson with data:", lessonData);
       
       try {
           // ✅ CORRECTED: Simplified endpoint - mosqueId and classId now in payload
@@ -531,14 +536,29 @@ export const DataProvider = ({ children }) => {
               body: JSON.stringify(lessonData)
           });
           
+          console.log("[DataContext] createLesson: API response:", result);
+          
           if (result.success && result.data) {
+              console.log("[DataContext] createLesson: Success, returning lesson:", result.data);
               return result.data;
           }
+          
+          // Check if we got a lesson object directly (some APIs return the object directly)
+          if (result.id) {
+              console.log("[DataContext] createLesson: Got lesson object directly:", result);
+              return result;
+          }
+          
           throw new Error(result.error || "Kon les niet aanmaken.");
       } catch (error) {
           console.error("[DataContext] Error creating lesson:", error);
+          console.error("[DataContext] Error details:", {
+              message: error.message,
+              stack: error.stack,
+              lessonData: lessonData
+          });
           setRealData(prev => ({...prev, error: error.message }));
-          return null;
+          throw error; // Re-throw so the calling component can handle it
       }
   }, []);
 

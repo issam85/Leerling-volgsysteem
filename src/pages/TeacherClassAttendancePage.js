@@ -154,12 +154,24 @@ const TeacherClassAttendancePage = () => {
         
         setIsLoading(true);
         setPageError('');
+        setPageMessage('');
+        
         const dateStr = selectedDate.toISOString().split('T')[0];
+        
+        // Validation
+        if (!mosque.id || !classId) {
+            setPageError('Moskee ID of Klas ID ontbreekt.');
+            setIsLoading(false);
+            return;
+        }
+        
         const lessonPayload = {
-            mosque_id: mosque.id,
-            klas_id: classId,
+            mosque_id: parseInt(mosque.id),
+            class_id: parseInt(classId),
             les_datum: dateStr,
         };
+        
+        console.log('[Attendance] Creating lesson with payload:', lessonPayload);
         
         try {
             const newLesson = await createLesson(lessonPayload);
