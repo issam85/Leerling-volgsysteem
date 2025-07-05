@@ -1,8 +1,6 @@
 import React from 'react';
 
 const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', mobileFullScreen = false }) => {
-  console.log('[Modal] Render - isOpen:', isOpen, 'title:', title);
-  
   if (!isOpen) return null;
 
   const sizeClasses = {
@@ -19,8 +17,8 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', mobileFu
     : `bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col transform transition-all duration-300 animate-modalFadeIn`;
 
   const containerClasses = mobileFullScreen
-    ? 'fixed inset-0 bg-red-500 bg-opacity-75 md:flex md:items-center md:justify-center md:p-4 z-[9999] transition-opacity duration-300'
-    : 'fixed inset-0 bg-red-500 bg-opacity-75 flex items-center justify-center p-4 z-[9999] transition-opacity duration-300';
+    ? 'fixed inset-0 bg-black bg-opacity-50 md:flex md:items-center md:justify-center md:p-4 z-[9999] transition-opacity duration-300'
+    : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999] transition-opacity duration-300';
 
   return (
     <div
@@ -36,7 +34,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', mobileFu
       >
         {title && (
           <div className="p-4 md:p-6 border-b flex justify-between items-center flex-shrink-0">
-            <h3 id="modal-title" className="text-lg md:text-xl font-semibold text-gray-800 truncate pr-4">🚨 DEBUG: {title}</h3>
+            <h3 id="modal-title" className="text-lg md:text-xl font-semibold text-gray-800 truncate pr-4">{title}</h3>
             <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-gray-100 flex-shrink-0"
