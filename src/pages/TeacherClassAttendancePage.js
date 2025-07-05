@@ -165,6 +165,20 @@ const TeacherClassAttendancePage = () => {
             return;
         }
         
+        // Check if teacher has access to this class
+        const currentClassDetails = classes.find(c => c.id === classId);
+        if (!currentClassDetails) {
+            setPageError('Klas niet gevonden.');
+            setIsLoading(false);
+            return;
+        }
+        
+        if (String(currentClassDetails.teacher_id) !== String(currentUser.id)) {
+            setPageError(`U heeft geen toegang tot deze klas. Deze klas is toegewezen aan een andere leraar. (Klas teacher_id: ${currentClassDetails.teacher_id}, Uw ID: ${currentUser.id})`);
+            setIsLoading(false);
+            return;
+        }
+        
         const lessonPayload = {
             mosque_id: parseInt(mosque.id),
             class_id: parseInt(classId),
