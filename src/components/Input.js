@@ -11,14 +11,19 @@ const sanitizeInput = (value) => {
     .replace(/on\w+\s*=/gi, ''); // Remove event handlers like onclick=
 };
 
-const validateInput = (value, type, maxLength = 1000, validateOnChange = false) => {
+const validateInput = (value, type, maxLength = 5000, validateOnChange = false) => {
   if (!value) return { isValid: true, sanitized: value };
   
   const stringValue = String(value);
   
-  // Length validation
+  // Length validation - alleen waarschuwen, niet blokkeren
   if (stringValue.length > maxLength) {
     return { isValid: false, error: `Input is te lang (max ${maxLength} karakters)` };
+  }
+  
+  // Check for serious security issues
+  if (stringValue.includes('<script') || stringValue.includes('javascript:')) {
+    return { isValid: false, error: 'Beveiligingsprobleem gedetecteerd' };
   }
   
   // Type-specific validation - alleen als validateOnChange true is
@@ -45,9 +50,19 @@ const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, 
     const validation = validateInput(inputValue, type, maxLength, validateOnChange);
     
     if (!validation.isValid) {
-      // You could set an error state here if needed
+      // Log warning but still allow input for basic typing
       console.warn('Input validation failed:', validation.error);
-      return; // Don't update if validation fails
+      
+      // Only block if it's a serious security issue, not basic validation
+      if (validation.error.includes('script') || validation.error.includes('javascript')) {
+        return; // Block malicious input
+      }
+      
+      // For other validation errors (like length), allow input but don't sanitize
+      if (onChange) {
+        onChange(e); // Use original event
+      }
+      return;
     }
     
     // Create new event with sanitized value
@@ -72,7 +87,7 @@ const Input = ({ label, id, type = 'text', value, onChange, placeholder, error, 
     placeholder: placeholder,
     required: required,
     disabled: disabled,
-    maxLength: maxLength || 1000, // Default max length for security
+    maxLength: maxLength || 5000, // Default max length for security
     className: `input-field ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'} ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''} ${className}`,
     ...props,
   };
