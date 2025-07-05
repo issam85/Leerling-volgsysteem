@@ -180,24 +180,15 @@ const TeacherClassAttendancePage = () => {
         }
         
         const lessonPayload = {
-            mosque_id: parseInt(mosque.id),
-            mosqueId: parseInt(mosque.id), // Alternative naming
-            class_id: parseInt(classId),
-            classId: parseInt(classId), // Alternative naming
-            klas_id: parseInt(classId), // Dutch naming
-            teacher_id: parseInt(currentUser.id),
-            teacherId: parseInt(currentUser.id), // Alternative naming
-            leraar_id: parseInt(currentUser.id),
-            les_datum: dateStr,
-            datum: dateStr, // Alternative naming
-            date: dateStr, // English naming
-            les_tijd: "10:00:00",
-            tijd: "10:00:00", // Alternative naming
-            time: "10:00:00", // English naming
-            status: "gepland",
-            onderwerp: "Algemene Les",
-            subject: "Algemene Les", // English naming
-            title: "Algemene Les", // Alternative naming
+            moskee_id: parseInt(mosque.id),     // Database field: moskee_id
+            klas_id: parseInt(classId),         // Database field: klas_id  
+            les_datum: dateStr,                 // Database field: les_datum
+            les_dag_van_week: new Date(dateStr).toLocaleDateString('nl-NL', { weekday: 'long' }), // Database field: les_dag_van_week
+            start_tijd: "10:00:00",             // Database field: start_tijd
+            eind_tijd: "11:00:00",              // Database field: eind_tijd
+            onderwerp: "Algemene Les",          // Database field: onderwerp
+            notities_les: "",                   // Database field: notities_les
+            is_geannuleerd: false,              // Database field: is_geannuleerd
         };
         
         console.log('[Attendance] Creating lesson with payload:', lessonPayload);
