@@ -189,10 +189,11 @@ const TeacherClassAttendancePage = () => {
         console.log('[Attendance] Debug - mosque.id:', mosque.id, 'classId:', classId, 'currentUser.id:', currentUser.id);
         console.log('[Attendance] Debug - mosque type:', typeof mosque.id, 'classId type:', typeof classId);
         
+        // Use exact database field names that worked in manual INSERT
         const lessonPayload = {
-            moskee_id: mosque.id,     // Keep as UUID string
-            klas_id: classId,         // Keep as UUID string  
-            les_datum: dateStr,       // Required field
+            moskee_id: mosque.id,
+            klas_id: classId,
+            les_datum: dateStr,
         };
         
         console.log('[Attendance] Minimal payload being sent:', JSON.stringify(lessonPayload, null, 2));
