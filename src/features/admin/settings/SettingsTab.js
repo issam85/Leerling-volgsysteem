@@ -55,8 +55,11 @@ const SettingsTab = () => {
   // ✅ VERWIJDERD: Complexe subscription functies niet meer nodig
 
   // Effect om form states te vullen wanneer mosque data uit context verandert
+  // Only update form when mosque data is first loaded or mosque.id changes
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
+  
   useEffect(() => {
-    if (mosque) {
+    if (mosque && mosque.id && !isFormInitialized) {
       console.log("[SettingsTab] useEffect triggered by 'mosque' update. Populating forms. New mosque data:", JSON.stringify(mosque, null, 2));
       // UITGEBREID MET NIEUWE VELDEN
       setMosqueDetailsForm({
@@ -83,9 +86,8 @@ const SettingsTab = () => {
         contribution_4_children: mosque.contribution_4_children !== null ? String(mosque.contribution_4_children) : '450',
         contribution_5_plus_children: mosque.contribution_5_plus_children !== null ? String(mosque.contribution_5_plus_children) : '450',
       });
-
-  // Simpele useEffect - geen complexe subscription API calls meer
-    } else {
+      setIsFormInitialized(true);
+    } else if (!mosque) {
         console.log("[SettingsTab] useEffect: mosque data is null or undefined. Resetting forms.");
         setMosqueDetailsForm({ 
           name: '', 
@@ -101,8 +103,9 @@ const SettingsTab = () => {
         setDisplayM365Config({ tenantId: '', clientId: '', configured: false, senderEmail: '' });
         setContributionSettingsForm({ contribution_1_child: '150', contribution_2_children: '300', contribution_3_children: '450', contribution_4_children: '450', contribution_5_plus_children: '450' });
         setSubscriptionInfo(null);
+        setIsFormInitialized(false);
     }
-  }, [mosque]);
+  }, [mosque?.id, isFormInitialized]);
 
   // ✅ GECORRIGEERD: handleM365ConfigSave functie
   const handleM365ConfigSave = async (configDataFromModal) => {
