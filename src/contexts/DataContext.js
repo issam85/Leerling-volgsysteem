@@ -527,7 +527,7 @@ export const DataProvider = ({ children }) => {
           return null;
       }
       
-      console.log("[DataContext] createLesson: Attempting to create lesson with data:", lessonData);
+      console.log("[DataContext] createLesson: Attempting to create lesson with data:", JSON.stringify(lessonData, null, 2));
       
       try {
           // ✅ CORRECTED: Simplified endpoint - mosqueId and classId now in payload
