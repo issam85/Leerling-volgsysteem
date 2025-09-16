@@ -101,10 +101,6 @@ const AddStudentModal = ({
       setFormValidationError('Ouder selecteren is verplicht.');
       return;
     }
-    if (!formData.classId) {
-      setFormValidationError('Klas selecteren is verplicht.');
-      return;
-    }
 
     // Bereid data voor voor verzending
     const submissionData = {
@@ -238,19 +234,16 @@ const AddStudentModal = ({
 
             <div>
               <label htmlFor="studentClass" className="block text-sm font-medium text-gray-700 mb-2">
-                Klas *
+                Klas (optioneel)
               </label>
-              <select 
-                id="studentClass" 
-                name="classId" 
-                value={formData.classId} 
-                onChange={handleChange} 
-                required 
-                className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
-                  formValidationError && !formData.classId ? 'border-red-500' : 'border-gray-300'
-                }`}
+              <select
+                id="studentClass"
+                name="classId"
+                value={formData.classId}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
-                <option value="">-- Selecteer klas --</option>
+                <option value="">-- Geen klas / Kies later --</option>
                 {availableClasses.map(cls => (
                   <option key={cls.id} value={cls.id}>
                     {cls.name}

@@ -194,11 +194,6 @@ const StudentsTab = () => {
       navigate('/admin/parents');
       return;
     }
-    if (classes.length === 0) {
-      alert('Voeg eerst klassen toe voordat u leerlingen kunt aanmaken.');
-      navigate('/admin/classes');
-      return;
-    }
 
     // ✅ Enhanced trial limit check
     if (isAtStudentLimit) {
@@ -226,12 +221,11 @@ const StudentsTab = () => {
     setModalErrorText('');
     setPageMessage({ type: '', text: '' });
     
-    const requiredFields = ['name', 'parentId', 'classId'];
+    const requiredFields = ['name', 'parentId'];
     for (const field of requiredFields) {
       if (!studentDataFromModal[field] || !String(studentDataFromModal[field]).trim()) {
         let fieldLabel = field;
         if (field === 'parentId') fieldLabel = 'Ouder';
-        if (field === 'classId') fieldLabel = 'Klas';
         setModalErrorText(`Veld "${fieldLabel}" is verplicht.`);
         return false;
       }
@@ -255,7 +249,7 @@ const StudentsTab = () => {
         const payload = {
             name: studentDataFromModal.name.trim(),
             parent_id: studentDataFromModal.parentId,
-            class_id: studentDataFromModal.classId,
+            class_id: studentDataFromModal.classId || null,
             date_of_birth: studentDataFromModal.date_of_birth || null,
             emergency_contact: studentDataFromModal.emergency_contact || null,
             emergency_phone: studentDataFromModal.emergency_phone || null,
@@ -593,23 +587,15 @@ const StudentsTab = () => {
         )}
 
         {/* Content */}
-        {(parents.length === 0 || classes.length === 0) && !dataLoading && (!students || students.length === 0) ? (
+        {parents.length === 0 && !dataLoading && (!students || students.length === 0) ? (
           <div className="card text-center">
             <StudentIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Voorwaarden niet voldaan</h3>
-            {parents.length === 0 && <p className="text-gray-600 mb-2">U dient eerst ouders toe te voegen.</p>}
-            {classes.length === 0 && <p className="text-gray-600">U dient eerst klassen aan te maken.</p>}
-            <div className="mt-4 space-x-2">
-              {parents.length === 0 && (
-                <Button onClick={() => navigate('/admin/parents')} variant="secondary">
-                  Naar Ouders
-                </Button>
-              )}
-              {classes.length === 0 && (
-                <Button onClick={() => navigate('/admin/classes')} variant="secondary">
-                  Naar Klassen
-                </Button>
-              )}
+            <p className="text-gray-600 mb-2">U dient eerst ouders toe te voegen.</p>
+            <div className="mt-4">
+              <Button onClick={() => navigate('/admin/parents')} variant="secondary">
+                Naar Ouders
+              </Button>
             </div>
           </div>
         ) : (!students || students.length === 0) && !dataLoading ? (
