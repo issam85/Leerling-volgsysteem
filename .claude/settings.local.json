@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Read(//mnt/c/Users/iabde/moskee-backend/**)"
     ],
     "deny": []
   }

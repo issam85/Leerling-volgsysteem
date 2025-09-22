@@ -8,6 +8,7 @@ import AdminLayout from '../../../layouts/AdminLayout'; // ✅ TOEGEVOEGD
 import Button from '../../../components/Button';
 import Input from '../../../components/Input';
 import AddParentModal from './AddParentModal';
+import BulkMessageModal from './BulkMessageModal';
 import { 
   Users, 
   Plus, 
@@ -25,7 +26,8 @@ import {
   X,
   Download,
   FileText,
-  FilterX
+  FilterX,
+  Mail
 } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
@@ -94,6 +96,7 @@ const ParentsTab = () => {
   // Modal states
   const [showAddParentModal, setShowAddParentModal] = useState(false);
   const [editingParent, setEditingParent] = useState(null);
+  const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
   
   // Error and loading states
   const [pageError, setPageError] = useState('');
@@ -432,6 +435,46 @@ const ParentsTab = () => {
     setExpandedParentId(expandedParentId === parentId ? null : parentId);
   };
 
+  // Bulk message functionaliteit
+  const handleOpenBulkMessageModal = () => {
+    setShowBulkMessageModal(true);
+    setModalErrorText('');
+    setPageMessage({ type: '', text: '' });
+  };
+
+  const handleBulkMessageSubmit = async (messageData) => {
+    setModalErrorText('');
+    setPageMessage({ type: '', text: '' });
+    setActionLoading(true);
+
+    try {
+      const result = await apiCall('/api/email/send-to-all-parents', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: messageData.subject,
+          body: messageData.body
+        })
+      });
+
+      if (result.success) {
+        setShowBulkMessageModal(false);
+        setPageMessage({
+          type: 'success',
+          text: `${result.message} ${result.details?.emails_sent || 0} van ${result.details?.total_parents || 0} ouders hebben het bericht ontvangen.`
+        });
+        return true;
+      } else {
+        throw new Error(result.error || 'Onbekende fout bij versturen bulk bericht');
+      }
+    } catch (error) {
+      console.error('Error sending bulk message:', error);
+      setModalErrorText(error.message || 'Fout bij versturen bulk bericht naar ouders');
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (dataLoading && (!parents || parents.length === 0)) {
     return <LoadingSpinner message="Ouders laden..." />;
   }
@@ -453,7 +496,16 @@ const ParentsTab = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button 
+            <Button
+              onClick={handleOpenBulkMessageModal}
+              variant="secondary"
+              icon={Mail}
+              disabled={actionLoading || parents.length === 0}
+              className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+            >
+              Bericht naar alle ouders ({parents.length})
+            </Button>
+            <Button
               onClick={handleExportCSV}
               variant="secondary"
               icon={Download}
@@ -462,7 +514,7 @@ const ParentsTab = () => {
             >
               {isExporting ? 'Exporteren...' : `Exporteer CSV (${filteredAndSortedParents.length})`}
             </Button>
-            <Button 
+            <Button
               onClick={() => setShowFilters(!showFilters)}
               variant="secondary"
               icon={Filter}
@@ -471,10 +523,10 @@ const ParentsTab = () => {
               {showFilters ? 'Verberg Filters' : 'Toon Filters'}
               {hasActiveFilters && <span className="ml-1 bg-blue-600 text-white rounded-full px-2 py-0.5 text-xs">!</span>}
             </Button>
-            <Button 
-              onClick={handleOpenAddModal} 
-              variant="primary" 
-              icon={Plus} 
+            <Button
+              onClick={handleOpenAddModal}
+              variant="primary"
+              icon={Plus}
               disabled={actionLoading}
             >
               Nieuwe Ouder
@@ -830,13 +882,27 @@ const ParentsTab = () => {
         {showAddParentModal && (
           <AddParentModal
             isOpen={showAddParentModal}
-            onClose={() => { 
-              setShowAddParentModal(false); 
-              setEditingParent(null); 
-              setModalErrorText(''); 
+            onClose={() => {
+              setShowAddParentModal(false);
+              setEditingParent(null);
+              setModalErrorText('');
             }}
             onSubmit={handleParentSubmit}
             initialData={editingParent}
+            modalError={modalErrorText}
+            isLoading={actionLoading}
+          />
+        )}
+
+        {showBulkMessageModal && (
+          <BulkMessageModal
+            isOpen={showBulkMessageModal}
+            onClose={() => {
+              setShowBulkMessageModal(false);
+              setModalErrorText('');
+            }}
+            onSubmit={handleBulkMessageSubmit}
+            totalParents={parents.length}
             modalError={modalErrorText}
             isLoading={actionLoading}
           />
