@@ -9,6 +9,7 @@ import Button from '../components/Button';
 import AddStudentModal from '../features/teacher/AddStudentModal';
 import QuranProgressTracker from '../features/teacher/QuranProgressTracker';
 import StudentReport from '../features/teacher/StudentReport';
+import ClassBulkMessageModal from '../features/teacher/ClassBulkMessageModal';
 import { 
   AlertCircle, 
   UserPlus, 
@@ -161,7 +162,11 @@ const TeacherMyClassesPage = () => {
   // State voor Rapport modal
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedStudentForReport, setSelectedStudentForReport] = useState(null);
-  
+
+  // State voor Class Bulk Message modal
+  const [showClassBulkModal, setShowClassBulkModal] = useState(false);
+  const [classBulkError, setClassBulkError] = useState('');
+
   // NIEUWE STATE voor de uitgeklapte rij
   const [expandedStudentId, setExpandedStudentId] = useState(null);
 
@@ -215,9 +220,15 @@ const TeacherMyClassesPage = () => {
     );
   }
   
-  const classStudents = students.filter(s => 
+  const classStudents = students.filter(s =>
     String(s.class_id) === String(classId) && s.active
   );
+
+  // Get unique parents for this class
+  const classParents = React.useMemo(() => {
+    const parentIds = [...new Set(classStudents.map(s => s.parent_id).filter(Boolean))];
+    return users.filter(u => parentIds.includes(u.id) && u.role === 'parent');
+  }, [classStudents, users]);
 
   // Modal handlers
   const openModal = (type, data = null) => setModalState({ type, data });
@@ -262,6 +273,66 @@ const TeacherMyClassesPage = () => {
     const reportElement = document.getElementById('report-content');
     if (reportElement) {
       window.print();
+    }
+  };
+
+  // Bulk message modal handlers
+  const handleShowClassBulkModal = () => {
+    setShowClassBulkModal(true);
+    setClassBulkError('');
+  };
+
+  const handleCloseClassBulkModal = () => {
+    if (!isLoading) {
+      setShowClassBulkModal(false);
+      setClassBulkError('');
+    }
+  };
+
+  const handleClassBulkSubmit = async (formData) => {
+    setIsLoading(true);
+    setClassBulkError('');
+
+    try {
+      const { selectedParentIds, subject, body } = formData;
+
+      let result;
+      if (selectedParentIds.length === classParents.length) {
+        // All parents selected, use the original endpoint
+        result = await apiCall('/api/email/send-to-class', {
+          method: 'POST',
+          body: JSON.stringify({
+            classId: currentClass.id,
+            subject,
+            body
+          })
+        });
+      } else {
+        // Selected parents only, use the new endpoint
+        result = await apiCall('/api/email/send-to-selected-class-parents', {
+          method: 'POST',
+          body: JSON.stringify({
+            classId: currentClass.id,
+            subject,
+            body,
+            selectedParentIds
+          })
+        });
+      }
+
+      setFeedback({
+        type: 'success',
+        message: result?.message || 'Berichten succesvol verstuurd!'
+      });
+
+      setShowClassBulkModal(false);
+      return true;
+    } catch (error) {
+      console.error('Bulk email error:', error);
+      setClassBulkError(error.message || 'Er ging iets mis bij het versturen van de berichten.');
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -360,13 +431,13 @@ const TeacherMyClassesPage = () => {
           <Button icon={UserPlus} onClick={handleAddStudent}>
             Nieuwe Leerling
           </Button>
-          <Button 
-            icon={Mail} 
-            variant="secondary" 
-            onClick={() => openModal('mail_class')}
+          <Button
+            icon={Mail}
+            variant="secondary"
+            onClick={handleShowClassBulkModal}
             disabled={classStudents.length === 0}
           >
-            Bericht aan Klas
+            Bericht naar Ouders
           </Button>
           <Link to={`/teacher/class/${classId}/attendance`}>
             <Button icon={Calendar} variant="secondary" className="w-full">
@@ -642,6 +713,18 @@ const TeacherMyClassesPage = () => {
           </div>
         </div>
       )}
+
+      {/* Class Bulk Message Modal */}
+      <ClassBulkMessageModal
+        isOpen={showClassBulkModal}
+        onClose={handleCloseClassBulkModal}
+        onSubmit={handleClassBulkSubmit}
+        classParents={classParents}
+        classStudents={classStudents}
+        classInfo={currentClass}
+        isLoading={isLoading}
+        modalError={classBulkError}
+      />
     </div>
   );
 };
