@@ -448,19 +448,25 @@ const ParentsTab = () => {
     setActionLoading(true);
 
     try {
-      const result = await apiCall('/api/email/send-to-all-parents', {
+      const endpoint = messageData.selectedParentIds?.length === parents.length
+        ? '/api/email/send-to-all-parents'  // Alle ouders
+        : '/api/email/send-to-selected-parents'; // Geselecteerde ouders
+
+      const result = await apiCall(endpoint, {
         method: 'POST',
         body: JSON.stringify({
           subject: messageData.subject,
-          body: messageData.body
+          body: messageData.body,
+          selectedParentIds: messageData.selectedParentIds
         })
       });
 
       if (result.success) {
         setShowBulkMessageModal(false);
+        const recipientCount = messageData.selectedParentIds?.length || result.details?.total_parents || 0;
         setPageMessage({
           type: 'success',
-          text: `${result.message} ${result.details?.emails_sent || 0} van ${result.details?.total_parents || 0} ouders hebben het bericht ontvangen.`
+          text: `${result.message} ${result.details?.emails_sent || 0} van ${recipientCount} ouders hebben het bericht ontvangen.`
         });
         return true;
       } else {
@@ -503,7 +509,7 @@ const ParentsTab = () => {
               disabled={actionLoading || parents.length === 0}
               className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
             >
-              Bericht naar alle ouders ({parents.length})
+              Bericht naar ouders ({parents.length})
             </Button>
             <Button
               onClick={handleExportCSV}
@@ -902,7 +908,7 @@ const ParentsTab = () => {
               setModalErrorText('');
             }}
             onSubmit={handleBulkMessageSubmit}
-            totalParents={parents.length}
+            allParents={parents}
             modalError={modalErrorText}
             isLoading={actionLoading}
           />
