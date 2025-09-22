@@ -180,6 +180,18 @@ const TeacherMyClassesPage = () => {
     }
   }, [feedback.message]);
 
+  // Calculate data first (before any early returns)
+  const currentClass = classes.find(c => String(c.id) === String(classId));
+  const classStudents = students.filter(s =>
+    String(s.class_id) === String(classId) && s.active
+  );
+
+  // Get unique parents for this class
+  const classParents = React.useMemo(() => {
+    const parentIds = [...new Set(classStudents.map(s => s.parent_id).filter(Boolean))];
+    return users.filter(u => parentIds.includes(u.id) && u.role === 'parent');
+  }, [classStudents, users]);
+
   // Loading and error states
   if (loading && !classes.length) {
     return <LoadingSpinner message="Klasgegevens laden..." />;
@@ -203,8 +215,6 @@ const TeacherMyClassesPage = () => {
     );
   }
 
-  const currentClass = classes.find(c => String(c.id) === String(classId));
-  
   if (!currentClass) {
     return (
       <div className="card text-center p-8">
@@ -219,16 +229,6 @@ const TeacherMyClassesPage = () => {
       </div>
     );
   }
-  
-  const classStudents = students.filter(s =>
-    String(s.class_id) === String(classId) && s.active
-  );
-
-  // Get unique parents for this class
-  const classParents = React.useMemo(() => {
-    const parentIds = [...new Set(classStudents.map(s => s.parent_id).filter(Boolean))];
-    return users.filter(u => parentIds.includes(u.id) && u.role === 'parent');
-  }, [classStudents, users]);
 
   // Modal handlers
   const openModal = (type, data = null) => setModalState({ type, data });
