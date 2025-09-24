@@ -259,11 +259,10 @@ export const DataProvider = ({ children }) => {
         apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),
         apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`),
         apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`),
-        // ✅ ATTEMPT: Try the new parent payments route
+        // ✅ Get parent's own payments
         apiCall(`/api/payments/parent/my-payments`).catch(error => {
-          console.error(`[DataContext] 💳 Parent payments route failed:`, error);
-          console.log(`[DataContext] 💳 This is expected if the server hasn't been restarted yet`);
-          return []; // Return empty array if new route doesn't work
+          console.error(`[DataContext] Error fetching parent payments:`, error);
+          return []; // Return empty array on error
         })
       ]);
       
@@ -273,16 +272,6 @@ export const DataProvider = ({ children }) => {
       const myPayments = paymentsRes || [];
 
       console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}, Payments: ${myPayments.length}`);
-      console.log(`[DataContext] 💳 SUCCESS! Parent payments raw data:`, JSON.stringify(myPayments, null, 2));
-
-      if (myPayments && myPayments.length > 0) {
-        console.log(`[DataContext] 🎉 GREAT! Found ${myPayments.length} payments for parent!`);
-        myPayments.forEach(payment => {
-          console.log(`[DataContext] 💰 Payment: €${payment.amount} on ${payment.payment_date} (${payment.description})`);
-        });
-      } else {
-        console.warn(`[DataContext] ⚠️ No payments found in response for parent`);
-      }
       
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
       console.log(`[DataContext] 👶 Found ${parentChildren.length} children for parent ${currentUser.name} (parent_id: ${currentUser.id})`);
