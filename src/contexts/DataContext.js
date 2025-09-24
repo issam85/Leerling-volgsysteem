@@ -266,6 +266,7 @@ export const DataProvider = ({ children }) => {
       const myPayments = paymentsRes || [];
 
       console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}, Payments: ${myPayments.length}`);
+      console.log(`[DataContext] 💳 DEBUG - Parent payments raw data:`, JSON.stringify(myPayments, null, 2));
       
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
       console.log(`[DataContext] 👶 Found ${parentChildren.length} children for parent ${currentUser.name} (parent_id: ${currentUser.id})`);
