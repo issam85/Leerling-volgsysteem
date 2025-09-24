@@ -252,18 +252,20 @@ export const DataProvider = ({ children }) => {
     try {
       console.log(`[DataContext] 📡 Fetching parent data from API...`);
       
-      // ✅ CORRECT ENDPOINTS - these are all correct already
-      const [studentsRes, classesRes, usersRes] = await Promise.all([
+      // ✅ CORRECT ENDPOINTS - toegevoegd payments voor ouders
+      const [studentsRes, classesRes, usersRes, paymentsRes] = await Promise.all([
         apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),
         apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`),
-        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`)
+        apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`),
+        apiCall(`/api/payments/parent/my-payments`)
       ]);
       
       const allStudents = studentsRes || [];
       const allClasses = classesRes || [];
       const allUsers = usersRes || [];
-      
-      console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}`);
+      const myPayments = paymentsRes || [];
+
+      console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}, Payments: ${myPayments.length}`);
       
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
       console.log(`[DataContext] 👶 Found ${parentChildren.length} children for parent ${currentUser.name} (parent_id: ${currentUser.id})`);
@@ -305,7 +307,7 @@ export const DataProvider = ({ children }) => {
       setRealData(prev => ({
         ...prev,
         students: parentChildren,
-        payments: [],
+        payments: myPayments, // ✅ FIXED: Ouders kunnen nu hun betalingen zien
         users: allUsers,
         classes: allClasses,
         attendanceStats: attendanceStats,

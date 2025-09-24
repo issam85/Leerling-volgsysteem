@@ -2,18 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { apiCall } from '../services/api';
-import { 
-  ArrowLeft, 
-  User, 
-  BookOpen as ClassIcon, 
-  CalendarDays, 
-  BookMarked, 
+import { calculateParentPaymentStatus } from '../utils/financials';
+import {
+  ArrowLeft,
+  User,
+  BookOpen as ClassIcon,
+  CalendarDays,
+  BookMarked,
   ClipboardList,
-  AlertCircle, 
-  Info, 
+  AlertCircle,
+  Info,
   Printer,
-  Mail
+  Mail,
+  CreditCard
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuranProgressView from '../features/parent/QuranProgressView';
@@ -55,6 +58,164 @@ const reportDataStructure = {
 const attendanceReportItems = [
     { id: 'att_general', label: 'Aanwezigheid Algemeen', labelAr: 'الحضور العام' }
 ];
+
+// Sub-component voor het Betalingsoverzicht
+const BetalingsoverzichtView = () => {
+    const { currentUser } = useAuth();
+    const { realData } = useData();
+    const { payments, users } = realData;
+
+    if (!currentUser || !users || !payments) {
+        return (
+            <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">Betalingsoverzicht</h3>
+                <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                    <AlertCircle className="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                    <p className="text-gray-600 italic">Betalingsgegevens aan het laden...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const paymentStatus = calculateParentPaymentStatus(currentUser.id, users, payments);
+
+    const formatEuro = (amount) => {
+        return `€${parseFloat(amount).toFixed(2)}`;
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'betaald':
+                return 'text-green-600 bg-green-50 border-green-200';
+            case 'deels_betaald':
+                return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+            case 'openstaand':
+                return 'text-red-600 bg-red-50 border-red-200';
+            case 'nvt':
+                return 'text-gray-600 bg-gray-50 border-gray-200';
+            default:
+                return 'text-gray-600 bg-gray-50 border-gray-200';
+        }
+    };
+
+    const getStatusText = (status) => {
+        switch (status) {
+            case 'betaald':
+                return 'Volledig betaald';
+            case 'deels_betaald':
+                return 'Deels betaald';
+            case 'openstaand':
+                return 'Openstaand';
+            case 'nvt':
+                return 'Geen bijdrage verschuldigd';
+            default:
+                return 'Onbekend';
+        }
+    };
+
+    const remainingAmount = parseFloat(paymentStatus.remainingBalance);
+
+    return (
+        <div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Betalingsoverzicht</h3>
+
+            {/* Status overzichtskaarten */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="card p-4 text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                    <div className="text-3xl font-bold text-blue-700 mb-1">
+                        {formatEuro(paymentStatus.amountDue)}
+                    </div>
+                    <div className="text-sm text-blue-800 font-medium">Verschuldigd Totaal</div>
+                </div>
+
+                <div className="card p-4 text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                    <div className="text-3xl font-bold text-green-700 mb-1">
+                        {formatEuro(paymentStatus.totalPaid)}
+                    </div>
+                    <div className="text-sm text-green-800 font-medium">Totaal Betaald</div>
+                </div>
+
+                <div className={`card p-4 text-center bg-gradient-to-br ${getStatusColor(paymentStatus.paymentStatus)}`}>
+                    <div className="text-3xl font-bold mb-1">
+                        {formatEuro(paymentStatus.remainingBalance)}
+                    </div>
+                    <div className="text-sm font-medium">Nog Te Betalen</div>
+                </div>
+            </div>
+
+            {/* Status indicator */}
+            <div className={`p-4 rounded-lg border-2 mb-6 ${getStatusColor(paymentStatus.paymentStatus)}`}>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className="font-semibold text-lg">{getStatusText(paymentStatus.paymentStatus)}</h4>
+                        {remainingAmount > 0 ? (
+                            <p className="text-sm mt-1">
+                                U heeft nog {formatEuro(paymentStatus.remainingBalance)} openstaand.
+                            </p>
+                        ) : remainingAmount === 0 && parseFloat(paymentStatus.amountDue) > 0 ? (
+                            <p className="text-sm mt-1">
+                                ✅ Alle betalingsverplichtingen zijn voldaan. Bedankt!
+                            </p>
+                        ) : (
+                            <p className="text-sm mt-1">
+                                Er zijn momenteel geen betalingsverplichtingen.
+                            </p>
+                        )}
+                    </div>
+                    <CreditCard size={24} />
+                </div>
+            </div>
+
+            {/* Betalingsgeschiedenis */}
+            {payments && payments.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg">
+                    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                        <h4 className="font-semibold text-gray-700">Betalingsgeschiedenis</h4>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                        {payments
+                            .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date))
+                            .map((payment) => (
+                                <div key={payment.id} className="p-4 hover:bg-gray-50">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <div className="font-medium text-gray-900">
+                                                {formatEuro(payment.amount)}
+                                            </div>
+                                            <div className="text-sm text-gray-600">
+                                                {new Date(payment.payment_date).toLocaleDateString('nl-NL', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })}
+                                            </div>
+                                            {payment.description && (
+                                                <div className="text-sm text-gray-500 mt-1">
+                                                    {payment.description}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm text-gray-500 capitalize">
+                                                {payment.payment_method}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+            )}
+
+            {/* Info banner */}
+            <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                <Info size={16} className="inline mr-2" />
+                Voor vragen over betalingen kunt u contact opnemen met de administratie van de moskee.
+            </div>
+        </div>
+    );
+};
 
 // Sub-component voor het Absentie Overzicht - Volledige implementatie
 const AbsentieOverzichtView = ({ childId }) => {
@@ -457,6 +618,7 @@ const ChildDetailPage = () => {
           <TabButton tabName="aanwezigheid" label="Aanwezigheid" icon={CalendarDays}/>
           <TabButton tabName="quran" label="Qor'aan" icon={BookMarked}/>
           <TabButton tabName="rapport" label="Rapport" icon={ClipboardList}/>
+          <TabButton tabName="betalingen" label="Betalingen" icon={CreditCard}/>
         </nav>
       </div>
 
@@ -470,6 +632,7 @@ const ChildDetailPage = () => {
           </div>
         )}
         {activeTab === 'rapport' && <RapportView student={student} />}
+        {activeTab === 'betalingen' && <BetalingsoverzichtView />}
       </div>
 
       {/* Email Modal */}
