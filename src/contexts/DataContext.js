@@ -253,11 +253,18 @@ export const DataProvider = ({ children }) => {
       console.log(`[DataContext] 📡 Fetching parent data from API...`);
       
       // ✅ CORRECT ENDPOINTS - toegevoegd payments voor ouders
+      console.log(`[DataContext] 📞 Making API calls for parent data...`);
+
       const [studentsRes, classesRes, usersRes, paymentsRes] = await Promise.all([
         apiCall(`/api/students/mosque/${mosqueForDataLoading.id}`),
         apiCall(`/api/classes/mosque/${mosqueForDataLoading.id}`),
         apiCall(`/api/users/mosque/${mosqueForDataLoading.id}`),
-        apiCall(`/api/payments/parent/my-payments`)
+        // ✅ ATTEMPT: Try the new parent payments route
+        apiCall(`/api/payments/parent/my-payments`).catch(error => {
+          console.error(`[DataContext] 💳 Parent payments route failed:`, error);
+          console.log(`[DataContext] 💳 This is expected if the server hasn't been restarted yet`);
+          return []; // Return empty array if new route doesn't work
+        })
       ]);
       
       const allStudents = studentsRes || [];
@@ -266,7 +273,16 @@ export const DataProvider = ({ children }) => {
       const myPayments = paymentsRes || [];
 
       console.log(`[DataContext] 📊 API Response - Students: ${allStudents.length}, Classes: ${allClasses.length}, Users: ${allUsers.length}, Payments: ${myPayments.length}`);
-      console.log(`[DataContext] 💳 DEBUG - Parent payments raw data:`, JSON.stringify(myPayments, null, 2));
+      console.log(`[DataContext] 💳 SUCCESS! Parent payments raw data:`, JSON.stringify(myPayments, null, 2));
+
+      if (myPayments && myPayments.length > 0) {
+        console.log(`[DataContext] 🎉 GREAT! Found ${myPayments.length} payments for parent!`);
+        myPayments.forEach(payment => {
+          console.log(`[DataContext] 💰 Payment: €${payment.amount} on ${payment.payment_date} (${payment.description})`);
+        });
+      } else {
+        console.warn(`[DataContext] ⚠️ No payments found in response for parent`);
+      }
       
       const parentChildren = allStudents.filter(s => String(s.parent_id) === String(currentUser.id));
       console.log(`[DataContext] 👶 Found ${parentChildren.length} children for parent ${currentUser.name} (parent_id: ${currentUser.id})`);

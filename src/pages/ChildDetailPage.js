@@ -65,7 +65,9 @@ const BetalingsoverzichtView = () => {
     const { realData } = useData();
     const { payments, users } = realData;
 
-    if (!currentUser || !users || !payments) {
+    console.log(`[BetalingsoverzichtView] DEBUG - currentUser:`, !!currentUser, `users:`, users?.length, `payments:`, payments?.length);
+
+    if (!currentUser || !users) {
         return (
             <div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Betalingsoverzicht</h3>
@@ -75,6 +77,29 @@ const BetalingsoverzichtView = () => {
                 </div>
             </div>
         );
+    }
+
+    // ✅ DEBUG: Show what we have even without payments
+    if (!payments || payments.length === 0) {
+        const parent = users.find(u => u.id === currentUser.id && u.role === 'parent');
+        console.log(`[BetalingsoverzichtView] DEBUG - No payments found, but parent data:`, parent);
+
+        if (parent && parent.amount_due && parseFloat(parent.amount_due) > 0) {
+            return (
+                <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Betalingsoverzicht</h3>
+                    <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                        <AlertCircle className="w-12 h-12 mx-auto text-yellow-400 mb-3" />
+                        <p className="text-yellow-700">
+                            <strong>Status:</strong> U heeft €{parseFloat(parent.amount_due).toFixed(2)} verschuldigd.
+                        </p>
+                        <p className="text-yellow-600 text-sm mt-2">
+                            Betalingshistorie wordt geladen... (Nieuwe functie in ontwikkeling)
+                        </p>
+                    </div>
+                </div>
+            );
+        }
     }
 
     const paymentStatus = calculateParentPaymentStatus(currentUser.id, users, payments);
