@@ -680,7 +680,7 @@ const StudentsTab = () => {
                         </div>
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Betalingsstatus
+                        Telefoonnummer Ouder
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Acties
@@ -730,17 +730,8 @@ const StudentsTab = () => {
                               '-'
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              studentPaymentStatus === 'up_to_date' 
-                                ? 'bg-green-100 text-green-800' 
-                                : studentPaymentStatus === 'overdue'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {studentPaymentStatus === 'up_to_date' ? 'Betaald' : 
-                               studentPaymentStatus === 'overdue' ? 'Achterstallig' : 'Onbekend'}
-                            </span>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.parent?.phone || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end space-x-2">
@@ -794,15 +785,8 @@ const StudentsTab = () => {
                       title={`${student.first_name || student.name?.split(' ')[0] || 'Onbekend'} ${student.last_name || student.name?.split(' ').slice(1).join(' ') || ''}`}
                       subtitle={student.class?.name || 'Geen klas'}
                       status={
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          studentPaymentStatus === 'up_to_date' 
-                            ? 'bg-green-100 text-green-800' 
-                            : studentPaymentStatus === 'overdue'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {studentPaymentStatus === 'up_to_date' ? 'Betaald' : 
-                           studentPaymentStatus === 'overdue' ? 'Achterstallig' : 'Onbekend'}
+                        <span className="text-xs text-gray-600">
+                          {student.parent?.phone || 'Geen tel.'}
                         </span>
                       }
                       rightContent={<MobileCard.ExpandTrigger expanded={isExpanded} />}
