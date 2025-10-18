@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { X, Send, Users, AlertCircle, Check, Search } from 'lucide-react';
 
 const ClassBulkMessageModal = ({
@@ -14,6 +15,7 @@ const ClassBulkMessageModal = ({
   isLoading,
   modalError
 }) => {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     subject: '',
     body: ''
@@ -143,10 +145,10 @@ const ClassBulkMessageModal = ({
             <Users className="h-6 w-6 text-blue-600 mr-3" />
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Bericht naar ouders van klas {classInfo?.name}
+                {t('teacher.messageToParentsOfClass')} {classInfo?.name}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Selecteer naar welke ouders je dit bericht wilt sturen
+                {t('teacher.selectRecipientsInstruction')}
               </p>
             </div>
           </div>
@@ -166,9 +168,9 @@ const ClassBulkMessageModal = ({
           {/* Ouder Selectie */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Ontvangers selecteren</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('teacher.selectRecipients')}</h3>
               <div className="text-sm text-gray-600">
-                {selectedParents.length} van {classParents?.length || 0} geselecteerd
+                {t('teacher.selectedCount', { count: classParents?.length || 0, selected: selectedParents.length }).replace('{count}', classParents?.length || 0).replace('{selected}', selectedParents.length)}
               </div>
             </div>
 
@@ -178,7 +180,7 @@ const ClassBulkMessageModal = ({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Zoek ouders op naam, email of leerlingnaam..."
+                  placeholder={t('teacher.searchParents')}
                   value={parentSearch}
                   onChange={(e) => setParentSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -196,7 +198,7 @@ const ClassBulkMessageModal = ({
                     disabled={isLoading}
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Selecteer alle{parentSearch ? ' getoonde' : ''} ouders
+                    {t('teacher.selectAllParents')}
                   </span>
                 </label>
                 {errors.recipients && (
@@ -236,7 +238,7 @@ const ClassBulkMessageModal = ({
                           <div className="text-xs text-gray-500 truncate">{parent.email}</div>
                           {childrenNames && (
                             <div className="text-xs text-blue-600 truncate font-medium mt-1">
-                              Ouder van: {childrenNames}
+                              {t('teacher.parentOf')} {childrenNames}
                             </div>
                           )}
                         </div>
@@ -262,7 +264,7 @@ const ClassBulkMessageModal = ({
           {/* Subject Field */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Onderwerp *
+              * {t('teacher.messageSubject')}
             </label>
             <Input
               type="text"
@@ -274,24 +276,24 @@ const ClassBulkMessageModal = ({
               maxLength={200}
             />
             <p className="text-xs text-gray-500 mt-1">
-              {formData.subject.length}/200 karakters
+              {t('teacher.charactersCount', { count: formData.subject.length, max: 200 }).replace('{count}', formData.subject.length).replace('{max}', '200')}
             </p>
           </div>
 
           {/* Body Field */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bericht *
+              * {t('teacher.message')}
             </label>
             <textarea
               value={formData.body}
               onChange={(e) => handleChange('body', e.target.value)}
-              placeholder="Typ hier uw bericht voor de ouders van de klas...
+              placeholder={`${t('teacher.messageToClassParentsPlaceholder')}
 
-Voorbeelden:
-- Huiswerk voor de komende week
-- Informatie over klasuitjes
-- Mededelingen over lessen"
+${t('teacher.examples')}
+- ${t('teacher.exampleHomework')}
+- ${t('teacher.exampleClassTrip')}
+- ${t('teacher.exampleLessonInfo')}`}
               className={`w-full px-3 py-2 border rounded-md min-h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical ${
                 errors.body
                   ? 'border-red-300 bg-red-50'
@@ -304,7 +306,7 @@ Voorbeelden:
               <p className="text-red-600 text-sm mt-1">{errors.body}</p>
             )}
             <p className="text-xs text-gray-500 mt-1">
-              {formData.body.length}/2000 karakters
+              {t('teacher.charactersCount', { count: formData.body.length, max: 2000 }).replace('{count}', formData.body.length).replace('{max}', '2000')}
             </p>
           </div>
 
@@ -331,7 +333,7 @@ Voorbeelden:
               variant="secondary"
               disabled={isLoading}
             >
-              Annuleren
+              {t('common.cancel')}
             </Button>
             <Button
               type="submit"
@@ -340,7 +342,7 @@ Voorbeelden:
               disabled={isLoading || !formData.subject.trim() || !formData.body.trim() || selectedParents.length === 0}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {isLoading ? 'Bezig met versturen...' : `Verstuur naar ${selectedParents.length} ouder${selectedParents.length !== 1 ? 's' : ''}`}
+              {isLoading ? t('common.loading') : (selectedParents.length === 1 ? t('teacher.sendToParent', { count: selectedParents.length }).replace('{count}', selectedParents.length) : t('teacher.sendToParents', { count: selectedParents.length }).replace('{count}', selectedParents.length))}
             </Button>
           </div>
         </form>
