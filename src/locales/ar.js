@@ -15,6 +15,7 @@ export const ar = {
     error: 'خطأ',
     success: 'نجح',
     actions: 'إجراءات',
+    student: 'الطالب',
     back: 'رجوع',
     next: 'التالي',
     previous: 'السابق',

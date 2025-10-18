@@ -489,11 +489,11 @@ const TeacherMyClassesPage = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="w-12 px-6 py-3"></th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Leerling
+                <th className={`px-6 py-3 ${isRTL ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>
+                  {t('common.student')}
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acties
+                <th className={`px-6 py-3 ${isRTL ? 'text-left' : 'text-right'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>
+                  {t('common.actions')}
                 </th>
               </tr>
             </thead>
@@ -522,8 +522,8 @@ const TeacherMyClassesPage = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end gap-2">
+                      <td className={`px-6 py-4 whitespace-nowrap ${isRTL ? 'text-left' : 'text-right'} text-sm font-medium`}>
+                        <div className={`flex ${isRTL ? 'justify-start' : 'justify-end'} gap-2`}>
                           <Button
                             variant="secondary"
                             size="sm"

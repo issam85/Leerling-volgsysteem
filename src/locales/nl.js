@@ -15,6 +15,7 @@ export const nl = {
     error: 'Fout',
     success: 'Succes',
     actions: 'Acties',
+    student: 'Leerling',
     back: 'Terug',
     next: 'Volgende',
     previous: 'Vorige',
