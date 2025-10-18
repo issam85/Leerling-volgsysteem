@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { setupGlobalErrorHandling } from './utils/errorHandling';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import performanceMonitor from './utils/performanceMonitor';
+import { LanguageProvider } from './contexts/LanguageContext';
 
 // Initialize global error handling
 setupGlobalErrorHandling();
@@ -17,7 +18,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <LanguageProvider>
+        <App />
+      </LanguageProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

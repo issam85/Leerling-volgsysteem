@@ -3,17 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { 
-  LayoutDashboard, 
-  Users, 
-  GraduationCap, 
-  UserCheck, 
-  Baby, 
-  CreditCard, 
-  Settings, 
-  LogOut, 
-  ChevronDown, 
-  ChevronRight, 
+import { useLanguage } from '../contexts/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
+import {
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  UserCheck,
+  Baby,
+  CreditCard,
+  Settings,
+  LogOut,
+  ChevronDown,
+  ChevronRight,
   Circle,
   Menu,
   X
@@ -22,6 +24,7 @@ import {
 const Sidebar = () => {
   const { currentUser, logout } = useAuth();
   const { realData } = useData();
+  const { t, isRTL } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   // Set sidebar collapsed by default on mobile, hidden completely on mobile
@@ -401,18 +404,27 @@ const Sidebar = () => {
         </div>
       </nav>
 
+        {/* Language Switcher */}
+        {!isCollapsed && (
+          <div className="border-t border-gray-200 p-2">
+            <div className="px-2">
+              <LanguageSwitcher variant="dropdown" />
+            </div>
+          </div>
+        )}
+
         {/* Logout */}
         <div className="border-t border-gray-200 p-2">
           <button
             onClick={handleLogout}
             className="flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-            title={isCollapsed ? 'Uitloggen' : ''}
+            title={isCollapsed ? t('nav.logout') : ''}
           >
-            <LogOut 
-              className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
-              size={20} 
+            <LogOut
+              className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`}
+              size={20}
             />
-            {!isCollapsed && 'Uitloggen'}
+            {!isCollapsed && t('nav.logout')}
           </button>
         </div>
       </div>
