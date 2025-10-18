@@ -422,10 +422,10 @@ const TeacherMyClassesPage = () => {
             <h2 className="page-title mb-0">{currentClass.name}</h2>
           </div>
           <p className="text-gray-600 ml-11 lg:ml-0 mb-2">
-            {currentClass.description || 'Geen omschrijving beschikbaar.'}
+            {currentClass.description || t('class.noDescription')}
           </p>
           <p className="text-sm text-gray-500 ml-11 lg:ml-0">
-            {classStudents.length} actieve leerling{classStudents.length !== 1 ? 'en' : ''}
+            {classStudents.length} {classStudents.length === 1 ? t('class.activeStudent') : t('class.activeStudents')}
           </p>
         </div>
         

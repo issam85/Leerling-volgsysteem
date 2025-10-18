@@ -150,11 +150,14 @@ export const nl = {
     deleteClass: 'Verwijder Klas',
     teacher: 'Leraar',
     description: 'Beschrijving',
+    noDescription: 'Geen omschrijving beschikbaar.',
     schedule: 'Rooster',
     scheduleDay: 'Dag',
     scheduleTime: 'Tijd',
     maxStudents: 'Max Leerlingen',
     noClass: 'Geen klas',
+    activeStudent: 'actieve leerling',
+    activeStudents: 'actieve leerlingen',
   },
 
   parent: {

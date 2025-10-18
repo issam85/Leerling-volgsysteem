@@ -150,11 +150,14 @@ export const ar = {
     deleteClass: 'حذف الفصل',
     teacher: 'المعلم',
     description: 'الوصف',
+    noDescription: 'لا يوجد وصف متاح.',
     schedule: 'الجدول',
     scheduleDay: 'اليوم',
     scheduleTime: 'الوقت',
     maxStudents: 'الحد الأقصى للطلاب',
     noClass: 'لا يوجد فصل',
+    activeStudent: 'طالب نشط',
+    activeStudents: 'طلاب نشطون',
   },
 
   parent: {
