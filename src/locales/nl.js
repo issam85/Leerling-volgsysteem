@@ -43,6 +43,21 @@ export const nl = {
     myChildren: 'Mijn Kinderen',
   },
 
+  dashboard: {
+    welcomeBack: 'Welkom terug',
+    teacherDashboard: 'Leraren Dashboard',
+    teacherWelcome: 'Welkom op uw persoonlijke dashboard. Selecteer een van uw klassen in het menu om te beginnen met het bijhouden van leerlinggegevens',
+    teacherTip: 'Tip: Gebruik het menu aan de linkerkant om naar uw klassen te navigeren',
+    parentDashboard: 'Ouder Dashboard',
+    adminDashboard: 'Admin Dashboard',
+  },
+
+  roles: {
+    teacher: 'Leraar',
+    parent: 'Ouder',
+    admin: 'Beheerder',
+  },
+
   teacher: {
     myClasses: 'Mijn Klassen',
     classManagement: 'Klasbeheer',

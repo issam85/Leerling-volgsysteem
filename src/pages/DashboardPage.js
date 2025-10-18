@@ -4,6 +4,7 @@ import TrialBanner from '../components/TrialBanner';
 import { useTrialStatus } from '../hooks/useTrialStatus';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { calculateFinancialMetrics, calculateParentPaymentStatus } from '../utils/financials';
 import { apiCall } from '../services/api';
 import { 
@@ -27,6 +28,7 @@ import { useNavigate, Link } from 'react-router-dom';
 const DashboardPage = () => {
   const { currentUser } = useAuth();
   const { realData } = useData();
+  const { t } = useLanguage();
   const { trialStatus } = useTrialStatus();
   const { users, students, classes, payments, mosque, loading: dataLoading, error: dataError } = realData;
   const navigate = useNavigate();
@@ -162,7 +164,7 @@ const DashboardPage = () => {
 
   const welcomeMessageName = currentUser.name || "Gebruiker";
   const mosqueDisplayName = mosque?.name || 'Leerling Volgsysteem';
-  const userRoleDisplay = currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : "Onbekend";
+  const userRoleDisplay = currentUser.role ? t(`roles.${currentUser.role}`) : "Onbekend";
 
   return (
     <div className="space-y-8">
@@ -177,7 +179,7 @@ const DashboardPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">
-                Welkom terug, {welcomeMessageName}! ✨
+                {t('dashboard.welcomeBack')}, {welcomeMessageName}! ✨
               </h2>
               <p className="opacity-90 text-xl mb-1">{mosqueDisplayName}</p>
               <div className="flex items-center space-x-4">
@@ -286,12 +288,12 @@ const DashboardPage = () => {
             <div className="w-24 h-24 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <UserIcon className="w-12 h-12 text-emerald-600" />
             </div>
-            <h3 className="text-3xl font-bold text-gray-800 mb-4">Leraren Dashboard</h3>
+            <h3 className="text-3xl font-bold text-gray-800 mb-4">{t('dashboard.teacherDashboard')}</h3>
             <p className="text-gray-600 max-w-md mx-auto mb-8 leading-relaxed">
-              Welkom op uw persoonlijke dashboard. Selecteer een van uw klassen in het menu om te beginnen met het bijhouden van leerlinggegevens.
+              {t('dashboard.teacherWelcome')}
             </p>
             <div className="bg-emerald-50 p-4 rounded-xl">
-              <p className="text-emerald-700 text-sm font-medium">💡 Tip: Gebruik het menu aan de linkerkant om naar uw klassen te navigeren</p>
+              <p className="text-emerald-700 text-sm font-medium">💡 {t('dashboard.teacherTip')}</p>
             </div>
           </div>
         </div>

@@ -43,6 +43,21 @@ export const ar = {
     myChildren: 'أبنائي',
   },
 
+  dashboard: {
+    welcomeBack: 'مرحباً بعودتك',
+    teacherDashboard: 'لوحة تحكم المعلم',
+    teacherWelcome: 'مرحباً بك في لوحة التحكم الشخصية. اختر أحد فصولك من القائمة للبدء في متابعة بيانات الطلاب',
+    teacherTip: 'نصيحة: استخدم القائمة على الجانب الأيسر للانتقال إلى فصولك',
+    parentDashboard: 'لوحة تحكم ولي الأمر',
+    adminDashboard: 'لوحة تحكم المسؤول',
+  },
+
+  roles: {
+    teacher: 'معلم',
+    parent: 'ولي أمر',
+    admin: 'مسؤول',
+  },
+
   teacher: {
     myClasses: 'فصولي',
     classManagement: 'إدارة الفصل',
