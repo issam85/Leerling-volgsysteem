@@ -6,11 +6,13 @@ import Button from '../../components/Button';
 import { apiCall } from '../../services/api';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
 
 const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
   const { realData, loadData } = useData();
   const { currentUser } = useAuth();
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     date_of_birth: '',
@@ -121,7 +123,7 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
     <Modal isOpen={isOpen} onClose={handleClose} title={
       <div className="flex items-center">
         <UserPlus className="mr-2 text-emerald-600" size={24} />
-        Leerling Toevoegen aan {className}
+        {t('student.addStudentToClass')} {className}
       </div>
     }>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -141,14 +143,14 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Naam van de leerling *
+            * {t('student.studentName')}
           </label>
           <Input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            placeholder="Volledige naam van de leerling"
+            placeholder={t('student.studentNamePlaceholder')}
             required
             disabled={loading}
           />
@@ -156,7 +158,7 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Geboortedatum (optioneel)
+            {t('student.dateOfBirthOptional')}
           </label>
           <Input
             type="date"
@@ -164,36 +166,36 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
             value={formData.date_of_birth}
             onChange={handleChange}
             disabled={loading}
+            placeholder={t('student.dateFormat')}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Ouder email (optioneel)
+            {t('student.parentEmailOptional')}
           </label>
           <Input
             type="email"
             name="parent_email"
             value={formData.parent_email}
             onChange={handleChange}
-            placeholder="email@voorbeeld.nl"
+            placeholder={t('student.parentEmailPlaceholder')}
             disabled={loading}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Als het email adres al bestaat, wordt de leerling gekoppeld aan die ouder. 
-            Anders kan de administratie later een ouder account aanmaken.
+            {t('student.parentEmailHint')}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Notities (optioneel)
+            {t('student.notesOptional')}
           </label>
           <textarea
             name="notes"
             value={formData.notes}
             onChange={handleChange}
-            placeholder="Eventuele bijzonderheden over de leerling..."
+            placeholder={t('student.notesPlaceholder')}
             rows={3}
             disabled={loading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -206,7 +208,7 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
             disabled={loading || !formData.name.trim() || successMessage}
             className="flex-1 sm:flex-none"
           >
-            {loading ? 'Toevoegen...' : successMessage ? 'Toegevoegd!' : 'Leerling Toevoegen'}
+            {loading ? t('common.loading') : successMessage ? t('common.success') : t('student.addStudentButton')}
           </Button>
           <Button
             type="button"
@@ -215,14 +217,13 @@ const AddStudentModal = ({ isOpen, onClose, classId, className }) => {
             disabled={loading}
             className="flex-1 sm:flex-none"
           >
-            {successMessage ? 'Sluiten' : 'Annuleren'}
+            {successMessage ? t('common.close') : t('common.cancel')}
           </Button>
         </div>
 
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-700">
-            <strong>Let op:</strong> De leerling wordt direct toegevoegd aan uw klas "{className}". 
-            De administratie kan later de details aanvullen en een ouder account koppelen.
+            {t('student.addStudentNotice').replace('{className}', className)}
           </p>
         </div>
       </form>
