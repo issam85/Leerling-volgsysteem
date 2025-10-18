@@ -6,7 +6,8 @@ import { generateTempPassword } from '../../../utils/authHelpers';
 import AdminLayout from '../../../layouts/AdminLayout';
 import Button from '../../../components/Button';
 import AddTeacherModal from './AddTeacherModal';
-import { Users, Plus, Edit3, Trash2, KeyRound, AlertCircle, Crown, Lock } from 'lucide-react';
+import BulkTeacherMessageModal from './BulkTeacherMessageModal';
+import { Users, Plus, Edit3, Trash2, KeyRound, AlertCircle, Crown, Lock, Mail } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,6 +20,9 @@ const TeachersTab = () => {
   const [modalErrorText, setModalErrorText] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [pageMessage, setPageMessage] = useState({ type: '', text: '' });
+  const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
+  const [bulkMessageError, setBulkMessageError] = useState('');
+  const [bulkMessageLoading, setBulkMessageLoading] = useState(false);
   const navigate = useNavigate();
 
   const teachers = users ? users.filter(u => u.role === 'teacher') : [];
@@ -186,6 +190,51 @@ const TeachersTab = () => {
     setActionLoading(false);
   };
 
+  // Bulk message handlers
+  const handleOpenBulkMessageModal = () => {
+    setShowBulkMessageModal(true);
+    setBulkMessageError('');
+    setPageMessage({ type: '', text: '' });
+  };
+
+  const handleCloseBulkMessageModal = () => {
+    setShowBulkMessageModal(false);
+    setBulkMessageError('');
+  };
+
+  const handleBulkMessageSubmit = async (messageData) => {
+    setBulkMessageLoading(true);
+    setBulkMessageError('');
+
+    try {
+      const result = await apiCall('/api/email/send-bulk-teachers', {
+        method: 'POST',
+        body: JSON.stringify({
+          teacherIds: messageData.selectedTeacherIds,
+          subject: messageData.subject,
+          body: messageData.body
+        })
+      });
+
+      if (result.success) {
+        setPageMessage({
+          type: 'success',
+          text: `Bericht succesvol verzonden naar ${messageData.selectedTeacherIds.length} leraar${messageData.selectedTeacherIds.length !== 1 ? 's' : ''}!`
+        });
+        setBulkMessageLoading(false);
+        setShowBulkMessageModal(false);
+        return true;
+      } else {
+        throw new Error(result.error || 'Kon bericht niet verzenden');
+      }
+    } catch (err) {
+      console.error('Error sending bulk message to teachers:', err);
+      setBulkMessageError(err.message || 'Er ging iets mis bij het verzenden van het bericht');
+      setBulkMessageLoading(false);
+      return false;
+    }
+  };
+
   // ✅ Helper function to render trial limitation notice
   const renderTrialLimitNotice = () => {
     if (!isTrialMosque) return null;
@@ -255,11 +304,20 @@ const TeachersTab = () => {
                 {currentTeacherCount}/{maxTeachersForTrial} leraren
               </span>
             )}
-            <Button 
-              onClick={handleOpenAddModal} 
-              variant={isAtTeacherLimit ? "disabled" : "primary"} 
-              icon={isAtTeacherLimit ? Lock : Plus} 
-              className="w-full sm:w-auto" 
+            <Button
+              onClick={handleOpenBulkMessageModal}
+              variant="secondary"
+              icon={Mail}
+              disabled={actionLoading || teachers.length === 0}
+              className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+            >
+              Bericht naar leraren ({teachers.length})
+            </Button>
+            <Button
+              onClick={handleOpenAddModal}
+              variant={isAtTeacherLimit ? "disabled" : "primary"}
+              icon={isAtTeacherLimit ? Lock : Plus}
+              className="w-full sm:w-auto"
               disabled={actionLoading || isAtTeacherLimit}
               title={isAtTeacherLimit ? `Trial limiet bereikt (${maxTeachersForTrial} leraren max)` : "Nieuwe leraar toevoegen"}
             >
@@ -370,6 +428,15 @@ const TeachersTab = () => {
             isLoading={actionLoading}
           />
         )}
+
+        <BulkTeacherMessageModal
+          isOpen={showBulkMessageModal}
+          onClose={handleCloseBulkMessageModal}
+          onSubmit={handleBulkMessageSubmit}
+          allTeachers={teachers}
+          isLoading={bulkMessageLoading}
+          modalError={bulkMessageError}
+        />
       </div>
     </AdminLayout>
   );
