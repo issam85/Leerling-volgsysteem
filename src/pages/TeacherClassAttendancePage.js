@@ -3,23 +3,18 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { AlertCircle, CalendarDays, Check, Users, X } from 'lucide-react';
 
-const ATTENDANCE_STATUSES = [
-    { value: 'aanwezig', label: 'Aanwezig', icon: <Check size={16} className="text-green-500" /> },
-    { value: 'afwezig_ongeoorloofd', label: 'Afwezig (Ongeoorloofd)', icon: <X size={16} className="text-red-500" /> },
-    { value: 'afwezig_geoorloofd', label: 'Afwezig (Geoorloofd)', icon: <X size={16} className="text-yellow-500" /> },
-    { value: 'te_laat', label: 'Te laat', icon: <AlertCircle size={16} className="text-orange-500" /> },
-];
-
 const TeacherClassAttendancePage = () => {
     const { classId } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { t } = useLanguage();
     const {
         realData,
         fetchLessonDetailsForAttendance,
@@ -28,6 +23,14 @@ const TeacherClassAttendancePage = () => {
         createLesson,
         fetchLessonsForClass,
     } = useData();
+
+    // Define ATTENDANCE_STATUSES inside component to use t()
+    const ATTENDANCE_STATUSES = [
+        { value: 'aanwezig', label: t('teacher.present'), icon: <Check size={16} className="text-green-500" /> },
+        { value: 'afwezig_ongeoorloofd', label: t('teacher.absentUnexcused'), icon: <X size={16} className="text-red-500" /> },
+        { value: 'afwezig_geoorloofd', label: t('teacher.absentExcused'), icon: <X size={16} className="text-yellow-500" /> },
+        { value: 'te_laat', label: t('teacher.late'), icon: <AlertCircle size={16} className="text-orange-500" /> },
+    ];
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [currentLesson, setCurrentLesson] = useState(null);
@@ -296,7 +299,7 @@ const TeacherClassAttendancePage = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <h2 className="page-title">Absentie Registratie: {currentClassDetails?.name || "Klas"}</h2>
+                <h2 className="page-title">{t('teacher.attendanceRegistration')}: {currentClassDetails?.name || t('class.className')}</h2>
                 <div className="flex items-center gap-2">
                     <CalendarDays size={20} className="text-gray-600" />
                     <DatePicker
@@ -336,7 +339,7 @@ const TeacherClassAttendancePage = () => {
                         Er is nog geen les geregistreerd voor {selectedDate.toLocaleDateString('nl-NL')} voor deze klas.
                     </p>
                     <Button onClick={handleCreateAndLoadLesson} variant="primary" disabled={isLoading}>
-                        Start Les & Registreer Absenties
+                        {t('teacher.startLesson')}
                     </Button>
                 </div>
             )}
@@ -344,10 +347,10 @@ const TeacherClassAttendancePage = () => {
             {!isLoading && currentLesson && studentsToList.length > 0 && (
                 <div className="card">
                     <h3 className="text-lg font-semibold mb-1">
-                        Leerlingenlijst voor les op {new Date(currentLesson.les_datum).toLocaleDateString('nl-NL')}:
+                        {t('teacher.studentListForLesson')} {new Date(currentLesson.les_datum).toLocaleDateString('nl-NL')}:
                     </h3>
                     <p className="text-xs text-gray-500 mb-4">
-                        Pas de status aan en voeg eventueel notities toe. Standaard staat iedereen op 'Aanwezig'.
+                        {t('teacher.statusInstruction')}
                     </p>
                     <div className="space-y-3">
                         {studentsToList.map(student => (
@@ -370,7 +373,7 @@ const TeacherClassAttendancePage = () => {
                                 <textarea
                                     value={attendanceRecords[student.id]?.notities_absentie || ''}
                                     onChange={(e) => handleAttendanceChange(student.id, 'notities_absentie', e.target.value)}
-                                    placeholder="Notities (bijv. reden afwezigheid)"
+                                    placeholder={t('teacher.notesPlaceholder')}
                                     rows="1"
                                     className="input-field text-sm p-2 w-full"
                                 />
@@ -379,7 +382,7 @@ const TeacherClassAttendancePage = () => {
                     </div>
                     <div className="mt-6 text-right">
                         <Button onClick={handleSubmitAttendance} variant="primary" size="lg" disabled={isLoading}>
-                            {isLoading ? "Opslaan..." : "Absenties Opslaan"}
+                            {isLoading ? t('common.loading') : t('teacher.saveAbsences')}
                         </Button>
                     </div>
                 </div>

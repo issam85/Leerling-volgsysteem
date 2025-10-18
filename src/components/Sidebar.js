@@ -99,17 +99,17 @@ const Sidebar = () => {
     : [];
   
   const baseItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' }
+    { to: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') }
   ];
-  
+
   const adminItems = [
     ...baseItems,
-    { to: '/admin/classes', icon: GraduationCap, label: 'Klassen' },
-    { to: '/admin/teachers', icon: UserCheck, label: 'Leraren' },
-    { to: '/admin/parents', icon: Users, label: 'Ouders' },
-    { to: '/admin/students', icon: Baby, label: 'Leerlingen' },
-    { to: '/admin/payments', icon: CreditCard, label: 'Betalingen' },
-    { to: '/admin/settings', icon: Settings, label: 'Instellingen' }
+    { to: '/admin/classes', icon: GraduationCap, label: t('nav.classes') },
+    { to: '/admin/teachers', icon: UserCheck, label: t('nav.teachers') },
+    { to: '/admin/parents', icon: Users, label: t('nav.parents') },
+    { to: '/admin/students', icon: Baby, label: t('nav.students') },
+    { to: '/admin/payments', icon: CreditCard, label: t('nav.payments') },
+    { to: '/admin/settings', icon: Settings, label: t('nav.settings') }
   ];
 
   return (
@@ -235,13 +235,13 @@ const Sidebar = () => {
                 ? 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-600' 
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
-            title={isCollapsed ? 'Dashboard' : ''}
+            title={isCollapsed ? t('nav.dashboard') : ''}
           >
-            <LayoutDashboard 
-              className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
-              size={20} 
+            <LayoutDashboard
+              className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`}
+              size={20}
             />
-            {!isCollapsed && 'Dashboard'}
+            {!isCollapsed && t('nav.dashboard')}
           </NavLink>
           
           {/* Leraar Accordion Menu */}
@@ -254,14 +254,14 @@ const Sidebar = () => {
                     ? 'bg-emerald-100 text-emerald-700 border-r-2 border-emerald-600'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
-                title={isCollapsed ? 'Mijn Klassen' : ''}
+                title={isCollapsed ? t('nav.myClasses') : ''}
               >
                 <div className="flex items-center">
-                  <GraduationCap 
-                    className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
-                    size={20} 
+                  <GraduationCap
+                    className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`}
+                    size={20}
                   />
-                  {!isCollapsed && 'Mijn Klassen'}
+                  {!isCollapsed && t('nav.myClasses')}
                 </div>
                 {!isCollapsed && (
                   <span className="ml-2">
@@ -295,7 +295,7 @@ const Sidebar = () => {
                   ) : (
                     <div className="flex items-center w-full px-2 py-1.5 text-xs text-gray-400 italic">
                       <Circle size={6} className="mr-3 text-gray-300 flex-shrink-0" />
-                      Geen klassen toegewezen
+                      {t('teacher.noClasses')}
                     </div>
                   )}
                 </div>
@@ -318,13 +318,13 @@ const Sidebar = () => {
                     ? 'text-emerald-700' 
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
-                title={isCollapsed ? 'Mijn Kinderen' : ''}
+                title={isCollapsed ? t('nav.myChildren') : ''}
               >
-                <Baby 
-                  className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} 
-                  size={20} 
+                <Baby
+                  className={`flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-3'}`}
+                  size={20}
                 />
-                {!isCollapsed && 'Mijn Kinderen'}
+                {!isCollapsed && t('nav.myChildren')}
               </NavLink>
               {!isCollapsed && (
                 <button 
@@ -373,7 +373,7 @@ const Sidebar = () => {
               ) : (
                 <div className="flex items-center w-full px-2 py-1.5 text-xs text-gray-400 italic">
                   <Circle size={6} className="mr-3 text-gray-300 flex-shrink-0" />
-                  Geen kinderen gevonden
+                  {t('parent.noChildren')}
                 </div>
               )}
             </div>
