@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { apiCall } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Button from '../components/Button';
@@ -145,6 +146,7 @@ const TeacherMyClassesPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { realData } = useData();
+  const { t, isRTL } = useLanguage();
   const { classes = [], students = [], users = [], loading, error } = realData;
 
   // State voor modals en feedback
@@ -429,7 +431,7 @@ const TeacherMyClassesPage = () => {
         
         <div className="flex flex-col sm:flex-row gap-2">
           <Button icon={UserPlus} onClick={handleAddStudent}>
-            Nieuwe Leerling
+            {t('teacher.newStudent')}
           </Button>
           <Button
             icon={Mail}
@@ -437,11 +439,11 @@ const TeacherMyClassesPage = () => {
             onClick={handleShowClassBulkModal}
             disabled={classStudents.length === 0}
           >
-            Bericht naar Ouders
+            {t('teacher.messageToParents')}
           </Button>
           <Link to={`/teacher/class/${classId}/attendance`}>
             <Button icon={Calendar} variant="secondary" className="w-full">
-              Aanwezigheid
+              {t('teacher.attendance')}
             </Button>
           </Link>
         </div>
@@ -522,34 +524,34 @@ const TeacherMyClassesPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            icon={Mail} 
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={Mail}
                             onClick={() => parent && openModal('mail_parent', student)}
                             disabled={!parent?.email}
-                            title={parent?.email ? `Mail ${parent.name}` : 'Geen email beschikbaar'}
+                            title={parent?.email ? `${t('teacher.mail')} ${parent.name}` : 'Geen email beschikbaar'}
                           >
-                            Mail
+                            {t('teacher.mail')}
                           </Button>
-                          
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            icon={ClipboardList} 
+
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={ClipboardList}
                             onClick={() => handleShowReport(student)}
                             title="Rapport bekijken/bewerken"
                           >
-                            Rapport
+                            {t('teacher.report')}
                           </Button>
-                          
-                          <Button 
-                            size="sm" 
-                            icon={BookMarked} 
+
+                          <Button
+                            size="sm"
+                            icon={BookMarked}
                             onClick={() => handleShowQuranProgress(student)}
-                            title="Qor'aan voortgang bekijken"
+                            title={t('teacher.quranProgress')}
                           >
-                            Qor'aan
+                            {t('teacher.quran')}
                           </Button>
                         </div>
                       </td>
