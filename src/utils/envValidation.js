@@ -58,13 +58,13 @@ export const validateEnvironmentVariables = () => {
   // Validate optional variables and apply fallbacks
   Object.entries(OPTIONAL_ENV_VARS).forEach(([key, spec]) => {
     const value = process.env[key];
-    
+
     if (!value) {
       if (spec.fallback) {
         config[key] = spec.fallback;
-        if (!isProduction) {
-          warnings.push(`Using fallback for ${key}: ${spec.fallback}`);
-        }
+        // SECURITY FIX (H-3): Always warn when using hardcoded fallback URL,
+        // including in production, so misconfiguration is visible in logs.
+        warnings.push(`Using fallback for ${key}: ${spec.fallback}`);
       }
     } else {
       if (spec.validator && !spec.validator(value)) {
@@ -91,8 +91,9 @@ export const validateEnvironmentVariables = () => {
     }
   }
 
-  // Log warnings in development
-  if (!isProduction && warnings.length > 0) {
+  // SECURITY FIX (H-3): Always log warnings (including in production)
+  // so that hardcoded fallback URL usage is visible in logs.
+  if (warnings.length > 0) {
     console.warn('[ENV] Environment warnings:', warnings);
   }
 
@@ -109,6 +110,8 @@ export const getSecureConfig = () => {
     return config;
   } catch (error) {
     if (error instanceof EnvValidationError) {
+      // SECURITY FIX (H-3): Warn when falling back to hardcoded production URL
+      console.warn('[ENV] getSecureConfig: Validation failed. Using hardcoded fallback API URL. Set REACT_APP_API_BASE_URL to fix this.');
       // Return minimal safe config that won't crash the app
       return {
         REACT_APP_SUPABASE_URL: null,

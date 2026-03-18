@@ -3,11 +3,18 @@ import { handleApiError, logError } from '../utils/errorHandling';
 import { getSecureConfig } from '../utils/envValidation';
 
 const getApiBaseUrl = () => {
+  // SECURITY FIX (H-3): Require REACT_APP_API_BASE_URL instead of silently
+  // falling back to a hardcoded production URL. In production builds, a missing
+  // env var indicates a misconfiguration that should be surfaced, not hidden.
   try {
     const config = getSecureConfig();
-    return config.REACT_APP_API_BASE_URL || 'https://moskee-backend-api-production.up.railway.app';
+    if (config.REACT_APP_API_BASE_URL) {
+      return config.REACT_APP_API_BASE_URL;
+    }
+    console.warn('[API] REACT_APP_API_BASE_URL is not set. Set this environment variable to avoid using a hardcoded fallback.');
+    return 'https://moskee-backend-api-production.up.railway.app';
   } catch (error) {
-    console.warn('[API] Environment validation failed, using fallback URL');
+    console.warn('[API] Environment validation failed. REACT_APP_API_BASE_URL must be configured. Falling back to hardcoded URL.');
     return 'https://moskee-backend-api-production.up.railway.app';
   }
 };

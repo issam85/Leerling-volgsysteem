@@ -10,7 +10,11 @@
     <link rel="manifest" href="%PUBLIC_URL%/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <meta name="theme-color" content="#059669" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SECURITY FIX (H-1): Removed Tailwind CDN <script> tag.
+         It required 'unsafe-eval' in CSP (see C-2) and is a supply-chain risk.
+         TODO: Install Tailwind as a build dependency (npm install -D tailwindcss)
+         and configure it with PostCSS for build-time CSS generation.
+         See: https://tailwindcss.com/docs/installation/using-postcss -->
     <meta
       name="description"
       content="MijnLVS - Leerling volgsysteem voor moskeeën. Beheer van leerlingen, ouders, leraren en klassen."

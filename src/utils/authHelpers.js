@@ -57,29 +57,23 @@ const calculatePasswordStrength = (password) => {
   return 'strong';
 };
 
-export const generateTempPassword = () => {
-  // Generate a stronger temporary password with guaranteed character types
-  const uppercase = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  const lowercase = 'abcdefghijkmnpqrstuvwxyz';
-  const numbers = '23456789'; // Exclude 0, 1 to avoid confusion
-  const symbols = '!@#$%^&*';
-  
-  let password = '';
-  
-  // Ensure at least one character from each type
-  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-  password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-  
-  // Fill the rest randomly
-  const allChars = uppercase + lowercase + numbers + symbols;
-  for (let i = 4; i < 14; i++) { // 14 character total length
-    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+export const generateTempPassword = (length = 14) => {
+  // SECURITY FIX (C-1): Use crypto.getRandomValues() instead of Math.random()
+  // Math.random() is not cryptographically secure — its output can be predicted.
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  const password = Array.from(array, b => chars[b % chars.length]);
+
+  // Fisher-Yates shuffle using crypto.getRandomValues() for unbiased randomness
+  const shuffleBytes = new Uint8Array(length);
+  crypto.getRandomValues(shuffleBytes);
+  for (let i = password.length - 1; i > 0; i--) {
+    const j = shuffleBytes[i] % (i + 1);
+    [password[i], password[j]] = [password[j], password[i]];
   }
-  
-  // Shuffle the password to randomize character positions
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+
+  return password.join('');
 };
 
 // Stuurt een welkomstmail via de backend API.

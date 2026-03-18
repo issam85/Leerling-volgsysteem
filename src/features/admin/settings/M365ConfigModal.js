@@ -77,11 +77,17 @@ const M365ConfigModal = ({ isOpen, onClose, onSubmit, initialConfig, isLoading, 
     
     setIsTesting(true);
     try {
+      // SECURITY NOTE (H-5): Ideally the client secret should NEVER be sent from the
+      // browser. The test flow should save config first, then trigger a server-side
+      // test that retrieves the secret from the database (like the welcome email flow).
+      // TODO: Refactor backend /api/email/test-m365 to accept only mosqueId and
+      // look up the secret server-side, then remove clientSecret from this payload.
       const payloadForTest = {
-        // ✅ AANGEPAST: Gebruik de parameter namen die de backend verwacht
         tenantId: configForm.tenantId,
         clientId: configForm.clientId,
-        clientSecret: configForm.clientSecret, // Stuur de (mogelijk lege) secret uit het formulier mee
+        // Only send clientSecret if the user explicitly entered one for initial setup;
+        // otherwise let the backend use the stored secret via mosqueId.
+        ...(configForm.clientSecret.trim() ? { clientSecret: configForm.clientSecret } : {}),
         to: testEmailAddress,
         subject: `🧪 Test Email - ${mosqueName} LVS M365 Configuratie`,
         body: `

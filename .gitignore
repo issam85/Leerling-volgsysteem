@@ -13,6 +13,9 @@
 
 # misc
 .DS_Store
+# SECURITY FIX (H-6): Ensure base .env file is excluded to prevent
+# accidental commit of secrets (API keys, Supabase credentials, etc.)
+.env
 .env.local
 .env.development.local
 .env.test.local
